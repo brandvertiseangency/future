@@ -1,0 +1,36 @@
+{
+  "name": "brandvertise-design-hub",
+  "version": "2.0.0",
+  "description": "AI-powered SaaS creative agency — Brandvertise AI Design Hub",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "worker": "node src/workers/generationWorker.js",
+    "worker:dev": "nodemon src/workers/generationWorker.js",
+    "db:migrate": "node src/db/migrate.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "bullmq": "^5.34.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "firebase-admin": "^13.0.2",
+    "helmet": "^8.0.0",
+    "ioredis": "^5.4.2",
+    "joi": "^17.13.3",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.16",
+    "openai": "^4.77.3",
+    "pg": "^8.20.0",
+    "razorpay": "^2.9.5",
+    "twilio": "^5.4.3",
+    "uuid": "^11.0.5",
+    "winston": "^3.17.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  }
+}
