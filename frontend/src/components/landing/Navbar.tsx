@@ -131,45 +131,41 @@ export default function Navbar() {
 							href="/pricing"
 							style={{
 								fontSize: 13.5,
-								fontWeight: 600,
-								color: "rgba(255,255,255,0.7)",
+								fontWeight: 500,
+								color: "rgba(255,255,255,0.5)",
 								textDecoration: "none",
 								padding: "8px 16px",
-								borderRadius: 8,
+								borderRadius: 999,
 								transition: "color 0.2s ease",
 							}}
 							onMouseEnter={(e) => {
-								(e.currentTarget as HTMLAnchorElement).style.color = "#ffffff";
+								(e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.9)";
 							}}
 							onMouseLeave={(e) => {
 								(e.currentTarget as HTMLAnchorElement).style.color =
-									"rgba(255,255,255,0.7)";
+									"rgba(255,255,255,0.5)";
 							}}
 						>
 							Log in
 						</a>
 						<a
 							href="#"
+							className="gradient-border"
 							style={{
-								background: "#ffffff",
-								color: "#000000",
+								color: "#ffffff",
 								fontWeight: 600,
 								fontSize: 13.5,
 								padding: "8px 18px",
-								borderRadius: 8,
+								borderRadius: 999,
 								textDecoration: "none",
-								transition:
-									"opacity 0.2s ease, transform 0.2s ease",
+								transition: "background 0.2s ease",
+								display: "inline-block",
 							}}
 							onMouseEnter={(e) => {
-								(e.currentTarget as HTMLAnchorElement).style.opacity = "0.88";
-								(e.currentTarget as HTMLAnchorElement).style.transform =
-									"translateY(-1px)";
+								(e.currentTarget as HTMLAnchorElement).style.background = "rgba(255,255,255,0.07)";
 							}}
 							onMouseLeave={(e) => {
-								(e.currentTarget as HTMLAnchorElement).style.opacity = "1";
-								(e.currentTarget as HTMLAnchorElement).style.transform =
-									"translateY(0)";
+								(e.currentTarget as HTMLAnchorElement).style.background = "";
 							}}
 						>
 							Get Started

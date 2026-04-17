@@ -67,7 +67,7 @@ export default function FAQ() {
 							margin: 0,
 						}}
 					>
-						Clear answers for your growth.
+						<em className="accent">Clear answers</em> for your growth.
 					</motion.h2>
 				</motion.div>
 
@@ -81,7 +81,13 @@ export default function FAQ() {
 						<motion.div
 							key={i}
 							variants={fadeUpVariants}
-							style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+							style={{
+								borderBottom: open === i ? "1px solid rgba(139,92,246,0.2)" : "1px solid rgba(255,255,255,0.06)",
+								background: open === i ? "rgba(139,92,246,0.04)" : "transparent",
+								borderRadius: 8,
+								transition: "background 0.2s ease, border-color 0.2s ease",
+								padding: "0 8px",
+							}}
 						>
 							<button
 								onClick={() => setOpen(open === i ? null : i)}
@@ -102,24 +108,22 @@ export default function FAQ() {
 								<div style={{ display: "flex", alignItems: "center", gap: 16 }}>
 									<span
 										style={{
-											fontSize: 12,
+											fontSize: 11,
 											fontWeight: 600,
-											color: "rgba(255,255,255,0.2)",
+											color: open === i ? "rgba(167,139,250,0.7)" : "rgba(167,139,250,0.35)",
 											flexShrink: 0,
-											fontVariantNumeric: "tabular-nums",
-											letterSpacing: "0.02em",
+											fontFamily: "monospace",
+											letterSpacing: "0.04em",
+											transition: "color 0.2s ease",
 										}}
 									>
-										{String(i + 1).padStart(2, "0")}
+										{String(i + 1).padStart(2, "0")}/
 									</span>
 									<span
 										style={{
 											fontSize: 15,
 											fontWeight: 600,
-											color:
-												open === i
-													? "#ffffff"
-													: "rgba(255,255,255,0.8)",
+											color: open === i ? "#ffffff" : "rgba(255,255,255,0.8)",
 											lineHeight: 1.4,
 											transition: "color 0.2s ease",
 										}}
@@ -135,12 +139,13 @@ export default function FAQ() {
 										width: 26,
 										height: 26,
 										borderRadius: "50%",
-										border: "1px solid rgba(255,255,255,0.12)",
+										border: open === i ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.12)",
 										display: "flex",
 										alignItems: "center",
 										justifyContent: "center",
 										fontSize: 18,
-										color: "rgba(255,255,255,0.5)",
+										color: open === i ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+										transition: "border-color 0.2s ease, color 0.2s ease",
 									}}
 								>
 									+
@@ -153,10 +158,7 @@ export default function FAQ() {
 										initial={{ height: 0, opacity: 0 }}
 										animate={{ height: "auto", opacity: 1 }}
 										exit={{ height: 0, opacity: 0 }}
-										transition={{
-											duration: 0.3,
-											ease: [0.16, 1, 0.3, 1],
-										}}
+										transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
 										style={{ overflow: "hidden" }}
 									>
 										<p

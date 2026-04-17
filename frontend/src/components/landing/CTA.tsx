@@ -25,7 +25,7 @@ export default function CTA() {
 				padding: "120px 0",
 			}}
 		>
-			{/* Subtle radial glow */}
+			{/* Radial ambient glow */}
 			<div
 				style={{
 					position: "absolute",
@@ -37,7 +37,7 @@ export default function CTA() {
 					maxWidth: 800,
 					maxHeight: 800,
 					background:
-						"radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 65%)",
+						"radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)",
 					zIndex: 0,
 					pointerEvents: "none",
 				}}
@@ -57,12 +57,12 @@ export default function CTA() {
 					initial="hidden"
 					animate={isInView ? "show" : "hidden"}
 					variants={staggerContainer}
+					className="gradient-border noise-overlay"
 					style={{
-						background: "#0d0d0d",
-						border: "1px solid rgba(255,255,255,0.09)",
-						borderRadius: 24,
 						padding: "80px 48px",
 						textAlign: "center",
+						position: "relative",
+						overflow: "hidden",
 					}}
 				>
 					<motion.span variants={fadeUpVariants} className="section-tag">
@@ -80,7 +80,7 @@ export default function CTA() {
 							margin: "0 auto 16px",
 						}}
 					>
-						Turn your brand into a sensation.
+						Turn your brand into a <em className="accent">sensation.</em>
 					</motion.h2>
 					<motion.p
 						variants={fadeUpVariants}

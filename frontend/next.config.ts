@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
-import path from "path";
-import os from "os";
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// On dev: keep build output on local disk to avoid issues on external volumes
-const localDist = path.join(os.homedir(), ".brandvertise-next");
+// Keep build cache on local macOS home disk to avoid issues on external volumes.
+// Use REAL_HOME or HOME to get the actual user home (not a sandboxed temp path).
+const homeDir = process.env.REAL_HOME ?? process.env.HOME ?? "/tmp";
+const localDist = `${homeDir}/.brandvertise-next`;
 
 const nextConfig: NextConfig = {
   ...(isDev ? { distDir: localDist } : {}),

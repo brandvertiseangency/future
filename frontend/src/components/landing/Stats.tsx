@@ -1,8 +1,43 @@
 "use client";
 
-import { useRef } from "react";
-import { motion, useInView } from "framer-motion";
+import { useRef, useEffect } from "react";
+import { motion, useInView, useMotionValue, useTransform, animate } from "framer-motion";
 import { fadeUpVariants, staggerContainer } from "@/lib/motion";
+
+// Parse numeric value and suffix from strings like "2,400+", "10M+", "+47%", "12 hrs"
+function parseStatValue(val: string): { num: number; prefix: string; suffix: string } {
+	if (val.startsWith("+")) {
+		const num = parseInt(val.replace(/[^0-9]/g, ""), 10);
+		return { num, prefix: "+", suffix: val.replace(/[0-9,]/g, "").replace("+", "") };
+	}
+	if (val.includes("M")) {
+		const num = parseInt(val.replace(/[^0-9]/g, ""), 10);
+		return { num, prefix: "", suffix: "M+" };
+	}
+	if (val.includes(",")) {
+		const num = parseInt(val.replace(/[^0-9]/g, ""), 10);
+		return { num, prefix: "", suffix: "+" };
+	}
+	const num = parseInt(val.replace(/[^0-9]/g, ""), 10);
+	return { num, prefix: "", suffix: val.replace(/[0-9]/g, "").trim() };
+}
+
+function AnimatedStat({ value, isInView }: { value: string; isInView: boolean }) {
+	const { num, prefix, suffix } = parseStatValue(value);
+	const count = useMotionValue(0);
+	const rounded = useTransform(count, (v) => {
+		if (num >= 1000) return prefix + Math.round(v).toLocaleString() + suffix;
+		return prefix + Math.round(v) + suffix;
+	});
+
+	useEffect(() => {
+		if (!isInView) return;
+		const ctrl = animate(count, num, { duration: 1.6, ease: [0.16, 1, 0.3, 1] });
+		return ctrl.stop;
+	}, [isInView, count, num]);
+
+	return <motion.span>{rounded}</motion.span>;
+}
 
 const stats = [
 	{ value: "2,400+", label: "Active Brands", sub: "Growing every week" },
@@ -54,7 +89,7 @@ export default function Stats() {
 									marginBottom: 8,
 								}}
 							>
-								{s.value}
+								<AnimatedStat value={s.value} isInView={isInView} />
 							</p>
 							<p style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.65)", marginBottom: 4 }}>
 								{s.label}

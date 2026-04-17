@@ -10,21 +10,21 @@ const steps = [
 		title: "Onboard Your Brand",
 		desc: "Upload logo, colors, fonts, tone and target audience. Takes 5 minutes. Works forever.",
 		tags: ["Fast Setup", "No-Code"],
-		img: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&q=80",
+		img: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&q=80",
 	},
 	{
 		num: "02",
 		title: "AI Builds Your Strategy",
 		desc: "Content Strategy Engine analyses your brand, industry and competitors — full monthly plan generated automatically.",
 		tags: ["AI-Powered", "Auto Strategy"],
-		img: "https://images.unsplash.com/photo-1518186285589-2f7649de83e0?w=600&q=80",
+		img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80",
 	},
 	{
 		num: "03",
 		title: "Creatives Are Generated",
 		desc: "AI designs on-brand visuals and writes captions, hashtags, CTAs for each platform.",
 		tags: ["Instant Output", "On-Brand"],
-		img: "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=600&q=80",
+		img: "https://images.unsplash.com/photo-1542744094-24638eff58bb?w=600&q=80",
 	},
 	{
 		num: "04",
@@ -33,6 +33,13 @@ const steps = [
 		tags: ["Auto-Publish", "Full Autopilot"],
 		img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80",
 	},
+];
+
+const stepAccents = [
+	{ bg: "rgba(52,211,153,0.10)", border: "rgba(52,211,153,0.25)", text: "#6ee7b7" },
+	{ bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.25)", text: "#93c5fd" },
+	{ bg: "rgba(139,92,246,0.10)", border: "rgba(139,92,246,0.25)", text: "#c4b5fd" },
+	{ bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.25)", text: "#fde68a" },
 ];
 
 export default function HowItWorks() {
@@ -67,7 +74,7 @@ export default function HowItWorks() {
 							margin: 0,
 						}}
 					>
-						From onboarding to full growth.
+						From onboarding to <em className="accent">full growth.</em>
 					</motion.h2>
 				</motion.div>
 
@@ -132,13 +139,14 @@ export default function HowItWorks() {
 												<span
 													key={tag}
 													style={{
-														border: "1px solid rgba(255,255,255,0.12)",
 														borderRadius: 999,
 														padding: "4px 13px",
 														fontSize: 11,
 														fontWeight: 600,
-														color: "rgba(255,255,255,0.5)",
 														letterSpacing: "0.04em",
+														background: stepAccents[i].bg,
+														border: `1px solid ${stepAccents[i].border}`,
+														color: stepAccents[i].text,
 													}}
 												>
 													{tag}
@@ -154,20 +162,18 @@ export default function HowItWorks() {
 											transition={{ duration: 0.4, ease: EASE }}
 											src={step.img}
 											alt={step.title}
+											className="img-cinematic"
 											style={{
 												width: "100%",
 												height: 280,
 												objectFit: "cover",
-												borderRadius: 18,
-												border: "1px solid rgba(255,255,255,0.07)",
-												display: "block",
 											}}
 										/>
 									</div>
 								</motion.div>
 
 								{ i < steps.length - 1 && (
-									<div style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }} />
+									<div style={{ width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent)" }} />
 								)}
 							</div>
 						);

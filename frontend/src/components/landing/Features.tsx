@@ -57,7 +57,7 @@ export default function Features() {
               margin: 0,
             }}
           >
-            Why the fastest growing teams choose us.
+            Why the <em className="accent">fastest growing</em> teams choose us.
           </motion.h2>
         </motion.div>
 
@@ -81,13 +81,11 @@ export default function Features() {
             {/* Card 1 — tall left */}
             <motion.div
               variants={fadeUpVariants}
-              whileHover={{ y: -6, borderColor: "rgba(255,255,255,0.16)" }}
+              whileHover={{ y: -6 }}
               transition={{ duration: 0.3, ease: EASE }}
+              className="gradient-border"
               style={{
                 gridRow: "span 2",
-                background: "#0d0d0d",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 20,
                 padding: 32,
                 display: "flex",
                 flexDirection: "column",
@@ -128,7 +126,7 @@ export default function Features() {
                 </svg>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
                   <span style={{ fontSize: 28, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.04em" }}>+80%</span>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", alignSelf: "flex-end", marginBottom: 3 }}>engagement lift</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 11px", borderRadius: 999, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd", alignSelf: "flex-end", marginBottom: 3 }}>engagement lift</span>
                 </div>
               </div>
             </motion.div>
@@ -136,12 +134,10 @@ export default function Features() {
             {/* Card 2 — top right */}
             <motion.div
               variants={fadeUpVariants}
-              whileHover={{ y: -6, borderColor: "rgba(255,255,255,0.16)" }}
+              whileHover={{ y: -6 }}
               transition={{ duration: 0.3, ease: EASE }}
+              className="gradient-border"
               style={{
-                background: "#0d0d0d",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 20,
                 padding: 28,
                 display: "flex",
                 flexDirection: "column",
@@ -167,19 +163,22 @@ export default function Features() {
                 Generate polished visuals and captions in seconds.
               </p>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
-                {["10x faster", "99.9% uptime", "2x ROI"].map((pill) => (
+                {[
+                  { label: "10x faster", style: { background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)", color: "#93c5fd" } },
+                  { label: "99.9% uptime", style: { background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)", color: "#6ee7b7" } },
+                  { label: "2x ROI", style: { background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd" } },
+                ].map((pill) => (
                   <span
-                    key={pill}
+                    key={pill.label}
                     style={{
-                      border: "1px solid rgba(255,255,255,0.12)",
                       borderRadius: 999,
                       padding: "3px 11px",
                       fontSize: 11,
                       fontWeight: 600,
-                      color: "rgba(255,255,255,0.6)",
+                      ...pill.style,
                     }}
                   >
-                    {pill}
+                    {pill.label}
                   </span>
                 ))}
               </div>
@@ -188,12 +187,10 @@ export default function Features() {
             {/* Card 3 — bottom left */}
             <motion.div
               variants={fadeUpVariants}
-              whileHover={{ y: -6, borderColor: "rgba(255,255,255,0.16)" }}
+              whileHover={{ y: -6 }}
               transition={{ duration: 0.3, ease: EASE }}
+              className="gradient-border"
               style={{
-                background: "#0d0d0d",
-                border: "1px solid rgba(255,255,255,0.07)",
-                borderRadius: 20,
                 padding: 28,
                 display: "flex",
                 flexDirection: "column",
@@ -247,11 +244,8 @@ export default function Features() {
             variants={fadeUpVariants}
             whileHover={{ y: -4 }}
             transition={{ duration: 0.3, ease: EASE }}
-            className="bento-side"
+            className="bento-side gradient-border"
             style={{
-              background: "#0d0d0d",
-              border: "1px solid rgba(255,255,255,0.07)",
-              borderRadius: 20,
               overflow: "hidden",
               display: "flex",
               flexDirection: "column",
@@ -260,7 +254,8 @@ export default function Features() {
             <img
               src="https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=400&q=80"
               alt="Expert team"
-              style={{ width: "100%", height: 220, objectFit: "cover" }}
+              className="img-cinematic"
+              style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: "20px 20px 0 0", border: "none" }}
             />
             <div style={{ padding: "28px" }}>
               <h3 style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", marginBottom: 10, letterSpacing: "-0.02em" }}>

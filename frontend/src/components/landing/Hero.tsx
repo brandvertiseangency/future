@@ -96,6 +96,13 @@ export default function Hero() {
 				paddingTop: 64,
 			}}
 		>
+			{/* Radial ambient glows */}
+			<div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+				<div style={{ position: "absolute", top: "-10%", left: "20%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)" }} />
+				<div style={{ position: "absolute", top: "30%", right: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)" }} />
+				<div style={{ position: "absolute", bottom: "0%", left: "40%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 70%)" }} />
+			</div>
+
 			{/* Grid background */}
 			<div
 				className="grid-bg"
@@ -190,7 +197,7 @@ export default function Hero() {
 							social media
 						</span>
 						<br />
-						<span>mastery.</span>
+						<em className="accent" style={{ fontStyle: "italic" }}>mastery.</em>
 					</motion.h1>
 
 					<motion.p
@@ -319,12 +326,10 @@ export default function Hero() {
 									repeat: Infinity,
 									ease: "easeInOut",
 								}}
+								className="gradient-border"
 								style={{
-									background: "rgba(255,255,255,0.04)",
 									backdropFilter: "blur(16px)",
 									WebkitBackdropFilter: "blur(16px)",
-									border: "1px solid rgba(255,255,255,0.09)",
-									borderRadius: 16,
 									padding: "18px 22px",
 									display: "flex",
 									alignItems: "center",
@@ -381,10 +386,8 @@ export default function Hero() {
 							duration: 0.65,
 							ease: EASE,
 						}}
+						className="gradient-border"
 						style={{
-							background: "rgba(255,255,255,0.03)",
-							border: "1px solid rgba(255,255,255,0.07)",
-							borderRadius: 16,
 							padding: "20px 22px",
 							marginTop: 4,
 						}}
