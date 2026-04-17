@@ -22,9 +22,17 @@ outputs/*.png
 outputs/*.jpeg
 logs/
 
-# macOS
+# macOS resource forks & metadata
 .DS_Store
 **/.DS_Store
+._*
+**/._*
+
+# Next.js local dev build cache (stored outside project on macOS)
+*/.brandvertise-next/
+frontend/Users/
+frontend/private/
+frontend/var/
 
 # TypeScript
 *.tsbuildinfo
