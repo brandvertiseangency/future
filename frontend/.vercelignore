@@ -1,0 +1,5 @@
+# Ignore everything at the repo root — Vercel only needs /frontend
+# (Set "Root Directory" to "frontend" in Vercel project settings instead)
+node_modules
+.next
+*.log
