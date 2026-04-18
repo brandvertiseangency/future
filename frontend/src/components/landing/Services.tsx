@@ -4,12 +4,6 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { fadeUpVariants, staggerContainer, EASE } from "@/lib/motion";
 
-const CheckIcon = () => (
-  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
-
 const platforms = ["IG", "LI", "X", "FB", "PIN", "TK", "YT", "EM", "ADS", "SEO"];
 
 const services = [

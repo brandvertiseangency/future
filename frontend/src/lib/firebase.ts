@@ -55,4 +55,5 @@ export const auth = new Proxy({} as Auth, {
   },
 })
 
-export default { getFirebaseApp, getFirebaseAuth, getFirebaseAnalytics }
+const firebaseUtils = { getFirebaseApp, getFirebaseAuth, getFirebaseAnalytics }
+export default firebaseUtils

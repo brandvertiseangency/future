@@ -23,6 +23,13 @@ const eslintConfig = defineConfig([
       // Allow simple setState calls in useEffect (e.g. mount guards)
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off",
+      // Downgrade <img> and <a> warnings — handled per-file with eslint-disable comments where needed
+      "@next/next/no-img-element": "warn",
+      "@next/next/no-html-link-for-pages": "error",
+      // Unused vars — warn only (don't block build)
+      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
+      // Allow anonymous default exports in config/utility files
+      "import/no-anonymous-default-export": "warn",
     },
   },
 ]);

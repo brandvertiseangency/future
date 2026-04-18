@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import {
   IconEdit,
   IconLoader2,
-  IconCheck,
   IconSparkles,
   IconCalendarEvent,
   IconPhoto,
@@ -41,7 +40,7 @@ export function StepReview() {
       setBrand(brand)
       toast.success('Brand launched! 🚀')
       router.push('/dashboard')
-    } catch (err) {
+    } catch {
       toast.error('Launch failed — please try again')
       setLoading(false)
     }

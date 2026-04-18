@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { motion } from 'framer-motion'
 import { IconX } from '@tabler/icons-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'

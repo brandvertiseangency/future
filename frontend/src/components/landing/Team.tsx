@@ -63,7 +63,7 @@ export default function Team() {
             gap: 14,
           }}
         >
-          {team.map((m, i) => (
+          {team.map((m) => (
             <motion.div
               key={m.name}
               variants={fadeUpVariants}

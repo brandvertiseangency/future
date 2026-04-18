@@ -50,7 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Prevent double-redirect from both getRedirectResult and onAuthStateChanged
   const redirectHandledRef = useRef(false)
 
-  const registerWithBackend = async (u: User) => {
+  const registerWithBackend = async (_u: User) => {
     try {
       await apiCall('/api/user/register', { method: 'POST', body: JSON.stringify({ plan: 'free' }) })
     } catch { /* 409 user already exists — swallow */ }

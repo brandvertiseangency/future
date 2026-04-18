@@ -92,7 +92,7 @@ export default function Pricing() {
           className="pricing-grid"
           style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, maxWidth: 820, margin: "0 auto" }}
         >
-          {plans.map((plan, idx) => (
+          {plans.map((plan) => (
             <motion.div
               key={plan.name}
               variants={fadeUpVariants}

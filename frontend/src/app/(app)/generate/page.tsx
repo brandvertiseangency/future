@@ -230,7 +230,7 @@ export default function GeneratePage() {
           }
         } catch { clearInterval(pollingRef.current!); setGenerating(false); toast.dismiss(toastId) }
       }, 2000)
-    } catch (err) {
+    } catch {
       toast.dismiss(toastId)
       toast.error('Generation failed — please try again')
       setGenerating(false)

@@ -17,7 +17,7 @@ interface GeneratedPost {
 
 export function StepFirstPost() {
   const router = useRouter()
-  const { data, setStep, reset } = useOnboardingStore()
+  const { data, reset } = useOnboardingStore()
   const [loading, setLoading] = useState(true)
   const [post, setPost] = useState<GeneratedPost | null>(null)
   const [saving, setSaving] = useState(false)
