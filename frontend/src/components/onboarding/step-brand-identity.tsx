@@ -2,26 +2,28 @@
 
 import { motion } from 'framer-motion'
 import { IconCheck } from '@tabler/icons-react'
+import { Shirt, UtensilsCrossed, Monitor, HeartPulse, DollarSign, GraduationCap, Home, Sparkles as SparklesIcon, Plane, Trophy, Film, MoreHorizontal } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
+import { AIButton } from '@/components/ui/ai-button'
 
 const INDUSTRIES = [
-  { id: 'Fashion', label: 'Fashion', icon: '👗' },
-  { id: 'Food & Beverage', label: 'Food & Bev', icon: '🍽️' },
-  { id: 'Tech & SaaS', label: 'Tech & SaaS', icon: '💻' },
-  { id: 'Health & Wellness', label: 'Health', icon: '🏃' },
-  { id: 'Finance', label: 'Finance', icon: '💰' },
-  { id: 'Education', label: 'Education', icon: '📚' },
-  { id: 'Real Estate', label: 'Real Estate', icon: '🏠' },
-  { id: 'Beauty', label: 'Beauty', icon: '💄' },
-  { id: 'Travel', label: 'Travel', icon: '✈️' },
-  { id: 'Sports', label: 'Sports', icon: '⚽' },
-  { id: 'Entertainment', label: 'Entertainment', icon: '🎬' },
-  { id: 'Other', label: 'Other', icon: '✦' },
+  { id: 'Fashion', label: 'Fashion', Icon: Shirt },
+  { id: 'Food & Beverage', label: 'Food & Bev', Icon: UtensilsCrossed },
+  { id: 'Tech & SaaS', label: 'Tech & SaaS', Icon: Monitor },
+  { id: 'Health & Wellness', label: 'Health', Icon: HeartPulse },
+  { id: 'Finance', label: 'Finance', Icon: DollarSign },
+  { id: 'Education', label: 'Education', Icon: GraduationCap },
+  { id: 'Real Estate', label: 'Real Estate', Icon: Home },
+  { id: 'Beauty', label: 'Beauty', Icon: SparklesIcon },
+  { id: 'Travel', label: 'Travel', Icon: Plane },
+  { id: 'Sports', label: 'Sports', Icon: Trophy },
+  { id: 'Entertainment', label: 'Entertainment', Icon: Film },
+  { id: 'Other', label: 'Other', Icon: MoreHorizontal },
 ]
 
 const inputClass =
-  'w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.05] transition-all duration-200'
+  'w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[var(--ai-border)]/50 focus:bg-white/[0.05] transition-all duration-200'
 
 export function StepBrandIdentity() {
   const { data, updateData, setStep } = useOnboardingStore()
@@ -86,16 +88,16 @@ export function StepBrandIdentity() {
                 className={cn(
                   'relative flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all',
                   selected
-                    ? 'border-violet-500/60 bg-violet-500/[0.1]'
+                    ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.1]'
                     : 'border-white/[0.08] bg-white/[0.02] hover:border-white/20'
                 )}
               >
                 {selected && (
-                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[var(--ai-color)] flex items-center justify-center">
                     <IconCheck size={9} className="text-white" />
                   </span>
                 )}
-                <span className="text-xl">{ind.icon}</span>
+                <ind.Icon size={20} className="text-[var(--text-2)]" />
                 <span className="text-[11px] text-white/60 font-medium leading-tight">{ind.label}</span>
               </motion.button>
             )
@@ -106,7 +108,7 @@ export function StepBrandIdentity() {
       {/* Live preview */}
       {data.brandName && (
         <div className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/[0.07]">
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
             {initials}
           </div>
           <div>
@@ -126,13 +128,13 @@ export function StepBrandIdentity() {
           <button onClick={() => setStep(3)} className="text-white/30 hover:text-white/60 text-sm transition-colors">
             Skip for now →
           </button>
-          <button
+          <AIButton
             onClick={() => setStep(3)}
             disabled={!canContinue}
-            className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           >
             Continue →
-          </button>
+          </AIButton>
         </div>
       </div>
     </div>

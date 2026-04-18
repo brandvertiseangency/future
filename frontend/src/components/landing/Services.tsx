@@ -76,13 +76,13 @@ export default function Services() {
             className="gradient-border"
             style={{ padding: 32, display: "flex", flexDirection: "column", gap: 16 }}
           >
-            <span style={{ display: "inline-flex", alignItems: "center", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "3px 10px", borderRadius: 999, background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.22)", color: "#c4b5fd" }}>{services[0].category}</span>
+            <span style={{ display: "inline-flex", alignItems: "center", fontSize: 10, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase" as const, padding: "3px 10px", borderRadius: 999, background: "rgba(0,212,255,0.10)", border: "1px solid rgba(0,212,255,0.22)", color: "#67e8f9" }}>{services[0].category}</span>
             <h4 style={{ fontSize: 20, fontWeight: 700, color: "#ffffff", margin: 0, letterSpacing: "-0.02em" }}>{services[0].title}</h4>
             <p style={{ fontSize: 14, color: "rgba(255,255,255,0.5)", lineHeight: 1.75, margin: 0 }}>{services[0].desc}</p>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10, marginTop: "auto" }}>
               {services[0].bullets!.map((b) => (
                 <li key={b} style={{ fontSize: 13, color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", gap: 9 }}>
-                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#c4b5fd", flexShrink: 0, display: "inline-block" }} />
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: "#67e8f9", flexShrink: 0, display: "inline-block" }} />
                   {b}
                 </li>
               ))}
@@ -111,7 +111,7 @@ export default function Services() {
                 { label: "YT", style: { background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.2)", color: "#fca5a5" } },
                 { label: "EM", style: { background: "rgba(52,211,153,0.10)", border: "1px solid rgba(52,211,153,0.2)", color: "#6ee7b7" } },
                 { label: "ADS", style: { background: "rgba(251,191,36,0.10)", border: "1px solid rgba(251,191,36,0.2)", color: "#fde68a" } },
-                { label: "SEO", style: { background: "rgba(139,92,246,0.10)", border: "1px solid rgba(139,92,246,0.2)", color: "#c4b5fd" } },
+                { label: "SEO", style: { background: "rgba(0,212,255,0.10)", border: "1px solid rgba(0,212,255,0.20)", color: "#67e8f9" } },
               ].map((p, i) => (
                 <div key={i} style={{ width: "100%", aspectRatio: "1", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, letterSpacing: "0.04em", ...p.style }}>
                   {p.label}

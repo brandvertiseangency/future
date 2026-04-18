@@ -14,14 +14,25 @@ router.post('/preview-caption', authMiddleware, async (req, res) => {
     const toneDescriptor =
       tone <= 25 ? 'Casual' : tone <= 50 ? 'Conversational' : tone <= 74 ? 'Balanced' : 'Professional';
 
+    const promptText = `Write a single short social media caption (2-3 sentences, no hashtags) for a ${industry || 'general'} brand with a ${toneDescriptor} tone and ${(styles || []).join(', ')} style. Return only the caption text.`;
+
     let caption = '';
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.GOOGLE_AI_API_KEY) {
+      const { GoogleGenAI } = require('@google/genai');
+      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: promptText }] }],
+        config: { temperature: 0.9, maxOutputTokens: 150 },
+      });
+      caption = response.text?.trim() || '';
+    } else if (process.env.ANTHROPIC_API_KEY) {
       const Anthropic = require('@anthropic-ai/sdk');
       const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
       const msg = await anthropic.messages.create({
         model: 'claude-opus-4-5',
         max_tokens: 200,
-        messages: [{ role: 'user', content: `Write a single short social media caption (2-3 sentences, no hashtags) for a ${industry || 'general'} brand with a ${toneDescriptor} tone and ${(styles || []).join(', ')} style. Return only the caption text.` }]
+        messages: [{ role: 'user', content: promptText }]
       });
       caption = msg.content[0].text.trim();
     } else if (process.env.OPENAI_API_KEY) {
@@ -29,7 +40,7 @@ router.post('/preview-caption', authMiddleware, async (req, res) => {
       const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const comp = await openai.chat.completions.create({
         model: 'gpt-4o', max_tokens: 150,
-        messages: [{ role: 'user', content: `Write a single short social media caption (2-3 sentences, no hashtags) for a ${industry || 'general'} brand with a ${toneDescriptor} tone and ${(styles || []).join(', ')} style. Return only the caption text.` }]
+        messages: [{ role: 'user', content: promptText }]
       });
       caption = comp.choices[0].message.content.trim();
     } else {

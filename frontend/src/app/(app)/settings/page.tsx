@@ -2,9 +2,9 @@
 
 import { useState, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { User, Bell, CreditCard, Shield, Palette, ChevronRight, Check, Loader2 } from 'lucide-react'
+import { User, Bell, CreditCard, Shield, Palette, ChevronRight, Check, Loader2, LogOut } from 'lucide-react'
 import useSWR from 'swr'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { useAuth } from '@/lib/auth-context'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -64,7 +64,7 @@ function ProfileSection() {
 			<div className="flex items-center gap-4 p-4 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-base)]">
 				{me?.avatar_url
 					? <img src={me.avatar_url} alt="" className="w-14 h-14 rounded-full object-cover flex-shrink-0" />
-					: <div className="w-14 h-14 rounded-full bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center text-white text-xl font-semibold flex-shrink-0">{initials}</div>
+					: <div className="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-semibold flex-shrink-0">{initials}</div>
 				}
 				<div className="flex-1">
 					<p className="text-[var(--text-1)] font-medium text-sm">{name || 'Creator'}</p>
@@ -77,7 +77,7 @@ function ProfileSection() {
 					<input type="text" value={name} onChange={(e) => setName(e.target.value)}
 						className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
                        text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)]
-                       focus:outline-none focus:border-violet-500/50 transition-all" />
+                       focus:outline-none focus:border-[var(--ai-border)]/50 transition-all" />
 				</div>
 				<div>
 					<label className="block text-[var(--text-2)] text-sm font-medium mb-1.5">Email</label>
@@ -91,14 +91,14 @@ function ProfileSection() {
 						placeholder="https://mybrand.com"
 						className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
                        text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)]
-                       focus:outline-none focus:border-violet-500/50 transition-all" />
+                       focus:outline-none focus:border-[var(--ai-border)]/50 transition-all" />
 				</div>
 			</div>
-			<ShimmerButton onClick={save} disabled={saving}
+			<AIButton onClick={save} disabled={saving}
 				className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold">
 				{saving ? <Loader2 size={14} className="animate-spin" /> : saved ? <Check size={14} /> : null}
 				{saved ? 'Saved!' : 'Save Changes'}
-			</ShimmerButton>
+			</AIButton>
 		</div>
 	)
 }
@@ -117,7 +117,7 @@ function BillingSection() {
 				<p className="text-[var(--text-3)] text-sm">Manage your plan and credits</p>
 			</div>
 			<div className="rounded-xl border border-[var(--border-base)] bg-[var(--card-bg)] overflow-hidden">
-				<div className="h-1 w-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-blue-600" />
+				<div className="h-1 w-full bg-gradient-to-r from-cyan-500 via-emerald-400 to-blue-600" />
 				<div className="p-5">
 					<div className="flex items-start justify-between">
 						<div>
@@ -127,14 +127,14 @@ function BillingSection() {
 							{plan !== 'trial' && <p className="text-[var(--text-3)] text-sm mt-1">{balance} credits remaining</p>}
 						</div>
 						<span className={cn('px-2.5 py-1 rounded-full text-[11px] font-medium border',
-							plan === 'pro' ? 'bg-violet-500/10 border-violet-500/20 text-violet-400'
+							plan === 'pro' ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
 								: plan === 'trial' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
 									: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400')}>
 							{plan === 'trial' ? 'Trial' : plan.charAt(0).toUpperCase() + plan.slice(1)}
 						</span>
 					</div>
 					<div className="mt-4 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
-						<div className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400"
+						<div className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-cyan-300"
 							style={{ width: `${Math.min(100, (balance / maxCredits) * 100)}%` }} />
 					</div>
 					<p className="text-[11px] text-[var(--text-3)] mt-1.5">{balance} / {maxCredits} credits remaining</p>
@@ -146,10 +146,10 @@ function BillingSection() {
 					{ name: 'Pro', price: '₹2,499', features: ['5,000 credits/mo', 'Unlimited brands', 'Advanced analytics'], highlight: true },
 				].map((p) => (
 					<div key={p.name} className={cn('rounded-xl p-5 border transition-all',
-						p.highlight ? 'border-violet-500/40 bg-violet-500/[0.06]' : 'border-[var(--border-base)] bg-[var(--card-bg)]')}>
+						p.highlight ? 'border-[var(--ai-border)] bg-[var(--ai-color)]/[0.06]' : 'border-[var(--border-base)] bg-[var(--card-bg)]')}>
 						<div className="flex items-center justify-between mb-3">
 							<p className="text-[var(--text-1)] font-semibold">{p.name}</p>
-							{p.highlight && <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-400 font-medium border border-violet-500/25">Popular</span>}
+							{p.highlight && <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--ai-glow)] text-[var(--ai-color)] font-medium border border-[var(--ai-border)]">Popular</span>}
 						</div>
 						<p className="text-2xl font-bold text-[var(--text-1)] mb-3">{p.price}<span className="text-sm font-normal text-[var(--text-3)]">/mo</span></p>
 						<ul className="space-y-1.5 mb-4">
@@ -161,7 +161,7 @@ function BillingSection() {
 						</ul>
 						<button className={cn('w-full py-2 rounded-lg text-sm font-medium transition-all',
 							p.highlight
-								? 'bg-violet-500/20 border border-violet-500/30 text-violet-400 hover:bg-violet-500/30'
+								? 'bg-[var(--ai-glow)] border border-[var(--ai-border)] text-[var(--ai-color)] hover:bg-[var(--ai-color)]/30'
 								: 'border border-[var(--border-base)] text-[var(--text-2)] hover:bg-[var(--bg-subtle)] hover:border-[var(--border-loud)]')}>
 							Upgrade to {p.name}
 						</button>
@@ -198,7 +198,7 @@ function NotificationsSection() {
 						</div>
 						<button onClick={() => setEnabled((e) => ({ ...e, [pref.id]: !e[pref.id] }))}
 							className={cn('w-11 h-6 rounded-full border transition-all relative flex-shrink-0',
-								enabled[pref.id] ? 'bg-violet-500 border-violet-500' : 'bg-[var(--bg-muted)] border-[var(--border-base)]')}>
+								enabled[pref.id] ? 'bg-[var(--ai-color)] border-[var(--ai-border)]' : 'bg-[var(--bg-muted)] border-[var(--border-base)]')}>
 							<span className={cn('absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all',
 								enabled[pref.id] ? 'left-[22px]' : 'left-0.5')} />
 						</button>
@@ -210,7 +210,7 @@ function NotificationsSection() {
 }
 
 function SecuritySection() {
-	const { user } = useAuth()
+	const { user, signOut } = useAuth()
 	const [pw, setPw] = useState('')
 	const [newPw, setNewPw] = useState('')
 	const [saving, setSaving] = useState(false)
@@ -249,15 +249,28 @@ function SecuritySection() {
 						<label className="block text-[var(--text-2)] text-sm font-medium mb-1.5">{label}</label>
 						<input type="password" value={val} onChange={(e) => set(e.target.value)}
 							className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
-                         text-[var(--text-1)] text-sm focus:outline-none focus:border-violet-500/50 transition-all" />
+                         text-[var(--text-1)] text-sm focus:outline-none focus:border-[var(--ai-border)]/50 transition-all" />
 					</div>
 				))}
-				{msg && <p className="text-sm text-violet-400">{msg}</p>}
-				<ShimmerButton onClick={changePassword} disabled={saving}
+				{msg && <p className="text-sm text-[var(--ai-color)]">{msg}</p>}
+				<AIButton onClick={changePassword} disabled={saving}
 					className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold">
 					{saving && <Loader2 size={14} className="animate-spin" />}
 					Update Password
-				</ShimmerButton>
+				</AIButton>
+			</div>
+
+			{/* Sign Out */}
+			<div className="pt-4 border-t border-[var(--border-dim)]">
+				<h4 className="text-[var(--text-2)] text-sm font-medium mb-2">Account</h4>
+				<button
+					onClick={signOut}
+					className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-red-400
+									   hover:bg-red-500/10 transition-all duration-150"
+				>
+					<LogOut size={15} />
+					Sign out of all devices
+				</button>
 			</div>
 		</div>
 	)

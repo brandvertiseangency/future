@@ -74,8 +74,8 @@ export class ErrorBoundary extends React.Component<Props, State> {
           </button>
           <a
             href="/dashboard"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-violet-500/15 border border-violet-500/25
-                       text-violet-400 text-sm font-medium hover:bg-violet-500/20 transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--ai-glow)] border border-[var(--ai-border)]
+                       text-[var(--ai-color)] text-sm font-medium hover:bg-[var(--ai-glow)] transition-colors"
           >
             Go to Dashboard
           </a>

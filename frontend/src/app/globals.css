@@ -50,69 +50,123 @@
 /* ── BRANDVERTISE SEMANTIC TOKENS ── */
 :root,
 .dark {
-  --bg-canvas:    #050505;
-  --bg-raised:    #0d0d0d;
-  --bg-overlay:   #141414;
-  --bg-subtle:    #1c1c1e;
-  --bg-muted:     #242426;
+  /* Canvas */
+  --bg-canvas:    #000000;
+  --bg-raised:    #0a0a0a;
+  --bg-overlay:   #111111;
+  --bg-subtle:    #1a1a1a;
+  --bg-muted:     #242424;
 
+  /* Borders */
   --border-dim:   rgba(255,255,255,0.06);
-  --border-base:  rgba(255,255,255,0.09);
-  --border-loud:  rgba(255,255,255,0.16);
+  --border-base:  rgba(255,255,255,0.10);
+  --border-loud:  rgba(255,255,255,0.18);
+  --border-glow:  rgba(255,255,255,0.35);
 
-  --text-1: #FFFFFF;
-  --text-2: rgba(255,255,255,0.58);
-  --text-3: rgba(255,255,255,0.32);
-  --text-4: rgba(255,255,255,0.18);
+  /* Text */
+  --text-1: #ffffff;
+  --text-2: rgba(255,255,255,0.65);
+  --text-3: rgba(255,255,255,0.38);
+  --text-4: rgba(255,255,255,0.22);
 
-  --accent:       #8b5cf6;
-  --accent-glow:  rgba(139,92,246,0.18);
-  --accent-muted: rgba(139,92,246,0.10);
+  /* Multi-color accent system */
+  --accent:       #00d4ff;
+  --accent-glow:  rgba(0,212,255,0.15);
+  --accent-muted: rgba(0,212,255,0.10);
+  --accent-border: rgba(0,212,255,0.25);
 
-  --stat-1: #a78bfa;
-  --stat-2: #60a5fa;
-  --stat-3: #34d399;
-  --stat-4: #fb923c;
+  --ai-color: #00d4ff;
+  --ai-glow: rgba(0,212,255,0.15);
+  --ai-border: rgba(0,212,255,0.25);
 
-  --sidebar-bg:     #070709;
-  --sidebar-border: rgba(255,255,255,0.05);
+  --credit-color: #f59e0b;
+  --credit-glow: rgba(245,158,11,0.12);
 
-  --card-bg:           #0f0f11;
-  --card-border:       rgba(255,255,255,0.07);
-  --card-hover-border: rgba(255,255,255,0.13);
+  --success-color: #10b981;
+  --success-glow: rgba(16,185,129,0.12);
+
+  --alert-color: #f43f5e;
+  --alert-glow: rgba(244,63,94,0.12);
+
+  --stat-1: #00d4ff;
+  --stat-2: #10b981;
+  --stat-3: #f59e0b;
+  --stat-4: #f43f5e;
+
+  --platform-instagram: #e1306c;
+  --platform-linkedin: #0077b5;
+  --platform-twitter: #1da1f2;
+  --platform-tiktok: #ff0050;
+  --platform-facebook: #1877f2;
+  --platform-youtube: #ff0000;
+  --platform-threads: #ffffff;
+  --platform-pinterest: #e60023;
+
+  --sidebar-bg:     #050505;
+  --sidebar-border: rgba(255,255,255,0.06);
+
+  --card-bg:           #0a0a0a;
+  --card-border:       rgba(255,255,255,0.08);
+  --card-hover-border: rgba(255,255,255,0.18);
+
+  /* Glow border system */
+  --glow-border: 1px solid rgba(255,255,255,0.12);
+  --glow-border-hover: 1px solid rgba(255,255,255,0.28);
+  --glow-box-shadow: 0 0 0 1px rgba(255,255,255,0.05), 0 1px 2px rgba(0,0,0,0.8);
+  --glow-box-shadow-hover: 0 0 20px rgba(255,255,255,0.04), 0 0 0 1px rgba(255,255,255,0.15);
 }
 
 .light {
-  --bg-canvas:    #f5f5f7;
+  --bg-canvas:    #fafafa;
   --bg-raised:    #ffffff;
-  --bg-overlay:   #f9f9fb;
-  --bg-subtle:    #f0f0f5;
-  --bg-muted:     #e8e8ed;
+  --bg-overlay:   #f4f4f5;
+  --bg-subtle:    #f0f0f0;
+  --bg-muted:     #e4e4e7;
 
-  --border-dim:   rgba(0,0,0,0.05);
-  --border-base:  rgba(0,0,0,0.08);
-  --border-loud:  rgba(0,0,0,0.14);
+  --border-dim:   rgba(0,0,0,0.06);
+  --border-base:  rgba(0,0,0,0.10);
+  --border-loud:  rgba(0,0,0,0.18);
+  --border-glow:  rgba(0,0,0,0.30);
 
-  --text-1: #1d1d1f;
-  --text-2: rgba(0,0,0,0.55);
-  --text-3: rgba(0,0,0,0.32);
-  --text-4: rgba(0,0,0,0.18);
+  --text-1: #09090b;
+  --text-2: rgba(0,0,0,0.60);
+  --text-3: rgba(0,0,0,0.38);
+  --text-4: rgba(0,0,0,0.22);
 
-  --accent:       #7c3aed;
-  --accent-glow:  rgba(124,58,237,0.08);
-  --accent-muted: rgba(124,58,237,0.06);
+  --accent:       #0891b2;
+  --accent-glow:  rgba(8,145,178,0.10);
+  --accent-muted: rgba(8,145,178,0.06);
+  --accent-border: rgba(8,145,178,0.25);
 
-  --stat-1: #7c3aed;
-  --stat-2: #2563eb;
-  --stat-3: #059669;
-  --stat-4: #ea580c;
+  --ai-color: #0891b2;
+  --ai-glow: rgba(8,145,178,0.12);
+  --ai-border: rgba(8,145,178,0.25);
+
+  --credit-color: #d97706;
+  --credit-glow: rgba(217,119,6,0.10);
+
+  --success-color: #059669;
+  --success-glow: rgba(5,150,105,0.10);
+
+  --alert-color: #e11d48;
+  --alert-glow: rgba(225,29,72,0.10);
+
+  --stat-1: #0891b2;
+  --stat-2: #059669;
+  --stat-3: #d97706;
+  --stat-4: #e11d48;
 
   --sidebar-bg:     #ffffff;
   --sidebar-border: rgba(0,0,0,0.07);
 
   --card-bg:           #ffffff;
   --card-border:       rgba(0,0,0,0.07);
-  --card-hover-border: rgba(0,0,0,0.13);
+  --card-hover-border: rgba(0,0,0,0.15);
+
+  --glow-border: 1px solid rgba(0,0,0,0.10);
+  --glow-border-hover: 1px solid rgba(0,0,0,0.22);
+  --glow-box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06);
+  --glow-box-shadow-hover: 0 4px 12px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.15);
 }
 
 :root {
@@ -312,10 +366,24 @@
   background-size: 28px 28px;
 }
 
-/* ── App violet accent utilities ─────────────────────── */
-.glow-violet { box-shadow: 0 0 80px rgba(139,92,246,0.12), 0 0 160px rgba(139,92,246,0.06); }
+/* ── App accent utilities ─────────────────────── */
+.glow-ai     { box-shadow: 0 0 80px rgba(0,212,255,0.12), 0 0 160px rgba(0,212,255,0.06); }
+.glow-violet { box-shadow: 0 0 80px rgba(0,212,255,0.12), 0 0 160px rgba(0,212,255,0.06); }
 .glow-blue   { box-shadow: 0 0 80px rgba(59,130,246,0.10); }
 .glow-emerald{ box-shadow: 0 0 80px rgba(16,185,129,0.08); }
+
+/* ── Card base style ─────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border: var(--glow-border);
+  border-radius: 12px;
+  box-shadow: var(--glow-box-shadow);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+  border: var(--glow-border-hover);
+  box-shadow: var(--glow-box-shadow-hover);
+}
 
 .card-gradient-border {
   position: relative;
@@ -329,9 +397,9 @@
   border-radius: 16px;
   padding: 1px;
   background: linear-gradient(135deg,
-    rgba(139,92,246,0.5),
-    rgba(59,130,246,0.3),
-    rgba(16,185,129,0.2));
+    rgba(0,212,255,0.5),
+    rgba(16,185,129,0.3),
+    rgba(245,158,11,0.2));
   -webkit-mask: linear-gradient(#fff 0 0) content-box,
                 linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;

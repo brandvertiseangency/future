@@ -7,7 +7,7 @@ import useSWR, { mutate } from 'swr'
 import Link from 'next/link'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { DotPattern } from '@/components/ui/dot-pattern'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -78,7 +78,7 @@ export default function AssetsPage() {
               onChange={(e) => setQuery(e.target.value)}
               className="pl-9 pr-4 py-2 rounded-xl bg-[var(--card-bg)] border border-[var(--border-base)]
                          text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)]
-                         focus:outline-none focus:border-violet-500/40 transition-colors w-[240px]"
+                         focus:outline-none focus:border-[var(--ai-border)] transition-colors w-[240px]"
               placeholder="Search assets..."
             />
           </div>
@@ -98,10 +98,10 @@ export default function AssetsPage() {
             onChange={(e) => handleUpload(e.target.files)} />
 
           <Link href="/generate">
-            <ShimmerButton className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium">
-              <Sparkles size={14} className="text-violet-300" />
+            <AIButton className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium">
+              <Sparkles size={14} className="text-[var(--ai-color)]" />
               Generate New
-            </ShimmerButton>
+            </AIButton>
           </Link>
         </div>
       </div>
@@ -113,7 +113,7 @@ export default function AssetsPage() {
           <button key={f} onClick={() => setActiveFilter(f)}
             className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
               activeFilter === f
-                ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
                 : 'border-[var(--border-base)] text-[var(--text-3)] hover:text-[var(--text-2)] hover:border-[var(--border-loud)]')}>
             {f}
           </button>
@@ -123,7 +123,7 @@ export default function AssetsPage() {
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center h-64">
-          <Loader2 size={28} className="animate-spin text-violet-400" />
+          <Loader2 size={28} className="animate-spin text-[var(--ai-color)]" />
         </div>
       )}
 
@@ -135,7 +135,7 @@ export default function AssetsPage() {
           <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
             <div className="w-20 h-20 rounded-2xl bg-[var(--bg-subtle)] border border-[var(--border-base)]
                             flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-blue-500/5" />
+              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-500/5" />
               <ImageIcon size={32} className="text-[var(--text-4)] relative z-10" />
             </div>
             <div className="text-center">
@@ -146,10 +146,10 @@ export default function AssetsPage() {
             </div>
             <div className="flex items-center gap-3">
               <Link href="/generate">
-                <ShimmerButton className="px-5 py-2.5 rounded-xl text-sm font-medium">
-                  <Sparkles size={14} className="mr-2 text-violet-300" />
+                <AIButton className="px-5 py-2.5 rounded-xl text-sm font-medium">
+                  <Sparkles size={14} className="mr-2 text-[var(--ai-color)]" />
                   Generate First Post
-                </ShimmerButton>
+                </AIButton>
               </Link>
               <button onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl

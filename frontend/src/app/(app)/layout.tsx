@@ -10,6 +10,7 @@ import { BottomTabBar } from '@/components/app/bottom-tab-bar'
 import { Toaster } from 'sonner'
 import { AuthGuard } from '@/components/AuthGuard'
 import { PageErrorBoundary } from '@/components/ErrorBoundary'
+import { CommandPalette } from '@/components/command-palette'
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -35,6 +36,7 @@ function AppShell({ children }: { children: ReactNode }) {
         <BottomTabBar />
       </div>
       <Toaster theme="dark" position="bottom-right" />
+      <CommandPalette />
     </div>
   )
 }

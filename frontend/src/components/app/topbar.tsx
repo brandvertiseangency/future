@@ -1,10 +1,10 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Bell, Sparkles, X, CheckCheck } from 'lucide-react'
+import { Bell, Sparkles, X, CheckCheck, Megaphone, CalendarDays, AlertTriangle, BarChart2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { ThemeToggle } from './theme-toggle'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import useSWR from 'swr'
@@ -31,9 +31,9 @@ interface Notification {
 
 const fetcher = <T,>(url: string): Promise<T> => apiCall(url) as Promise<T>
 
-const NOTIF_ICONS: Record<string, string> = {
-  post_published: '📢', post_scheduled: '📅',
-  credits_low: '⚠️', weekly_digest: '📊', generation_complete: '✨',
+const NOTIF_ICON_COMPONENTS: Record<string, LucideIcon> = {
+  post_published: Megaphone, post_scheduled: CalendarDays,
+  credits_low: AlertTriangle, weekly_digest: BarChart2, generation_complete: Sparkles,
 }
 
 export function Topbar() {
@@ -100,7 +100,7 @@ export function Topbar() {
             className="relative w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--bg-subtle)] transition-colors">
             <Bell size={15} className="text-[var(--text-2)]" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full bg-violet-500
+              <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full bg-[var(--ai-color)]
                                ring-1 ring-[var(--bg-canvas)] text-[9px] text-white font-bold
                                flex items-center justify-center px-0.5">
                 {unreadCount > 9 ? '9+' : unreadCount}
@@ -123,7 +123,7 @@ export function Topbar() {
                   <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
-                        className="flex items-center gap-1 text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+                        className="flex items-center gap-1 text-[11px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">
                         <CheckCheck size={12} />Mark all read
                       </button>
                     )}
@@ -142,8 +142,8 @@ export function Topbar() {
                     notifications.slice(0, 20).map((n) => (
                       <div key={n.id} onClick={() => !n.read && markRead(n.id)}
                         className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-[var(--bg-subtle)]',
-                          !n.read && 'bg-violet-500/[0.04]')}>
-                        <span className="text-base flex-shrink-0 mt-0.5">{NOTIF_ICONS[n.type] ?? '🔔'}</span>
+                          !n.read && 'bg-[var(--ai-glow)]')}>
+                        <span className="text-base flex-shrink-0 mt-0.5">{(() => { const Icon: LucideIcon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell; return <Icon size={14} className="text-[var(--text-3)]" />; })()}</span>
                         <div className="flex-1 min-w-0">
                           <p className={cn('text-[13px] leading-snug', n.read ? 'text-[var(--text-3)]' : 'text-[var(--text-1)]')}>
                             {n.message}
@@ -152,7 +152,7 @@ export function Topbar() {
                             {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-violet-500 flex-shrink-0 mt-1.5" />}
+                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-[var(--ai-color)] flex-shrink-0 mt-1.5" />}
                       </div>
                     ))
                   )}
@@ -164,18 +164,18 @@ export function Topbar() {
 
         {/* User avatar → settings */}
         <Link href="/settings">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-blue-600
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600
                           flex items-center justify-center text-white text-[11px] font-semibold
-                          cursor-pointer ring-2 ring-transparent hover:ring-violet-500/30 transition-all">
+                          cursor-pointer ring-2 ring-transparent hover:ring-[var(--ai-border)] transition-all">
             {initials}
           </div>
         </Link>
 
         <Link href="/generate">
-          <ShimmerButton className="h-8 px-4 text-[13px] font-medium rounded-lg">
-            <Sparkles size={13} className="mr-1.5 text-violet-300" />
+          <AIButton className="h-8 px-4 text-[13px] font-medium rounded-lg">
+            <Sparkles size={13} className="text-[var(--ai-color)]" />
             New Post
-          </ShimmerButton>
+          </AIButton>
         </Link>
       </div>
     </header>

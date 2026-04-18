@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { IconX } from '@tabler/icons-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
+import { AIButton } from '@/components/ui/ai-button'
 
 const INTEREST_SUGGESTIONS = ['Fitness', 'Luxury', 'Tech', 'Family', 'Career', 'Fashion', 'Food', 'Gaming', 'Travel', 'Sustainability']
 const GENDERS = [
@@ -50,7 +51,7 @@ export function StepAudience() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <p className="text-white/50 text-xs uppercase tracking-wider font-medium">Age range</p>
-          <span className="text-violet-400 text-sm font-semibold bg-violet-500/10 px-3 py-1 rounded-full">
+          <span className="text-[var(--ai-color)] text-sm font-semibold bg-[var(--ai-color)]/10 px-3 py-1 rounded-full">
             {ageRange[0]}–{ageRange[1] === 65 ? '65+' : ageRange[1]}
           </span>
         </div>
@@ -59,13 +60,13 @@ export function StepAudience() {
             <label className="text-white/30 text-xs mb-1 block">From</label>
             <input type="range" min={18} max={64} value={ageRange[0]}
               onChange={(e) => updateAge(0, parseInt(e.target.value))}
-              className="w-full accent-violet-500 cursor-pointer" />
+              className="w-full accent-cyan-500 cursor-pointer" />
           </div>
           <div>
             <label className="text-white/30 text-xs mb-1 block">To</label>
             <input type="range" min={19} max={65} value={ageRange[1]}
               onChange={(e) => updateAge(1, parseInt(e.target.value))}
-              className="w-full accent-violet-500 cursor-pointer" />
+              className="w-full accent-cyan-500 cursor-pointer" />
           </div>
         </div>
       </div>
@@ -81,7 +82,7 @@ export function StepAudience() {
               className={cn(
                 'flex-1 py-2.5 rounded-xl text-sm font-medium border transition-all',
                 data.gender === g.id
-                  ? 'border-violet-500/60 bg-violet-500/10 text-violet-300'
+                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/10 text-[var(--ai-color)]'
                   : 'border-white/[0.08] text-white/50 hover:border-white/20'
               )}
             >
@@ -95,7 +96,7 @@ export function StepAudience() {
       <div>
         <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-2">Location</p>
         <input
-          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[var(--ai-border)]/50 transition-all"
           placeholder="e.g. United States, India, Global…"
           value={data.location || ''}
           onChange={(e) => updateData({ location: e.target.value })}
@@ -109,14 +110,14 @@ export function StepAudience() {
         </p>
         <div className="flex flex-wrap gap-2 mb-3">
           {(data.interests || []).map((tag) => (
-            <span key={tag} className="flex items-center gap-1 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-xs">
+            <span key={tag} className="flex items-center gap-1 px-3 py-1 rounded-full bg-[var(--ai-color)]/15 border border-[var(--ai-border)]/30 text-[var(--ai-color)] text-xs">
               {tag}
               <button onClick={() => removeInterest(tag)}><IconX size={10} /></button>
             </span>
           ))}
         </div>
         <input
-          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-violet-500/50 transition-all"
+          className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[var(--ai-border)]/50 transition-all"
           placeholder="Type an interest and press Enter…"
           value={interestInput}
           onChange={(e) => setInterestInput(e.target.value)}
@@ -137,9 +138,9 @@ export function StepAudience() {
         <button onClick={() => setStep(3)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
         <div className="flex items-center gap-4">
           <button onClick={() => setStep(5)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip for now →</button>
-          <button onClick={() => setStep(5)} className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors">
+          <AIButton onClick={() => setStep(5)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
             Continue →
-          </button>
+          </AIButton>
         </div>
       </div>
     </div>

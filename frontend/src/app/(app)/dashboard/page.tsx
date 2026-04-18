@@ -8,13 +8,14 @@ import useSWR from 'swr'
 import {
   Users, ImageIcon, TrendingUp, Clock,
   Sparkles, CalendarDays, BarChart2, Wand2,
+  Volume2, Palette, Target, AlertTriangle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { apiCall } from '@/lib/api'
 import { NumberTicker } from '@/components/ui/number-ticker'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { DotPattern } from '@/components/ui/dot-pattern'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
 
 // ── Types ──────────────────────────────────────────
@@ -100,7 +101,7 @@ export default function DashboardPage() {
   const STATS = [
     {
       label: 'Active Brands', value: activeBrands, suffix: '',
-      icon: Users, color: 'var(--stat-1)', bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.15)',
+      icon: Users, color: 'var(--stat-1)', bg: 'rgba(0,212,255,0.08)', border: 'rgba(0,212,255,0.15)',
       trendUp: true, trend: activeBrands > 0 ? 'Active' : 'No brands yet',
     },
     {
@@ -123,10 +124,10 @@ export default function DashboardPage() {
   ]
 
   const DNA_ROWS = brand ? [
-    { label: 'Tone', value: brand.tone <= 25 ? 'Casual' : brand.tone <= 50 ? 'Conversational' : brand.tone <= 74 ? 'Balanced' : 'Professional', icon: '🎯' },
-    { label: 'Style', value: (brand.styles || []).slice(0, 2).join(', ') || '—', icon: '✦' },
-    { label: 'Audience', value: `${brand.audience_age_min}–${brand.audience_age_max}, ${brand.audience_gender}`, icon: '👥' },
-    { label: 'Goals', value: (brand.goals || []).map((g) => g.charAt(0).toUpperCase() + g.slice(1)).join(', ') || '—', icon: '📈' },
+    { label: 'Tone', value: brand.tone <= 25 ? 'Casual' : brand.tone <= 50 ? 'Conversational' : brand.tone <= 74 ? 'Balanced' : 'Professional', icon: Volume2 },
+    { label: 'Style', value: (brand.styles || []).slice(0, 2).join(', ') || '—', icon: Palette },
+    { label: 'Audience', value: `${brand.audience_age_min}–${brand.audience_age_max}, ${brand.audience_gender}`, icon: Users },
+    { label: 'Goals', value: (brand.goals || []).map((g) => g.charAt(0).toUpperCase() + g.slice(1)).join(', ') || '—', icon: Target },
   ] : []
 
   return (
@@ -135,12 +136,12 @@ export default function DashboardPage() {
       {/* Onboarding incomplete banner */}
       {!onboardingComplete && (
         <BlurFade delay={0}>
-          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl bg-violet-500/10 border border-violet-500/25">
-            <p className="text-sm text-violet-300">
-              ✦ Finish setting up your brand for better AI results
+          <div className="flex items-center justify-between px-5 py-3.5 rounded-xl bg-[var(--ai-glow)] border border-[var(--ai-border)]">
+            <p className="text-sm text-[var(--ai-color)]">
+              <Sparkles size={14} className="inline mr-1.5 -mt-0.5" />Finish setting up your brand for better AI results
             </p>
-            <Link href="/onboarding" className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors">
-              Complete setup →
+            <Link href="/onboarding" className="text-xs text-[var(--ai-color)] hover:text-white font-medium transition-colors">
+              Complete setup
             </Link>
           </div>
         </BlurFade>
@@ -150,7 +151,7 @@ export default function DashboardPage() {
       <BlurFade delay={0}>
         <div className="relative overflow-hidden rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] p-7">
           <div className="absolute -top-20 -left-10 w-72 h-72 rounded-full pointer-events-none"
-               style={{ background: 'radial-gradient(circle,rgba(139,92,246,0.12) 0%,transparent 65%)' }} />
+               style={{ background: 'radial-gradient(circle,rgba(0,212,255,0.06) 0%,transparent 65%)' }} />
           <div className="absolute -bottom-16 right-20 w-56 h-56 rounded-full pointer-events-none"
                style={{ background: 'radial-gradient(circle,rgba(59,130,246,0.07) 0%,transparent 65%)' }} />
           <div className="relative flex items-start justify-between gap-6">
@@ -158,10 +159,9 @@ export default function DashboardPage() {
               <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-3)] mb-2">Welcome back</p>
               <h2 className="text-[28px] font-bold text-[var(--text-1)] leading-tight">
                 {greeting},{' '}
-                <span className="font-playfair italic bg-gradient-to-r from-violet-400 via-fuchsia-400 to-blue-400 bg-clip-text text-transparent">
+                <span className="font-semibold">
                   {displayName}
                 </span>
-                {' '}✦
               </h2>
               <p className="mt-1.5 text-[13.5px] text-[var(--text-2)] max-w-md">
                 {brand ? `${brand.name} is ready to create content.` : "Let's build your brand and start creating."}
@@ -174,16 +174,16 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[var(--credit-color)]" />
                   <span className="text-[12px] text-[var(--text-3)]">{credits} credits available</span>
                 </div>
               </div>
             </div>
             <Link href="/generate" className="flex-shrink-0">
-              <ShimmerButton className="rounded-xl px-5 py-2.5 text-[13px] font-medium">
-                <Sparkles size={14} className="mr-2 text-violet-300" />
+              <AIButton className="rounded-xl px-5 py-2.5 text-[13px] font-medium">
+                <Sparkles size={14} className="mr-2 text-[var(--ai-color)]" />
                 Generate Now
-              </ShimmerButton>
+              </AIButton>
             </Link>
           </div>
         </div>
@@ -236,16 +236,16 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-[13px] font-semibold text-[var(--text-1)]">This Week</h3>
-                <Link href="/calendar" className="text-[12px] text-violet-400 hover:text-violet-300 transition-colors">Full Calendar →</Link>
+                <Link href="/calendar" className="text-[12px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">Full Calendar →</Link>
               </div>
               <div className="grid grid-cols-7 gap-1.5">
                 {weekDates.map((day) => (
                   <div key={day.name}
                     className={cn('flex flex-col items-center gap-1.5 p-2 rounded-xl cursor-pointer transition-all duration-150',
-                      day.isToday ? 'bg-violet-500/15 border border-violet-500/25' : 'hover:bg-[var(--bg-subtle)]'
+                      day.isToday ? 'bg-[var(--ai-glow)] border border-[var(--ai-border)]' : 'hover:bg-[var(--bg-subtle)]'
                     )}>
-                    <span className={cn('text-[10px] font-medium uppercase tracking-wide', day.isToday ? 'text-violet-400' : 'text-[var(--text-3)]')}>{day.name}</span>
-                    <span className={cn('text-[15px] font-semibold', day.isToday ? 'text-violet-300' : 'text-[var(--text-1)]')}>{day.date}</span>
+                    <span className={cn('text-[10px] font-medium uppercase tracking-wide', day.isToday ? 'text-[var(--ai-color)]' : 'text-[var(--text-3)]')}>{day.name}</span>
+                    <span className={cn('text-[15px] font-semibold', day.isToday ? 'text-[var(--ai-color)]' : 'text-[var(--text-1)]')}>{day.date}</span>
                     <div className="flex gap-0.5 flex-wrap justify-center min-h-[8px]">
                       {day.posts.map((p, j) => (
                         <div key={j} className="w-1.5 h-1.5 rounded-full" style={{ background: PLATFORM_COLORS[p.platform] || '#888' }} />
@@ -262,25 +262,25 @@ export default function DashboardPage() {
             <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] overflow-hidden">
               <div className="flex items-center justify-between p-5 border-b border-[var(--border-dim)]">
                 <h3 className="text-[13px] font-semibold text-[var(--text-1)]">Recent Outputs</h3>
-                <Link href="/assets" className="text-[12px] text-violet-400 hover:text-violet-300 transition-colors">View All →</Link>
+                <Link href="/assets" className="text-[12px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">View All →</Link>
               </div>
               {recentPosts.length === 0 ? (
                 <div className="relative flex flex-col items-center justify-center py-16 gap-4">
                   <DotPattern className="text-[var(--text-4)] opacity-40" width={20} height={20} />
                   <div className="relative z-10 flex flex-col items-center gap-4">
                     <div className="relative w-16 h-16 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full bg-violet-500/10 border border-violet-500/20 animate-pulse" />
-                      <Wand2 size={24} className="text-violet-400 relative z-10" />
+                      <div className="absolute inset-0 rounded-full bg-[var(--ai-glow)] border border-[var(--ai-border)] animate-pulse" />
+                      <Wand2 size={24} className="text-[var(--ai-color)] relative z-10" />
                     </div>
                     <div className="text-center">
                       <p className="text-[13px] font-medium text-[var(--text-2)]">No content generated yet</p>
                       <p className="text-[12px] text-[var(--text-3)] mt-0.5">Generate your first post to see it here</p>
                     </div>
                     <Link href="/generate">
-                      <ShimmerButton className="text-[12px] px-4 py-2 rounded-lg">
-                        <Sparkles size={12} className="mr-1.5 text-violet-300" />
+                      <AIButton className="text-[12px] px-4 py-2 rounded-lg">
+                        <Sparkles size={12} className="mr-1.5 text-[var(--ai-color)]" />
                         Generate First Post
-                      </ShimmerButton>
+                      </AIButton>
                     </Link>
                   </div>
                 </div>
@@ -294,9 +294,9 @@ export default function DashboardPage() {
                           {post.platform[0].toUpperCase()}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-white/80 text-xs capitalize font-medium">{post.platform}</p>
-                          <p className="text-white/50 text-xs line-clamp-2 mt-0.5">{post.caption}</p>
-                          <p className="text-white/25 text-[10px] mt-1">
+                          <p className="text-[var(--text-2)] text-xs capitalize font-medium">{post.platform}</p>
+                          <p className="text-[var(--text-3)] text-xs line-clamp-2 mt-0.5">{post.caption}</p>
+                          <p className="text-[var(--text-4)] text-[10px] mt-1">
                             {post.scheduled_at ? new Date(post.scheduled_at).toLocaleDateString() : 'Draft'}
                           </p>
                         </div>
@@ -314,28 +314,28 @@ export default function DashboardPage() {
           {/* Brand DNA */}
           <BlurFade delay={0.2}>
             <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] overflow-hidden">
-              <div className="h-1 w-full bg-gradient-to-r from-violet-600 via-fuchsia-500 to-blue-600" />
+              <div className="h-1 w-full bg-gradient-to-r from-[var(--ai-color)] via-[var(--success-color)] to-[var(--credit-color)]" />
               <div className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--text-3)]">Brand DNA</span>
                   {brand ? (
-                    <Link href="/settings#brand-identity" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">Edit →</Link>
+                    <Link href="/settings#brand-identity" className="text-[11px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">Edit →</Link>
                   ) : (
-                    <Link href="/onboarding" className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors">Complete setup →</Link>
+                    <Link href="/onboarding" className="text-[11px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">Complete setup →</Link>
                   )}
                 </div>
                 {brand ? (
                   <>
                     <div className="flex items-center gap-3 mb-4 pb-4 border-b border-[var(--border-dim)]">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-[var(--ai-color)] flex items-center justify-center text-white font-bold text-sm">
                         {brand.name.slice(0, 2).toUpperCase()}
                       </div>
-                      <p className="text-white font-semibold text-sm">{brand.name}</p>
+                      <p className="text-[var(--text-1)] font-semibold text-sm">{brand.name}</p>
                     </div>
                     {DNA_ROWS.map((row) => (
                       <div key={row.label} className="flex items-center justify-between py-2.5 border-b border-[var(--border-dim)] last:border-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-[13px]">{row.icon}</span>
+                          <row.icon size={13} className="text-[var(--text-3)]" />
                           <span className="text-[12px] text-[var(--text-3)] font-medium">{row.label}</span>
                         </div>
                         <span className="text-[12px] text-[var(--text-1)] font-medium">{row.value}</span>
@@ -344,8 +344,8 @@ export default function DashboardPage() {
                   </>
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-white/40 text-sm">No brand set up yet</p>
-                    <Link href="/onboarding" className="text-violet-400 text-xs mt-2 inline-block">Set up your brand →</Link>
+                    <p className="text-[var(--text-3)] text-sm">No brand set up yet</p>
+                    <Link href="/onboarding" className="text-[var(--ai-color)] text-xs mt-2 inline-block">Set up your brand →</Link>
                   </div>
                 )}
               </div>
@@ -356,10 +356,10 @@ export default function DashboardPage() {
           <BlurFade delay={0.27}>
             <div className="rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] p-4 space-y-2">
               <Link href="/generate" className="block">
-                <ShimmerButton className="w-full rounded-xl py-3 text-[13px] font-semibold justify-center">
-                  <Sparkles size={14} className="mr-2 text-violet-300" />
+                <AIButton className="w-full rounded-xl py-3 text-[13px] font-semibold justify-center">
+                  <Sparkles size={14} className="mr-2 text-[var(--ai-color)]" />
                   Generate New Content
-                </ShimmerButton>
+                </AIButton>
               </Link>
               <Link href="/calendar"
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[var(--border-base)] text-[13px] text-[var(--text-2)] hover:bg-[var(--bg-subtle)] hover:border-[var(--border-loud)] hover:text-[var(--text-1)] transition-all duration-150">
@@ -386,17 +386,17 @@ export default function DashboardPage() {
                   initial={{ width: 0 }}
                   animate={{ width: `${Math.min((credits / maxCredits) * 100, 100)}%` }}
                   transition={{ duration: 1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400"
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--ai-color)] to-[var(--credit-color)]"
                 />
               </div>
               <p className="text-[11px] text-[var(--text-3)] mb-3">
                 ~{Math.floor(credits / 2)} posts remaining
               </p>
               {credits < 50 && (
-                <p className="text-[11px] text-orange-400 mb-2">⚠ Running low on credits</p>
+                <p className="text-[11px] text-orange-400 mb-2 flex items-center gap-1"><AlertTriangle size={11} /> Running low on credits</p>
               )}
               <Link href="/settings#billing">
-                <button className="w-full py-2 rounded-xl border border-violet-500/25 bg-violet-500/[0.08] text-[12px] font-medium text-violet-400 hover:bg-violet-500/15 hover:border-violet-500/40 transition-all duration-150">
+                <button className="w-full py-2 rounded-xl border border-[var(--ai-border)] bg-[var(--ai-glow)] text-[12px] font-medium text-[var(--ai-color)] hover:bg-[var(--ai-glow)] hover:border-[var(--ai-border)] transition-all duration-150">
                   Buy More Credits →
                 </button>
               </Link>

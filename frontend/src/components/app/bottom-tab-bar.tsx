@@ -32,9 +32,9 @@ export function BottomTabBar() {
             <Link key={href} href={href} className="flex flex-col items-center gap-1 relative -top-3">
               <motion.div
                 whileTap={{ scale: 0.92 }}
-                className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-600 to-violet-800
-                           flex items-center justify-center shadow-lg shadow-violet-500/25
-                           border border-violet-400/20"
+                className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-cyan-600
+                           flex items-center justify-center shadow-lg shadow-cyan-500/25
+                           border border-cyan-400/20"
               >
                 <Icon size={20} className="text-white" />
               </motion.div>
@@ -48,20 +48,20 @@ export function BottomTabBar() {
             href={href}
             className={cn(
               'flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all',
-              active ? 'text-violet-400' : 'text-[var(--text-3)]'
+              active ? 'text-[var(--ai-color)]' : 'text-[var(--text-3)]'
             )}
           >
             <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
             <span className={cn(
               'text-[10px] font-medium transition-colors',
-              active ? 'text-violet-400' : 'text-[var(--text-3)]'
+              active ? 'text-[var(--ai-color)]' : 'text-[var(--text-3)]'
             )}>
               {label}
             </span>
             {active && (
               <motion.span
                 layoutId="tab-indicator"
-                className="absolute top-0 w-6 h-0.5 rounded-full bg-violet-500"
+                className="absolute top-0 w-6 h-0.5 rounded-full bg-[var(--ai-color)]"
               />
             )}
           </Link>

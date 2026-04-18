@@ -20,7 +20,7 @@ import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { BlurFade } from '@/components/ui/blur-fade'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { WidgetErrorBoundary } from '@/components/ErrorBoundary'
 
@@ -54,7 +54,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
   new: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
   saved: 'bg-[var(--bg-subtle)] text-[var(--text-3)] border-[var(--border-base)]',
-  scheduled: 'bg-violet-500/15 text-violet-400 border-violet-500/25',
+  scheduled: 'bg-[var(--ai-glow)] text-[var(--ai-color)] border-[var(--ai-border)]',
 }
 
 function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number }) {
@@ -131,7 +131,7 @@ function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number 
                     className={cn(
                       'px-2 py-1 rounded-full text-[10px] border transition-all',
                       feedback === f
-                        ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                        ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
                         : 'border-[var(--border-base)] text-[var(--text-3)] hover:text-[var(--text-2)] hover:border-[var(--border-loud)]'
                     )}
                   >
@@ -142,15 +142,15 @@ function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number 
               <input
                 className="w-full bg-[var(--bg-subtle)] border border-[var(--border-base)] rounded-lg px-3 py-2
                            text-[var(--text-1)] text-xs placeholder:text-[var(--text-4)]
-                           focus:outline-none focus:border-violet-500/40 transition-colors"
+                           focus:outline-none focus:border-[var(--ai-border)] transition-colors"
                 placeholder="Custom feedback..."
                 value={feedback}
                 onChange={(e) => setFeedback(e.target.value)}
               />
               <button
                 onClick={() => { toast.loading('Regenerating...'); setShowFeedback(false) }}
-                className="w-full py-2 rounded-lg bg-violet-500/15 border border-violet-500/25
-                           text-violet-400 text-xs font-medium hover:bg-violet-500/20 transition-colors"
+                className="w-full py-2 rounded-lg bg-[var(--ai-glow)] border border-[var(--ai-border)]
+                           text-[var(--ai-color)] text-xs font-medium hover:bg-[var(--ai-glow)] transition-colors"
               >
                 Apply & Regenerate
               </button>
@@ -308,7 +308,7 @@ export default function GeneratePage() {
                 placeholder="e.g. Launching our new feature — show the team celebrating..."
                 className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
                            text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)] resize-none
-                           focus:outline-none focus:border-violet-500/50 transition-all"
+                           focus:outline-none focus:border-[var(--ai-border)]/50 transition-all"
               />
               <span className="absolute bottom-3 right-3 text-[var(--text-4)] text-xs">{briefLength}/200</span>
             </div>
@@ -359,7 +359,7 @@ export default function GeneratePage() {
                               className={cn(
                                 'px-3 py-1.5 rounded-full text-xs border transition-all',
                                 form[field] === item.toLowerCase()
-                                  ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                                  ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
                                   : 'border-[var(--border-base)] text-[var(--text-3)] hover:border-[var(--border-loud)] hover:text-[var(--text-2)]'
                               )}
                             >
@@ -379,7 +379,7 @@ export default function GeneratePage() {
                             className={cn(
                               'px-3 py-1.5 rounded-full text-xs border transition-all',
                               (form.textOverlay ? 'Yes' : 'No') === opt
-                                ? 'bg-violet-500/15 border-violet-500/30 text-violet-400'
+                                ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
                                 : 'border-[var(--border-base)] text-[var(--text-3)] hover:border-[var(--border-loud)]'
                             )}
                           >
@@ -402,7 +402,7 @@ export default function GeneratePage() {
               className={cn(
                 'h-20 rounded-xl border border-dashed flex items-center justify-center gap-2 cursor-pointer transition-all text-sm',
                 isDragActive
-                  ? 'border-violet-500/40 bg-violet-500/[0.04] text-violet-400'
+                  ? 'border-[var(--ai-border)] bg-[var(--ai-glow)] text-[var(--ai-color)]'
                   : 'border-[var(--border-base)] text-[var(--text-4)] hover:border-[var(--border-loud)] hover:text-[var(--text-3)]'
               )}
             >
@@ -415,7 +415,7 @@ export default function GeneratePage() {
 
         {/* Generate button */}
         <div className="p-6 border-t border-[var(--border-dim)]">
-          <ShimmerButton
+          <AIButton
             onClick={generate}
             disabled={isGenerating}
             className="w-full h-14 rounded-xl text-base font-semibold"
@@ -427,11 +427,11 @@ export default function GeneratePage() {
               </>
             ) : (
               <>
-                <Sparkles size={16} className="mr-2 text-violet-300" />
+                <Sparkles size={16} className="mr-2 text-[var(--ai-color)]" />
                 Generate Content
               </>
             )}
-          </ShimmerButton>
+          </AIButton>
           <p className="text-[var(--text-4)] text-xs text-center mt-2">
             This will use ~{costEstimate} credits
             {credits !== null && (
@@ -458,7 +458,7 @@ export default function GeneratePage() {
             <div className="relative z-10 text-center space-y-3">
               <div className="w-16 h-16 rounded-2xl bg-[var(--bg-subtle)] border border-[var(--border-base)]
                               flex items-center justify-center mx-auto mb-4">
-                <Sparkles size={28} className="text-violet-400" />
+                <Sparkles size={28} className="text-[var(--ai-color)]" />
               </div>
               <p className="text-[var(--text-2)] font-medium">Your generated content will appear here</p>
               <p className="text-[var(--text-3)] text-sm">Fill out the form and click Generate</p>

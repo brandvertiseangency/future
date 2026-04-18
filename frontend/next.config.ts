@@ -1,14 +1,16 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const isDev = process.env.NODE_ENV !== "production";
 
 // Keep build cache on local macOS home disk to avoid issues on external volumes.
-// Use REAL_HOME or HOME to get the actual user home (not a sandboxed temp path).
 const homeDir = process.env.REAL_HOME ?? process.env.HOME ?? "/tmp";
 const localDist = `${homeDir}/.brandvertise-next`;
 
 const nextConfig: NextConfig = {
   ...(isDev ? { distDir: localDist } : {}),
+  // Silence "multiple lockfiles" workspace root warning
+  outputFileTracingRoot: path.join(__dirname, "../"),
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
   },

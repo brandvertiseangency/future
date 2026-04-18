@@ -53,7 +53,7 @@ export default function Footer() {
       style={{
         background: "#050505",
         borderTop: "1px solid rgba(255,255,255,0.06)",
-        boxShadow: "0 -1px 0 rgba(139,92,246,0.15)",
+        boxShadow: "0 -1px 0 rgba(0,212,255,0.15)",
       }}
     >
       <div

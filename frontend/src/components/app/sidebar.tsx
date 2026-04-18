@@ -10,7 +10,9 @@ import {
   Settings2,
   ChevronDown,
 } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { useBrandStore } from '@/stores/brand'
+import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
@@ -23,6 +25,7 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname()
   const { currentBrand } = useBrandStore()
+  const { signOut } = useAuth()
 
   const credits = 247
   const maxCredits = 500
@@ -38,8 +41,8 @@ export function Sidebar() {
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-5 h-16 border-b border-[var(--border-dim)] flex-shrink-0">
         <span className="relative flex h-2 w-2 flex-shrink-0">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-500 opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-500" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-60" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-cyan-400" />
         </span>
         <span className="text-[14px] font-semibold tracking-tight text-[var(--text-1)]">
           brandvertise.ai
@@ -62,12 +65,12 @@ export function Sidebar() {
                   'relative flex items-center gap-3 px-3 py-2.5 rounded-xl',
                   'text-[13.5px] transition-all duration-150 overflow-hidden',
                   active
-                    ? 'text-[var(--text-1)] font-semibold bg-[var(--accent-muted)] border border-[var(--accent)]/20'
-                    : 'text-[var(--text-3)] font-medium hover:text-[var(--text-1)] hover:bg-[var(--bg-subtle)]'
+                    ? 'text-[var(--text-1)] font-semibold bg-white/5 border-l-2 border-l-[var(--ai-color)] border-y-0 border-r-0 rounded-l-none'
+                    : 'text-[var(--text-3)] font-medium hover:text-[var(--text-2)] hover:bg-[var(--bg-subtle)]'
                 )}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-violet-500" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-[var(--ai-color)]" />
                 )}
                 <Icon size={16} className="flex-shrink-0" />
                 {label}
@@ -85,8 +88,8 @@ export function Sidebar() {
               'relative flex items-center gap-3 px-3 py-2.5 rounded-xl',
               'text-[13.5px] transition-all duration-150',
               pathname.startsWith('/settings')
-                ? 'text-[var(--text-1)] font-semibold bg-[var(--accent-muted)] border border-[var(--accent)]/20'
-                : 'text-[var(--text-3)] font-medium hover:text-[var(--text-1)] hover:bg-[var(--bg-subtle)]'
+                ? 'text-[var(--text-1)] font-semibold bg-white/5 border-l-2 border-l-[var(--ai-color)] border-y-0 border-r-0 rounded-l-none'
+                : 'text-[var(--text-3)] font-medium hover:text-[var(--text-2)] hover:bg-[var(--bg-subtle)]'
             )}
           >
             <Settings2 size={16} className="flex-shrink-0" />
@@ -100,7 +103,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl
                         hover:bg-[var(--bg-subtle)] cursor-pointer transition-all duration-150">
           <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0
-                          bg-gradient-to-br from-violet-600 to-violet-800
+                          bg-[var(--ai-color)]
                           text-white text-[10px] font-bold">
             {initials}
           </div>
@@ -118,14 +121,24 @@ export function Sidebar() {
           </div>
           <div className="h-1 rounded-full bg-[var(--bg-muted)] overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-violet-600 to-violet-400 transition-all duration-700"
+              className="h-full rounded-full bg-gradient-to-r from-[var(--ai-color)] to-cyan-300 transition-all duration-700"
               style={{ width: `${pct}%` }}
             />
           </div>
-          <button className="mt-1.5 text-[11px] text-violet-400 hover:text-violet-300 transition-colors">
+          <button className="mt-1.5 text-[11px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">
             Buy credits →
           </button>
         </div>
+
+        {/* Logout */}
+        <button
+          onClick={signOut}
+          className="mt-2 flex items-center gap-2.5 w-full px-3 py-2 rounded-lg
+                     text-[13px] text-[var(--text-3)] hover:text-red-400 hover:bg-red-500/10 transition-all duration-150"
+        >
+          <LogOut size={15} className="flex-shrink-0" />
+          Sign out
+        </button>
       </div>
     </aside>
   )

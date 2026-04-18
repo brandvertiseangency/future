@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Plus, X, Loader2, Sparkles } from 'lucide-re
 import useSWR, { mutate } from 'swr'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { ShimmerButton } from '@/components/ui/shimmer-button'
+import { AIButton } from '@/components/ui/ai-button'
 import { apiCall } from '@/lib/api'
 
 interface PostSlot {
@@ -30,7 +30,7 @@ const PLATFORM_COLORS: Record<string, string> = {
 
 const STATUS_STYLES: Record<string, string> = {
   draft: 'bg-[var(--bg-subtle)] text-[var(--text-3)] border-[var(--border-base)]',
-  scheduled: 'bg-violet-500/15 text-violet-400 border-violet-500/25',
+  scheduled: 'bg-[var(--ai-glow)] text-[var(--ai-color)] border-[var(--ai-border)]',
   published: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
   failed: 'bg-rose-500/15 text-rose-400 border-rose-500/25',
 }
@@ -105,7 +105,7 @@ function PostDrawer({ post, onClose, onDeleted }: { post: PostSlot; onClose: () 
           <p className="text-[var(--text-3)] text-xs uppercase tracking-wider mb-2">Caption</p>
           <textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={4}
             className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
-                       text-[var(--text-1)] text-sm resize-none focus:outline-none focus:border-violet-500/50 transition-colors" />
+                       text-[var(--text-1)] text-sm resize-none focus:outline-none focus:border-[var(--ai-border)]/50 transition-colors" />
         </div>
         <div>
           <p className="text-[var(--text-3)] text-xs uppercase tracking-wider mb-2">Scheduled for</p>
@@ -113,9 +113,9 @@ function PostDrawer({ post, onClose, onDeleted }: { post: PostSlot; onClose: () 
         </div>
       </div>
       <div className="px-6 py-5 border-t border-[var(--border-dim)] space-y-2">
-        <ShimmerButton onClick={save} disabled={saving} className="w-full py-3 rounded-xl text-sm font-semibold">
+        <AIButton onClick={save} disabled={saving} className="w-full py-3 rounded-xl text-sm font-semibold">
           {saving ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
-        </ShimmerButton>
+        </AIButton>
         <button onClick={del} disabled={deleting}
           className="w-full py-2 text-rose-400 text-sm hover:text-rose-300 transition-colors disabled:opacity-50">
           {deleting ? 'Deleting…' : 'Delete post'}
@@ -159,10 +159,10 @@ export default function CalendarPage() {
           </button>
         </div>
         <Link href="/generate">
-          <ShimmerButton className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold">
-            <Sparkles size={14} className="text-violet-300" />
+          <AIButton className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold">
+            <Sparkles size={14} className="text-[var(--ai-color)]" />
             Schedule Post
-          </ShimmerButton>
+          </AIButton>
         </Link>
       </div>
 
@@ -184,9 +184,9 @@ export default function CalendarPage() {
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                 transition={{ delay: day.getDate() * 0.01 }}
                 className={cn('border-r border-b border-[var(--border-dim)] p-2 group min-h-[90px] relative',
-                  today && 'bg-violet-500/[0.04]', 'hover:bg-[var(--bg-subtle)] transition-colors')}>
+                  today && 'bg-[var(--ai-glow)]', 'hover:bg-[var(--bg-subtle)] transition-colors')}>
                 <span className={cn('inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-medium mb-1',
-                  today ? 'bg-violet-500 text-white' : 'text-[var(--text-3)]')}>
+                  today ? 'bg-[var(--ai-color)] text-white' : 'text-[var(--text-3)]')}>
                   {format(day, 'd')}
                 </span>
                 <div className="space-y-0.5">

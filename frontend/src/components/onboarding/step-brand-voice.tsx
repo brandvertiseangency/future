@@ -5,6 +5,7 @@ import { IconCheck } from '@tabler/icons-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { AIButton } from '@/components/ui/ai-button'
 
 const STYLES = ['Bold', 'Minimal', 'Playful', 'Authoritative', 'Witty', 'Inspirational', 'Educational', 'Luxury']
 
@@ -62,7 +63,7 @@ export function StepBrandVoice() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-white/40 text-xs">Casual</span>
-          <span className="text-violet-400 text-sm font-semibold">{toneLabel(data.tone)}</span>
+          <span className="text-[var(--ai-color)] text-sm font-semibold">{toneLabel(data.tone)}</span>
           <span className="text-white/40 text-xs">Professional</span>
         </div>
         <input
@@ -71,7 +72,7 @@ export function StepBrandVoice() {
           max={100}
           value={data.tone}
           onChange={(e) => updateData({ tone: parseInt(e.target.value) })}
-          className="w-full accent-violet-500 cursor-pointer"
+          className="w-full accent-cyan-500 cursor-pointer"
         />
       </div>
 
@@ -90,7 +91,7 @@ export function StepBrandVoice() {
                 className={cn(
                   'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                   selected
-                    ? 'border-violet-500/60 bg-violet-500/15 text-violet-300'
+                    ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/15 text-[var(--ai-color)]'
                     : 'border-white/[0.1] bg-white/[0.03] text-white/50 hover:border-white/30'
                 )}
               >
@@ -125,12 +126,12 @@ export function StepBrandVoice() {
           <button onClick={() => setStep(4)} className="text-white/30 hover:text-white/60 text-sm transition-colors">
             Skip for now →
           </button>
-          <button
+          <AIButton
             onClick={() => setStep(4)}
-            className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors"
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           >
             Continue →
-          </button>
+          </AIButton>
         </div>
       </div>
     </div>

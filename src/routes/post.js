@@ -9,6 +9,7 @@ const schemas = require("../validators/schemas");
 const { regeneratePost } = require("../services/regenerationService");
 const { getPool } = require("../config/postgres");
 const logger = require("../utils/logger");
+const { buildSystemPrompt: buildEngineSystemPrompt, buildUserPrompt: buildEngineUserPrompt } = require("../lib/prompt-engine");
 
 // ── In-memory job store (TTL 10 min) — no Redis needed ──────────────
 const jobs = new Map();
@@ -34,14 +35,54 @@ const toneDescriptor = (tone) =>
   tone <= 25 ? 'Casual' : tone <= 50 ? 'Conversational' : tone <= 74 ? 'Balanced' : 'Professional';
 
 const buildSystemPrompt = (user) => {
-  const interests = (user.audience_interests || []).join(', ') || 'general topics';
-  const styles = (user.styles || []).join(', ') || 'modern';
-  const goals = (user.goals || []).join(', ') || 'growth';
-  return `You are a social media expert for ${user.brand_name || 'a brand'}, a ${user.industry || 'general'} brand.\nVoice: ${toneDescriptor(user.tone || 50)}\nStyle: ${styles}\nAudience: ${user.audience_age_min || 18}–${user.audience_age_max || 65}, ${user.audience_gender || 'mixed'}, interested in ${interests}\nGoals: ${goals}\nRespond ONLY with valid JSON: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
+  // Use the full prompt engine if brand data is available
+  try {
+    return buildEngineSystemPrompt({
+      name: user.brand_name || 'Brand',
+      description: user.description || '',
+      industry: user.industry || 'general',
+      tone: user.tone || 50,
+      styles: user.styles || [],
+      audienceAgeMin: user.audience_age_min || 18,
+      audienceAgeMax: user.audience_age_max || 65,
+      audienceGender: user.audience_gender || 'mixed',
+      audienceLocation: '',
+      audienceInterests: user.audience_interests || [],
+      platforms: user.platforms || [],
+      goals: user.goals || [],
+    });
+  } catch {
+    // Fallback to simple prompt
+    const interests = (user.audience_interests || []).join(', ') || 'general topics';
+    const styles = (user.styles || []).join(', ') || 'modern';
+    const goals = (user.goals || []).join(', ') || 'growth';
+    return `You are a social media expert for ${user.brand_name || 'a brand'}, a ${user.industry || 'general'} brand.\nVoice: ${toneDescriptor(user.tone || 50)}\nStyle: ${styles}\nAudience: ${user.audience_age_min || 18}–${user.audience_age_max || 65}, ${user.audience_gender || 'mixed'}, interested in ${interests}\nGoals: ${goals}\nRespond ONLY with valid JSON: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
+  }
 };
 
-const buildUserPrompt = ({ platform, contentType, brief, mood }) =>
-  `Create a ${contentType || 'post'} for ${platform}. Brief: ${brief}.${mood ? ` Mood: ${mood}.` : ''} Return valid JSON only.`;
+const buildUserPrompt = ({ platform, contentType, brief, mood }, user) => {
+  try {
+    return buildEngineUserPrompt(
+      { platform, contentType: contentType || 'post', brief, mood },
+      {
+        name: user?.brand_name || 'Brand',
+        description: user?.description || '',
+        industry: user?.industry || 'general',
+        tone: user?.tone || 50,
+        styles: user?.styles || [],
+        audienceAgeMin: user?.audience_age_min || 18,
+        audienceAgeMax: user?.audience_age_max || 65,
+        audienceGender: user?.audience_gender || 'mixed',
+        audienceLocation: '',
+        audienceInterests: user?.audience_interests || [],
+        platforms: user?.platforms || [],
+        goals: user?.goals || [],
+      }
+    );
+  } catch {
+    return `Create a ${contentType || 'post'} for ${platform}. Brief: ${brief}.${mood ? ` Mood: ${mood}.` : ''} Return valid JSON only.`;
+  }
+};
 
 const callAI = async (systemPrompt, userPrompt) => {
   if (process.env.GOOGLE_AI_API_KEY) {
@@ -149,7 +190,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
       const outputs = [];
 
       for (const platform of platforms) {
-        const userPrompt = buildUserPrompt({ platform, contentType, brief, mood });
+        const userPrompt = buildUserPrompt({ platform, contentType, brief, mood }, user);
         const raw = await callAI(systemPrompt, userPrompt);
         const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
 

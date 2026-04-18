@@ -2,18 +2,20 @@
 
 import { motion } from 'framer-motion'
 import { IconCheck } from '@tabler/icons-react'
+import { Globe, Briefcase, Hash, Smartphone, Music2, Play, MapPin, AtSign } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
+import { AIButton } from '@/components/ui/ai-button'
 
 const PLATFORMS = [
-  { id: 'instagram', label: 'Instagram', icon: '📸', freq: '4–5×/week' },
-  { id: 'linkedin', label: 'LinkedIn', icon: '💼', freq: '3–4×/week' },
-  { id: 'twitter', label: 'Twitter/X', icon: '🐦', freq: '5–7×/week' },
-  { id: 'facebook', label: 'Facebook', icon: '📘', freq: '3–5×/week' },
-  { id: 'tiktok', label: 'TikTok', icon: '🎵', freq: '5–7×/week' },
-  { id: 'youtube', label: 'YouTube', icon: '▶️', freq: '2–3×/week' },
-  { id: 'pinterest', label: 'Pinterest', icon: '📌', freq: '5–10×/week' },
-  { id: 'threads', label: 'Threads', icon: '🧵', freq: '3–5×/week' },
+  { id: 'instagram', label: 'Instagram', Icon: Globe, freq: '4–5×/week', color: 'var(--platform-instagram)' },
+  { id: 'linkedin', label: 'LinkedIn', Icon: Briefcase, freq: '3–4×/week', color: 'var(--platform-linkedin)' },
+  { id: 'twitter', label: 'Twitter/X', Icon: Hash, freq: '5–7×/week', color: 'var(--platform-twitter)' },
+  { id: 'facebook', label: 'Facebook', Icon: Smartphone, freq: '3–5×/week', color: 'var(--platform-facebook)' },
+  { id: 'tiktok', label: 'TikTok', Icon: Music2, freq: '5–7×/week', color: 'var(--platform-tiktok)' },
+  { id: 'youtube', label: 'YouTube', Icon: Play, freq: '2–3×/week', color: 'var(--platform-youtube)' },
+  { id: 'pinterest', label: 'Pinterest', Icon: MapPin, freq: '5–10×/week', color: 'var(--platform-pinterest)' },
+  { id: 'threads', label: 'Threads', Icon: AtSign, freq: '3–5×/week', color: 'var(--platform-threads)' },
 ]
 
 export function StepPlatforms() {
@@ -48,20 +50,20 @@ export function StepPlatforms() {
               className={cn(
                 'relative flex items-center gap-3 p-4 rounded-xl border text-left transition-all',
                 selected
-                  ? 'border-violet-500/60 bg-violet-500/[0.08]'
+                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.08]'
                   : 'border-white/[0.08] bg-white/[0.02] hover:border-white/20'
               )}
             >
               {selected && (
-                <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[var(--ai-color)] flex items-center justify-center">
                   <IconCheck size={9} className="text-white" />
                 </span>
               )}
-              <span className="text-2xl">{p.icon}</span>
+              <p.Icon size={24} style={{ color: p.color }} />
               <div>
                 <p className="text-white font-medium text-sm">{p.label}</p>
                 {selected && (
-                  <p className="text-violet-400 text-[11px] mt-0.5">{p.freq}</p>
+                  <p className="text-[var(--ai-color)] text-[11px] mt-0.5">{p.freq}</p>
                 )}
               </div>
             </motion.button>
@@ -73,13 +75,13 @@ export function StepPlatforms() {
         <button onClick={() => setStep(4)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
         <div className="flex items-center gap-4">
           <button onClick={() => setStep(6)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip for now →</button>
-          <button
+          <AIButton
             onClick={() => setStep(6)}
             disabled={!canContinue}
-            className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
           >
             Continue →
-          </button>
+          </AIButton>
         </div>
       </div>
     </div>

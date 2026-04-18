@@ -37,7 +37,7 @@ export default function CTA() {
 					maxWidth: 800,
 					maxHeight: 800,
 					background:
-						"radial-gradient(ellipse, rgba(139,92,246,0.18) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)",
+						"radial-gradient(ellipse, rgba(0,212,255,0.10) 0%, rgba(59,130,246,0.08) 50%, transparent 70%)",
 					zIndex: 0,
 					pointerEvents: "none",
 				}}

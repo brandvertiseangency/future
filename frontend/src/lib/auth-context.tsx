@@ -71,7 +71,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         router.push('/onboarding')
       }
     } catch {
-      router.push('/dashboard')
+      // If we can't verify onboarding status, default to onboarding —
+      // it's safer to re-check than to skip it entirely.
+      router.push('/onboarding')
     }
   }
 

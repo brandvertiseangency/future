@@ -126,7 +126,7 @@ export default function Features() {
                 </svg>
                 <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10 }}>
                   <span style={{ fontSize: 28, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.04em" }}>+80%</span>
-                  <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 11px", borderRadius: 999, background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd", alignSelf: "flex-end", marginBottom: 3 }}>engagement lift</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 11px", borderRadius: 999, background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.25)", color: "#67e8f9", alignSelf: "flex-end", marginBottom: 3 }}>engagement lift</span>
                 </div>
               </div>
             </motion.div>
@@ -166,7 +166,7 @@ export default function Features() {
                 {[
                   { label: "10x faster", style: { background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.25)", color: "#93c5fd" } },
                   { label: "99.9% uptime", style: { background: "rgba(52,211,153,0.12)", border: "1px solid rgba(52,211,153,0.25)", color: "#6ee7b7" } },
-                  { label: "2x ROI", style: { background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.25)", color: "#c4b5fd" } },
+                  { label: "2x ROI", style: { background: "rgba(0,212,255,0.12)", border: "1px solid rgba(0,212,255,0.25)", color: "#67e8f9" } },
                 ].map((pill) => (
                   <span
                     key={pill.label}

@@ -37,3 +37,7 @@ frontend/var/
 # TypeScript
 *.tsbuildinfo
 frontend/next-env.d.ts
+
+# VS Code temp/lock files
+./Volumes/CLIENT DATA/BrandvertiseDesignHub && git status --short 2>&1
+*./Volumes/CLIENT DATA/BrandvertiseDesignHub && git status --short 2>&1

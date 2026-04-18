@@ -82,8 +82,8 @@ export default function FAQ() {
 							key={i}
 							variants={fadeUpVariants}
 							style={{
-								borderBottom: open === i ? "1px solid rgba(139,92,246,0.2)" : "1px solid rgba(255,255,255,0.06)",
-								background: open === i ? "rgba(139,92,246,0.04)" : "transparent",
+								borderBottom: open === i ? "1px solid rgba(0,212,255,0.20)" : "1px solid rgba(255,255,255,0.06)",
+								background: open === i ? "rgba(0,212,255,0.04)" : "transparent",
 								borderRadius: 8,
 								transition: "background 0.2s ease, border-color 0.2s ease",
 								padding: "0 8px",
@@ -139,12 +139,12 @@ export default function FAQ() {
 										width: 26,
 										height: 26,
 										borderRadius: "50%",
-										border: open === i ? "1px solid rgba(139,92,246,0.4)" : "1px solid rgba(255,255,255,0.12)",
+										border: open === i ? "1px solid rgba(0,212,255,0.35)" : "1px solid rgba(255,255,255,0.12)",
 										display: "flex",
 										alignItems: "center",
 										justifyContent: "center",
 										fontSize: 18,
-										color: open === i ? "#c4b5fd" : "rgba(255,255,255,0.4)",
+										color: open === i ? "#67e8f9" : "rgba(255,255,255,0.4)",
 										transition: "border-color 0.2s ease, color 0.2s ease",
 									}}
 								>

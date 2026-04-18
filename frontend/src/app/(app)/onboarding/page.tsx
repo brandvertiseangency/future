@@ -76,7 +76,7 @@ export default function OnboardingPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#080809] flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-violet-500" />
+        <Loader2 size={28} className="animate-spin text-[var(--ai-color)]" />
       </div>
     )
   }
@@ -89,7 +89,7 @@ export default function OnboardingPage() {
       {showProgressBar && (
         <div className="h-[2px] bg-white/[0.05] w-full fixed top-0 left-0 z-50">
           <motion.div
-            className="h-full bg-violet-500"
+            className="h-full bg-[var(--ai-color)]"
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.4, ease: 'easeOut' }}
           />

@@ -2,14 +2,16 @@
 
 import { motion } from 'framer-motion'
 import { IconCheck } from '@tabler/icons-react'
+import { Rocket, DollarSign, MessageSquare, Megaphone } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
+import { AIButton } from '@/components/ui/ai-button'
 
 const GOALS = [
-	{ id: 'growth', emoji: '🚀', label: 'Growth', desc: 'Grow your follower count and reach new audiences' },
-	{ id: 'revenue', emoji: '💰', label: 'Revenue', desc: 'Drive sales, leads, and direct conversions' },
-	{ id: 'engagement', emoji: '💬', label: 'Engagement', desc: 'Build community and deepen relationships' },
-	{ id: 'awareness', emoji: '📣', label: 'Awareness', desc: 'Get your brand seen by as many people as possible' },
+	{ id: 'growth', Icon: Rocket, label: 'Growth', desc: 'Grow your follower count and reach new audiences' },
+	{ id: 'revenue', Icon: DollarSign, label: 'Revenue', desc: 'Drive sales, leads, and direct conversions' },
+	{ id: 'engagement', Icon: MessageSquare, label: 'Engagement', desc: 'Build community and deepen relationships' },
+	{ id: 'awareness', Icon: Megaphone, label: 'Awareness', desc: 'Get your brand seen by as many people as possible' },
 ]
 
 export function StepGoals() {
@@ -42,16 +44,16 @@ export function StepGoals() {
 							className={cn(
 								'relative text-left p-5 rounded-2xl border transition-all',
 								selected
-									? 'border-violet-500/60 bg-violet-500/[0.08]'
+									? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.08]'
 									: 'border-white/[0.08] bg-white/[0.02] hover:border-white/20'
 							)}
 						>
 							{selected && (
-								<span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-violet-500 flex items-center justify-center">
+								<span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[var(--ai-color)] flex items-center justify-center">
 									<IconCheck size={11} className="text-white" />
 								</span>
 							)}
-							<div className="text-4xl mb-3">{g.emoji}</div>
+							<div className="mb-3"><g.Icon size={32} className="text-[var(--text-2)]" /></div>
 							<p className="text-white font-semibold text-sm mb-1">{g.label}</p>
 							<p className="text-white/40 text-xs leading-relaxed">{g.desc}</p>
 						</motion.button>
@@ -73,12 +75,12 @@ export function StepGoals() {
 					>
 						Skip for now →
 					</button>
-					<button
+					<AIButton
 						onClick={() => setStep(7)}
-						className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors"
+						className="px-6 py-2.5 rounded-xl text-sm font-semibold"
 					>
 						Continue →
-					</button>
+					</AIButton>
 				</div>
 			</div>
 		</div>

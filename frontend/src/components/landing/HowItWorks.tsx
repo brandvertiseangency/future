@@ -38,7 +38,7 @@ const steps = [
 const stepAccents = [
 	{ bg: "rgba(52,211,153,0.10)", border: "rgba(52,211,153,0.25)", text: "#6ee7b7" },
 	{ bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.25)", text: "#93c5fd" },
-	{ bg: "rgba(139,92,246,0.10)", border: "rgba(139,92,246,0.25)", text: "#c4b5fd" },
+	{ bg: "rgba(0,212,255,0.10)", border: "rgba(0,212,255,0.25)", text: "#67e8f9" },
 	{ bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.25)", text: "#fde68a" },
 ];
 
