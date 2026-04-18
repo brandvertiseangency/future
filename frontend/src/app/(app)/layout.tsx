@@ -8,6 +8,8 @@ import { Sidebar } from '@/components/app/sidebar'
 import { Topbar } from '@/components/app/topbar'
 import { BottomTabBar } from '@/components/app/bottom-tab-bar'
 import { Toaster } from 'sonner'
+import { AuthGuard } from '@/components/AuthGuard'
+import { PageErrorBoundary } from '@/components/ErrorBoundary'
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -26,7 +28,7 @@ function AppShell({ children }: { children: ReactNode }) {
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="md:ml-[220px] pt-16 pb-20 md:pb-0 min-h-screen"
       >
-        {children}
+        <PageErrorBoundary>{children}</PageErrorBoundary>
       </motion.main>
       {/* Mobile bottom tab bar — hidden on desktop */}
       <div className="md:hidden">
@@ -40,7 +42,9 @@ function AppShell({ children }: { children: ReactNode }) {
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-      <AppShell>{children}</AppShell>
+      <AuthGuard>
+        <AppShell>{children}</AppShell>
+      </AuthGuard>
     </ThemeProvider>
   )
 }

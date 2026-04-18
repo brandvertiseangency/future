@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navLinks = [
@@ -64,8 +65,8 @@ export default function Navbar() {
 					}}
 				>
 					{/* Logo */}
-					<a
-						href="#"
+					<Link
+						href="/"
 						style={{
 							textDecoration: "none",
 							display: "flex",
@@ -84,7 +85,7 @@ export default function Navbar() {
 							brandvertise
 							<span style={{ color: "rgba(255,255,255,0.4)" }}>.ai</span>
 						</span>
-					</a>
+					</Link>
 
 					{/* Desktop nav links */}
 					<div
@@ -127,8 +128,8 @@ export default function Navbar() {
 						style={{ gap: 10, alignItems: "center" }}
 					>
 						<ThemeToggle />
-						<a
-							href="/pricing"
+						<Link
+							href="/auth"
 							style={{
 								fontSize: 13.5,
 								fontWeight: 500,
@@ -147,9 +148,9 @@ export default function Navbar() {
 							}}
 						>
 							Log in
-						</a>
-						<a
-							href="#"
+						</Link>
+						<Link
+							href="/auth?tab=signup"
 							className="gradient-border"
 							style={{
 								color: "#ffffff",
@@ -169,7 +170,7 @@ export default function Navbar() {
 							}}
 						>
 							Get Started
-						</a>
+						</Link>
 					</div>
 
 					{/* Mobile hamburger */}
@@ -311,8 +312,25 @@ export default function Navbar() {
 								gap: 10,
 							}}
 						>
-							<a
-								href="#"
+							<Link
+								href="/auth"
+								onClick={() => setOpen(false)}
+								style={{
+									color: "rgba(255,255,255,0.55)",
+									fontWeight: 600,
+									fontSize: 14,
+									padding: "12px 20px",
+									borderRadius: 10,
+									textDecoration: "none",
+									textAlign: "center",
+									border: "1px solid rgba(255,255,255,0.1)",
+									display: "block",
+								}}
+							>
+								Log in
+							</Link>
+							<Link
+								href="/auth?tab=signup"
 								onClick={() => setOpen(false)}
 								style={{
 									background: "#ffffff",
@@ -323,10 +341,11 @@ export default function Navbar() {
 									borderRadius: 10,
 									textDecoration: "none",
 									textAlign: "center",
+									display: "block",
 								}}
 							>
 								Get Started Free
-							</a>
+							</Link>
 						</div>
 					</motion.div>
 				)}

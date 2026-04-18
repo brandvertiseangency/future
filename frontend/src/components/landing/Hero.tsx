@@ -226,7 +226,7 @@ export default function Hero() {
 						variants={fadeUp}
 						style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
 					>
-						<a href="/pricing" className="btn-primary">
+						<a href="/auth?tab=signup" className="btn-primary">
 							Start Free Trial
 							<svg
 								width="14"

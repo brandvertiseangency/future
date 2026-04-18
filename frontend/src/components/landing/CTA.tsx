@@ -106,7 +106,7 @@ export default function CTA() {
 							marginBottom: 60,
 						}}
 					>
-						<a href="/pricing" className="btn-primary">
+						<a href="/auth?tab=signup" className="btn-primary">
 							Start Free Trial
 							<svg
 								width="14"

@@ -17,13 +17,21 @@ const { testBucketConnection } = require("./services/storageService");
 
 // ─── Route imports ───────────────────────────
 const userRoutes = require("./routes/user");
+const usersMeRoutes = require("./routes/usersMe");
 const brandRoutes = require("./routes/brand");
+const brandsRoutes = require("./routes/brands");
 const assetRoutes = require("./routes/assets");
+const assetsNewRoutes = require("./routes/assetsNew");
 const calendarRoutes = require("./routes/calendar");
 const generateRoutes = require("./routes/generate");
+const generateContentRoutes = require("./routes/generateContent");
 const postRoutes = require("./routes/post");
+const postsRoutes = require("./routes/posts");
 const scheduleRoutes = require("./routes/schedule");
 const paymentRoutes = require("./routes/payment");
+const onboardingRoutes = require("./routes/onboarding");
+const creditsRoutes = require("./routes/credits");
+const notificationsRoutes = require("./routes/notifications");
 
 const app = express();
 
@@ -57,13 +65,21 @@ app.use((req, res, next) => {
 
 // ─── API Routes ───────────────────────────────
 app.use("/api/user", userRoutes);
+app.use("/api/users", usersMeRoutes);
 app.use("/api/brand", brandRoutes);
-app.use("/api/assets", assetRoutes);
+app.use("/api/brands", brandsRoutes);
+app.use("/api/assets", assetsNewRoutes);
+app.use("/api/assets-legacy", assetRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/generate", generateRoutes);
+app.use("/api/generate-content", generateContentRoutes);
 app.use("/api/post", postRoutes);
+app.use("/api/posts", postsRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/onboarding", onboardingRoutes);
+app.use("/api/credits", creditsRoutes);
+app.use("/api/notifications", notificationsRoutes);
 
 // ─── Legacy routes (backward compatibility) ───
 app.post("/generate", (req, res) => res.redirect(307, "/api/generate/legacy"));

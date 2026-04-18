@@ -1,128 +1,107 @@
 /**
- * User & Subscription Service
- * Manages user profiles, plans, and credits in Firestore.
+ * User & Subscription Service — PostgreSQL
  */
-const { db, initialized } = require("../config/firebase");
-const config = require("../config");
-const logger = require("../utils/logger");
-
-const COLLECTION = "users";
+const { getPool } = require('../config/postgres');
+const logger = require('../utils/logger');
 
 /**
  * Create or update a user profile after Firebase Auth sign-up.
  */
-async function createUser(uid, email, plan = "free") {
-  if (!initialized) {
-    logger.warn("createUser skipped — Firestore offline");
-    return { id: uid, email, plan, credits: config.credits[plan] };
+async function createUser(uid, email, plan = 'free') {
+  const pool = getPool();
+  if (!pool) {
+    logger.warn('createUser skipped — DB offline');
+    return { firebase_uid: uid, email, plan, credits: 100 };
   }
 
-  const creditMap = {
-    free: config.credits.free,
-    standard: config.credits.standard,
-    premium: config.credits.premium,
-  };
+  const creditMap = { free: 100, starter: 1000, pro: 5000, agency: 10000 };
+  const credits = creditMap[plan] ?? 100;
 
-  const userData = {
-    email,
-    plan,
-    credits: creditMap[plan] || creditMap.free,
-    created_at: new Date().toISOString(),
-  };
-
-  await db.collection(COLLECTION).doc(uid).set(userData, { merge: true });
-  logger.info("User created/updated", { uid, plan });
-  return { id: uid, ...userData };
+  const { rows } = await pool.query(
+    `INSERT INTO users (firebase_uid, email, plan, credits)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (firebase_uid) DO UPDATE
+       SET email = EXCLUDED.email, updated_at = NOW()
+     RETURNING *`,
+    [uid, email, plan, credits]
+  );
+  logger.info('User created/updated', { uid, plan });
+  return rows[0];
 }
 
 /**
  * Get user profile by UID.
  */
 async function getUser(uid) {
-  if (!initialized) return null;
-  const doc = await db.collection(COLLECTION).doc(uid).get();
-  if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() };
+  const pool = getPool();
+  if (!pool) return null;
+  const { rows } = await pool.query('SELECT * FROM users WHERE firebase_uid=$1', [uid]);
+  return rows[0] || null;
 }
 
 /**
- * Deduct credits from a user.
- * Returns updated credit balance or throws if insufficient.
+ * Deduct credits from a user. Throws if insufficient.
  */
 async function deductCredits(uid, amount) {
-  if (!initialized) {
-    logger.warn("deductCredits skipped — Firestore offline");
-    return 999;
-  }
+  const pool = getPool();
+  if (!pool) { logger.warn('deductCredits skipped — DB offline'); return 999; }
 
-  const userRef = db.collection(COLLECTION).doc(uid);
-
-  return db.runTransaction(async (tx) => {
-    const doc = await tx.get(userRef);
-    if (!doc.exists) throw new Error("User not found");
-
-    const current = doc.data().credits || 0;
-    if (current < amount) {
-      throw new Error(`Insufficient credits. Have ${current}, need ${amount}.`);
-    }
-
-    const updated = current - amount;
-    tx.update(userRef, { credits: updated });
-    logger.info("Credits deducted", { uid, deducted: amount, remaining: updated });
-    return updated;
-  });
+  const { rows } = await pool.query(
+    `UPDATE users SET credits = credits - $1, updated_at = NOW()
+     WHERE firebase_uid = $2 AND credits >= $1
+     RETURNING credits`,
+    [amount, uid]
+  );
+  if (!rows[0]) throw new Error('Insufficient credits');
+  return rows[0].credits;
 }
 
 /**
- * Add credits to a user (e.g., after payment).
+ * Add credits to a user.
  */
 async function addCredits(uid, amount) {
-  if (!initialized) return;
-
-  const userRef = db.collection(COLLECTION).doc(uid);
-
-  return db.runTransaction(async (tx) => {
-    const doc = await tx.get(userRef);
-    if (!doc.exists) throw new Error("User not found");
-
-    const current = doc.data().credits || 0;
-    const updated = current + amount;
-    tx.update(userRef, { credits: updated, plan: getPlanForCredits(updated) });
-    logger.info("Credits added", { uid, added: amount, total: updated });
-    return updated;
-  });
+  const pool = getPool();
+  if (!pool) return;
+  const { rows } = await pool.query(
+    `UPDATE users SET credits = credits + $1, updated_at = NOW()
+     WHERE firebase_uid = $2 RETURNING credits`,
+    [amount, uid]
+  );
+  return rows[0]?.credits;
 }
 
 /**
- * Upgrade user plan.
+ * Update user plan.
  */
-async function upgradePlan(uid, plan) {
-  if (!initialized) return;
-
-  const creditMap = {
-    free: config.credits.free,
-    standard: config.credits.standard,
-    premium: config.credits.premium,
-  };
-
-  await db.collection(COLLECTION).doc(uid).update({
-    plan,
-    credits: creditMap[plan] || creditMap.free,
-  });
-
-  logger.info("Plan upgraded", { uid, plan });
+async function updatePlan(uid, plan) {
+  const pool = getPool();
+  if (!pool) return;
+  const creditMap = { free: 100, starter: 1000, pro: 5000, agency: 10000 };
+  const { rows } = await pool.query(
+    `UPDATE users SET plan=$1, credits=credits+$2, updated_at=NOW()
+     WHERE firebase_uid=$3 RETURNING *`,
+    [plan, creditMap[plan] ?? 0, uid]
+  );
+  return rows[0];
 }
 
-function getPlanForCredits(credits) {
-  if (credits >= config.credits.premium) return "premium";
-  if (credits >= config.credits.standard) return "standard";
-  return "free";
+/**
+ * Update display name / profile fields.
+ */
+async function updateProfile(uid, fields) {
+  const pool = getPool();
+  if (!pool) return;
+  const { display_name, website, photo_url } = fields;
+  const { rows } = await pool.query(
+    `UPDATE users SET
+       display_name = COALESCE($1, display_name),
+       website      = COALESCE($2, website),
+       photo_url    = COALESCE($3, photo_url),
+       updated_at   = NOW()
+     WHERE firebase_uid=$4 RETURNING *`,
+    [display_name, website, photo_url, uid]
+  );
+  return rows[0];
 }
 
-module.exports = {
-  createUser,
-  getUser,
-  deductCredits,
-  addCredits,
-  upgradePlan,
-};
+module.exports = { createUser, getUser, deductCredits, addCredits, updatePlan, updateProfile };

@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
+import useSWR from 'swr'
 import {
   Sparkles,
   Loader2,
@@ -12,6 +13,7 @@ import {
   Save,
   ImageIcon,
   ChevronDown,
+  AlertCircle,
 } from 'lucide-react'
 import { useGenerationStore, type OutputCard } from '@/stores/generation'
 import { apiCall } from '@/lib/api'
@@ -20,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { ShimmerButton } from '@/components/ui/shimmer-button'
 import { DotPattern } from '@/components/ui/dot-pattern'
+import { WidgetErrorBoundary } from '@/components/ErrorBoundary'
 
 const PLATFORMS = [
   { id: 'instagram', label: 'Instagram', color: '#f43f5e' },
@@ -176,6 +179,14 @@ export default function GeneratePage() {
   const [styleOpen, setStyleOpen] = useState(false)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  // Real credit balance
+  const { data: creditsData } = useSWR(
+    '/api/credits/balance',
+    (url: string) => apiCall<{ balance: number; plan: string }>(url),
+    { revalidateOnFocus: false }
+  )
+  const credits = creditsData?.balance ?? null
+
   const togglePlatform = (id: string) => {
     const updated = form.platforms.includes(id)
       ? form.platforms.filter((p) => p !== id)
@@ -195,8 +206,12 @@ export default function GeneratePage() {
   const generate = async () => {
     if (!form.brief.trim()) { toast.error('Please describe what this post is about'); return }
     if (form.platforms.length === 0) { toast.error('Select at least one platform'); return }
+    if (credits !== null && credits < costEstimate) {
+      toast.error(`Not enough credits. You need ~${costEstimate} but have ${credits}.`); return
+    }
     setGenerating(true)
     setOutputs([])
+    const toastId = toast.loading('Starting generation…')
     try {
       const res = await apiCall<{ jobId: string }>('/api/post/generate', {
         method: 'POST', body: JSON.stringify(form),
@@ -209,18 +224,24 @@ export default function GeneratePage() {
           if (status.status === 'complete' || status.status === 'error') {
             clearInterval(pollingRef.current!)
             setGenerating(false)
-            if (status.status === 'error') toast.error('Generation failed')
-            else toast.success('Content ready!')
+            toast.dismiss(toastId)
+            if (status.status === 'error') toast.error('Generation failed — please try again')
+            else toast.success(`${status.outputs?.length ?? 1} post${(status.outputs?.length ?? 1) !== 1 ? 's' : ''} ready!`)
           }
-        } catch { clearInterval(pollingRef.current!); setGenerating(false) }
+        } catch { clearInterval(pollingRef.current!); setGenerating(false); toast.dismiss(toastId) }
       }, 2000)
-    } catch { toast.error('Generation failed — please try again'); setGenerating(false) }
+    } catch (err) {
+      toast.dismiss(toastId)
+      toast.error('Generation failed — please try again')
+      setGenerating(false)
+    }
   }
 
   const briefLength = form.brief.length
   const costEstimate = form.platforms.length * 2 || 2
 
   return (
+    <WidgetErrorBoundary>
     <div className="h-[calc(100vh-64px)] flex">
       {/* LEFT — Form */}
       <div className="w-[40%] border-r border-[var(--border-dim)] overflow-y-auto flex flex-col">
@@ -412,8 +433,20 @@ export default function GeneratePage() {
             )}
           </ShimmerButton>
           <p className="text-[var(--text-4)] text-xs text-center mt-2">
-            This will use ~{costEstimate} credits (247 remaining)
+            This will use ~{costEstimate} credits
+            {credits !== null && (
+              <span className={cn('ml-1', credits < costEstimate ? 'text-rose-400' : 'text-[var(--text-4)]')}>
+                ({credits} remaining
+                {credits < costEstimate && ' — not enough!'})
+              </span>
+            )}
           </p>
+          {credits !== null && credits < 50 && (
+            <p className="text-[10px] text-orange-400 text-center mt-1 flex items-center justify-center gap-1">
+              <AlertCircle size={10} />Running low on credits —{' '}
+              <a href="/settings#billing" className="underline hover:text-orange-300">buy more</a>
+            </p>
+          )}
         </div>
       </div>
 
@@ -451,5 +484,6 @@ export default function GeneratePage() {
         )}
       </div>
     </div>
+    </WidgetErrorBoundary>
   )
 }

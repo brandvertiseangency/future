@@ -6,92 +6,133 @@ import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
 
 const INDUSTRIES = [
-  'Fashion & Apparel', 'Food & Beverage', 'Technology', 'Health & Fitness',
-  'Beauty & Cosmetics', 'Real Estate', 'Finance', 'Education',
-  'Travel & Tourism', 'Entertainment', 'Retail', 'Professional Services',
-]
-
-const VOICES = [
-  { id: 'professional', emoji: '💼', label: 'Professional', desc: 'Authoritative & trustworthy' },
-  { id: 'playful', emoji: '🎉', label: 'Playful', desc: 'Fun, witty & lighthearted' },
-  { id: 'bold', emoji: '⚡', label: 'Bold', desc: 'High-impact & fearless' },
-  { id: 'luxurious', emoji: '✨', label: 'Luxurious', desc: 'Premium, refined & elegant' },
+  { id: 'Fashion', label: 'Fashion', icon: '👗' },
+  { id: 'Food & Beverage', label: 'Food & Bev', icon: '🍽️' },
+  { id: 'Tech & SaaS', label: 'Tech & SaaS', icon: '💻' },
+  { id: 'Health & Wellness', label: 'Health', icon: '🏃' },
+  { id: 'Finance', label: 'Finance', icon: '💰' },
+  { id: 'Education', label: 'Education', icon: '📚' },
+  { id: 'Real Estate', label: 'Real Estate', icon: '🏠' },
+  { id: 'Beauty', label: 'Beauty', icon: '💄' },
+  { id: 'Travel', label: 'Travel', icon: '✈️' },
+  { id: 'Sports', label: 'Sports', icon: '⚽' },
+  { id: 'Entertainment', label: 'Entertainment', icon: '🎬' },
+  { id: 'Other', label: 'Other', icon: '✦' },
 ]
 
 const inputClass =
   'w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.05] transition-all duration-200'
 
 export function StepBrandIdentity() {
-  const { data, updateData } = useOnboardingStore()
+  const { data, updateData, setStep } = useOnboardingStore()
+  const initials = data.brandName
+    ? data.brandName
+        .split(' ')
+        .map((w) => w[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase()
+    : '?'
+
+  const canContinue = data.brandName.trim() && data.description.trim() && data.industry
 
   return (
     <div className="space-y-8">
       <div>
-        <span className="section-tag">Brand Setup</span>
-        <h2 className="text-white font-semibold text-3xl tracking-tight">
-          Tell us about your brand
-        </h2>
-        <p className="text-white/50 text-sm mt-2">
-          We&apos;ll use this to craft your unique brand DNA and content strategy.
+        <h2 className="text-white font-bold text-3xl tracking-tight">Tell us about your brand</h2>
+        <p className="text-white/40 text-sm mt-2">
+          We&apos;ll use this to craft your unique brand DNA.
         </p>
       </div>
 
       <div className="space-y-4">
-        <input
-          className={inputClass}
-          placeholder="Brand name"
-          value={data.brandName}
-          onChange={(e) => updateData({ brandName: e.target.value })}
-        />
-        <input
-          className={inputClass}
-          placeholder="Website URL (optional)"
-          value={data.website}
-          onChange={(e) => updateData({ website: e.target.value })}
-        />
-
-        <select
-          className={cn(inputClass, 'cursor-pointer')}
-          value={data.industry}
-          onChange={(e) => updateData({ industry: e.target.value })}
-        >
-          <option value="" disabled className="bg-[#111]">Select your industry</option>
-          {INDUSTRIES.map((ind) => (
-            <option key={ind} value={ind} className="bg-[#111]">{ind}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <input
+            className={inputClass}
+            placeholder="Brand name *"
+            maxLength={50}
+            value={data.brandName}
+            onChange={(e) => updateData({ brandName: e.target.value })}
+          />
+          <span className="absolute right-3 top-3 text-xs text-white/20">
+            {data.brandName.length}/50
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            className={inputClass}
+            placeholder="One-line description * (e.g. We make sustainable sneakers for urban runners)"
+            maxLength={120}
+            value={data.description}
+            onChange={(e) => updateData({ description: e.target.value })}
+          />
+          <span className="absolute right-3 top-3 text-xs text-white/20">
+            {data.description.length}/120
+          </span>
+        </div>
       </div>
 
+      {/* Industry tiles */}
       <div>
-        <p className="text-white/60 text-sm font-medium mb-3">Brand voice</p>
-        <div className="grid grid-cols-2 gap-3">
-          {VOICES.map((v) => {
-            const selected = data.voice === v.id
+        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-3">Industry</p>
+        <div className="grid grid-cols-4 gap-2">
+          {INDUSTRIES.map((ind) => {
+            const selected = data.industry === ind.id
             return (
               <motion.button
-                key={v.id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                onClick={() => updateData({ voice: v.id })}
+                key={ind.id}
+                whileTap={{ scale: 0.96 }}
+                onClick={() => updateData({ industry: ind.id })}
                 className={cn(
-                  'relative text-left p-4 rounded-xl border transition-all duration-200',
+                  'relative flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all',
                   selected
-                    ? 'border-violet-500/50 bg-violet-500/[0.08]'
-                    : 'border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.03]'
+                    ? 'border-violet-500/60 bg-violet-500/[0.1]'
+                    : 'border-white/[0.08] bg-white/[0.02] hover:border-white/20'
                 )}
               >
                 {selected && (
-                  <span className="absolute top-3 right-3 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
-                    <IconCheck size={10} className="text-white" />
+                  <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center">
+                    <IconCheck size={9} className="text-white" />
                   </span>
                 )}
-                <div className="text-3xl mb-2">{v.emoji}</div>
-                <p className="text-white font-medium text-sm">{v.label}</p>
-                <p className="text-white/40 text-xs mt-0.5">{v.desc}</p>
+                <span className="text-xl">{ind.icon}</span>
+                <span className="text-[11px] text-white/60 font-medium leading-tight">{ind.label}</span>
               </motion.button>
             )
           })}
+        </div>
+      </div>
+
+      {/* Live preview */}
+      {data.brandName && (
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] border border-white/[0.07]">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+            {initials}
+          </div>
+          <div>
+            <p className="text-white font-semibold text-sm">{data.brandName}</p>
+            {data.description && (
+              <p className="text-white/40 text-xs mt-0.5 line-clamp-1">{data.description}</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-between pt-2">
+        <button onClick={() => setStep(1)} className="text-white/30 hover:text-white/60 text-sm transition-colors">
+          ← Back
+        </button>
+        <div className="flex items-center gap-4">
+          <button onClick={() => setStep(3)} className="text-white/30 hover:text-white/60 text-sm transition-colors">
+            Skip for now →
+          </button>
+          <button
+            onClick={() => setStep(3)}
+            disabled={!canContinue}
+            className="px-6 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Continue →
+          </button>
         </div>
       </div>
     </div>

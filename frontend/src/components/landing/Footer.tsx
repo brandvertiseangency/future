@@ -1,10 +1,34 @@
 "use client";
 
-const links = {
-  Product: ["Features", "How It Works", "Pricing", "Changelog", "Roadmap"],
-  Company: ["About Us", "Blog", "Careers", "Press", "Contact"],
-  Pages: ["Case Studies", "Team", "FAQ", "Testimonials"],
-  Support: ["support@brandvertise.ai", "Twitter/X", "LinkedIn", "Instagram"],
+import Link from "next/link";
+
+const links: Record<string, { label: string; href: string }[]> = {
+  Product: [
+    { label: "Features", href: "/#features" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "Pricing", href: "/pricing" },
+    { label: "Changelog", href: "#" },
+    { label: "Roadmap", href: "#" },
+  ],
+  Company: [
+    { label: "About Us", href: "#" },
+    { label: "Blog", href: "#" },
+    { label: "Careers", href: "#" },
+    { label: "Press", href: "#" },
+    { label: "Contact", href: "mailto:support@brandvertise.ai" },
+  ],
+  Pages: [
+    { label: "Case Studies", href: "#" },
+    { label: "Team", href: "#" },
+    { label: "FAQ", href: "/#faq" },
+    { label: "Testimonials", href: "#" },
+  ],
+  Support: [
+    { label: "support@brandvertise.ai", href: "mailto:support@brandvertise.ai" },
+    { label: "Twitter/X", href: "https://twitter.com/brandvertise" },
+    { label: "LinkedIn", href: "https://linkedin.com/company/brandvertise" },
+    { label: "Instagram", href: "https://instagram.com/brandvertise" },
+  ],
 };
 
 const XIcon = () => (
@@ -45,7 +69,7 @@ export default function Footer() {
         >
           {/* Brand column */}
           <div>
-            <a href="#" style={{ textDecoration: "none", display: "inline-block", marginBottom: 14 }}>
+            <a href="/" style={{ textDecoration: "none", display: "inline-block", marginBottom: 14 }}>
               <span style={{ fontWeight: 800, fontSize: 16, color: "#ffffff", letterSpacing: "-0.03em" }}>
                 brandvertise<span style={{ color: "rgba(255,255,255,0.35)" }}>.ai</span>
               </span>
@@ -54,10 +78,16 @@ export default function Footer() {
               The fully automated AI creative agency for fast-growing brands. Generate, schedule and grow — on autopilot.
             </p>
             <div style={{ display: "flex", gap: 8 }}>
-              {[<XIcon key="x" />, <LinkedInIcon key="li" />, <IGIcon key="ig" />].map((icon, i) => (
+              {[
+                { icon: <XIcon key="x" />, href: "https://twitter.com/brandvertise" },
+                { icon: <LinkedInIcon key="li" />, href: "https://linkedin.com/company/brandvertise" },
+                { icon: <IGIcon key="ig" />, href: "https://instagram.com/brandvertise" },
+              ].map(({ icon, href }, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   style={{
                     width: 34,
                     height: 34,
@@ -105,9 +135,11 @@ export default function Footer() {
               </h4>
               <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
                 {items.map((item) => (
-                  <li key={item}>
+                  <li key={item.label}>
                     <a
-                      href="#"
+                      href={item.href}
+                      target={item.href.startsWith("http") ? "_blank" : undefined}
+                      rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
                       style={{
                         fontSize: 13,
                         color: "rgba(255,255,255,0.38)",
@@ -117,7 +149,7 @@ export default function Footer() {
                       onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.8)"; }}
                       onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.38)"; }}
                     >
-                      {item}
+                      {item.label}
                     </a>
                   </li>
                 ))}

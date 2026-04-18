@@ -1,24 +1,29 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface OnboardingData {
-  // Step 1
+  // Step 2 — Brand Identity
   brandName: string
-  website: string
+  description: string
   industry: string
+  // Step 3 — Brand Voice
+  tone: number          // 0–100
   voice: string
-  // Step 2
+  styles: string[]      // multi-select chips
+  // Step 4 — Audience
   ageRange: [number, number]
-  gender: string
-  locations: string[]
+  gender: string        // 'mostly-men' | 'mixed' | 'mostly-women'
+  location: string
   interests: string[]
-  // Step 3
+  // Step 5 — Platforms
+  platforms: string[]
+  // Step 6 — Goals
   goals: string[]
-  postFrequency: string
-  // Step 4
+  // Design prefs (optional step)
   visualStyle: string
   colors: string[]
-  // Step 5
-  logoUrl?: string
+  // Uploads
+  logoUrl: string
   productImageUrls: string[]
   referenceUrls: string[]
 }
@@ -33,26 +38,37 @@ interface OnboardingStore {
 
 const defaultData: OnboardingData = {
   brandName: '',
-  website: '',
+  description: '',
   industry: '',
+  tone: 50,
   voice: '',
-  ageRange: [18, 45],
-  gender: 'all',
-  locations: [],
+  styles: [],
+  ageRange: [25, 44],
+  gender: 'mixed',
+  location: '',
   interests: [],
+  platforms: [],
   goals: [],
-  postFrequency: 'daily',
   visualStyle: '',
   colors: [],
+  logoUrl: '',
   productImageUrls: [],
   referenceUrls: [],
 }
 
-export const useOnboardingStore = create<OnboardingStore>((set) => ({
-  step: 1,
-  data: defaultData,
-  setStep: (n) => set({ step: n }),
-  updateData: (partial) =>
-    set((state) => ({ data: { ...state.data, ...partial } })),
-  reset: () => set({ step: 1, data: defaultData }),
-}))
+export const useOnboardingStore = create<OnboardingStore>()(
+  persist(
+    (set) => ({
+      step: 1,
+      data: defaultData,
+      setStep: (n) => set({ step: n }),
+      updateData: (partial) =>
+        set((state) => ({ data: { ...state.data, ...partial } })),
+      reset: () => set({ step: 1, data: defaultData }),
+    }),
+    {
+      name: 'brandvertise-onboarding',
+      partialize: (state) => ({ step: state.step, data: state.data }),
+    }
+  )
+)
