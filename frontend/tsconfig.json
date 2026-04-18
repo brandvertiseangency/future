@@ -43,6 +43,10 @@
     "/Users/ryhnsufi/.brandvertise-next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/_*.tsx",
+    "**/_*.ts",
+    "**/._*.tsx",
+    "**/._*.ts"
   ]
 }

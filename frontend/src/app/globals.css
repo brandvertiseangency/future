@@ -47,6 +47,74 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ── BRANDVERTISE SEMANTIC TOKENS ── */
+:root,
+.dark {
+  --bg-canvas:    #050505;
+  --bg-raised:    #0d0d0d;
+  --bg-overlay:   #141414;
+  --bg-subtle:    #1c1c1e;
+  --bg-muted:     #242426;
+
+  --border-dim:   rgba(255,255,255,0.06);
+  --border-base:  rgba(255,255,255,0.09);
+  --border-loud:  rgba(255,255,255,0.16);
+
+  --text-1: #FFFFFF;
+  --text-2: rgba(255,255,255,0.58);
+  --text-3: rgba(255,255,255,0.32);
+  --text-4: rgba(255,255,255,0.18);
+
+  --accent:       #8b5cf6;
+  --accent-glow:  rgba(139,92,246,0.18);
+  --accent-muted: rgba(139,92,246,0.10);
+
+  --stat-1: #a78bfa;
+  --stat-2: #60a5fa;
+  --stat-3: #34d399;
+  --stat-4: #fb923c;
+
+  --sidebar-bg:     #070709;
+  --sidebar-border: rgba(255,255,255,0.05);
+
+  --card-bg:           #0f0f11;
+  --card-border:       rgba(255,255,255,0.07);
+  --card-hover-border: rgba(255,255,255,0.13);
+}
+
+.light {
+  --bg-canvas:    #f5f5f7;
+  --bg-raised:    #ffffff;
+  --bg-overlay:   #f9f9fb;
+  --bg-subtle:    #f0f0f5;
+  --bg-muted:     #e8e8ed;
+
+  --border-dim:   rgba(0,0,0,0.05);
+  --border-base:  rgba(0,0,0,0.08);
+  --border-loud:  rgba(0,0,0,0.14);
+
+  --text-1: #1d1d1f;
+  --text-2: rgba(0,0,0,0.55);
+  --text-3: rgba(0,0,0,0.32);
+  --text-4: rgba(0,0,0,0.18);
+
+  --accent:       #7c3aed;
+  --accent-glow:  rgba(124,58,237,0.08);
+  --accent-muted: rgba(124,58,237,0.06);
+
+  --stat-1: #7c3aed;
+  --stat-2: #2563eb;
+  --stat-3: #059669;
+  --stat-4: #ea580c;
+
+  --sidebar-bg:     #ffffff;
+  --sidebar-border: rgba(0,0,0,0.07);
+
+  --card-bg:           #ffffff;
+  --card-border:       rgba(0,0,0,0.07);
+  --card-hover-border: rgba(0,0,0,0.13);
+}
+
 :root {
   --radius: 0.75rem;
   --background: #050505;
@@ -176,6 +244,22 @@
   0%, 100% { transform: translateY(0px); }
   50% { transform: translateY(-10px); }
 }
+@keyframes shimmer-card {
+  0%   { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+@keyframes ping-dot {
+  0%   { transform: scale(1); opacity: 0.75; }
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
+@keyframes orbit {
+  from { transform: rotate(0deg) translateX(var(--radius, 40px)) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(var(--radius, 40px)) rotate(-360deg); }
+}
+@keyframes border-beam {
+  0%   { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
 @keyframes gradient-shift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
@@ -228,7 +312,40 @@
   background-size: 28px 28px;
 }
 
-/* ── Glow Effects ───────────────────────────────────── */
+/* ── App violet accent utilities ─────────────────────── */
+.glow-violet { box-shadow: 0 0 80px rgba(139,92,246,0.12), 0 0 160px rgba(139,92,246,0.06); }
+.glow-blue   { box-shadow: 0 0 80px rgba(59,130,246,0.10); }
+.glow-emerald{ box-shadow: 0 0 80px rgba(16,185,129,0.08); }
+
+.card-gradient-border {
+  position: relative;
+  background: #111111;
+  border-radius: 16px;
+}
+.card-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(135deg,
+    rgba(139,92,246,0.5),
+    rgba(59,130,246,0.3),
+    rgba(16,185,129,0.2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box,
+                linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 100%);
+  background-size: 200% 100%;
+  animation: shimmer-card 1.5s ease infinite;
+}
+
+/* ── Ambient glow ─────────────────────────────────────── */
 .glow-white {
   box-shadow: 0 0 40px rgba(255,255,255,0.06), 0 0 80px rgba(255,255,255,0.03);
 }

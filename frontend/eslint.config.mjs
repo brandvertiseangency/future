@@ -12,7 +12,19 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // macOS resource fork files
+    "**/._(.*)",
+    "**/_page.tsx",
+    "**/._*.tsx",
+    "**/._*.ts",
   ]),
+  {
+    rules: {
+      // Allow simple setState calls in useEffect (e.g. mount guards)
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

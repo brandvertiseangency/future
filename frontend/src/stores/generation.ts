@@ -1,0 +1,60 @@
+import { create } from 'zustand'
+
+export interface OutputCard {
+  id: string
+  imageUrl: string
+  platform: string
+  caption: string
+  hashtags: string[]
+  status: 'new' | 'saved' | 'scheduled'
+}
+
+export interface GenerationForm {
+  contentType: 'post' | 'carousel' | 'reel' | 'story'
+  platforms: string[]
+  brief: string
+  mood: string
+  colors: string[]
+  textOverlay: boolean
+  fontStyle: string
+  referenceImageUrls: string[]
+}
+
+interface GenerationStore {
+  form: GenerationForm
+  outputs: OutputCard[]
+  isGenerating: boolean
+  jobId: string | null
+  setForm: (partial: Partial<GenerationForm>) => void
+  addOutput: (card: OutputCard) => void
+  setOutputs: (cards: OutputCard[]) => void
+  setGenerating: (b: boolean) => void
+  setJobId: (id: string | null) => void
+  reset: () => void
+}
+
+const defaultForm: GenerationForm = {
+  contentType: 'post',
+  platforms: [],
+  brief: '',
+  mood: '',
+  colors: [],
+  textOverlay: true,
+  fontStyle: 'minimal',
+  referenceImageUrls: [],
+}
+
+export const useGenerationStore = create<GenerationStore>((set) => ({
+  form: defaultForm,
+  outputs: [],
+  isGenerating: false,
+  jobId: null,
+  setForm: (partial) =>
+    set((state) => ({ form: { ...state.form, ...partial } })),
+  addOutput: (card) =>
+    set((state) => ({ outputs: [card, ...state.outputs] })),
+  setOutputs: (cards) => set({ outputs: cards }),
+  setGenerating: (b) => set({ isGenerating: b }),
+  setJobId: (id) => set({ jobId: id }),
+  reset: () => set({ form: defaultForm, outputs: [], isGenerating: false, jobId: null }),
+}))
