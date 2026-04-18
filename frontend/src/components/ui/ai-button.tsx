@@ -18,6 +18,7 @@ export function AIButton({ children, onClick, className, loading, disabled, type
     <HoverBorderGradient
       containerClassName={cn('rounded-lg', disabled && 'opacity-50 pointer-events-none')}
       as="button"
+      type={type}
       className={cn(
         'bg-black text-white flex items-center gap-2 px-5 py-2.5 text-sm font-medium',
         className

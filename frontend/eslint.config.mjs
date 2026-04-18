@@ -17,6 +17,22 @@ const eslintConfig = defineConfig([
     "**/_page.tsx",
     "**/._*.tsx",
     "**/._*.ts",
+    // Third-party Aceternity UI components — not our code, skip linting
+    "src/components/ui/canvas-reveal-effect.tsx",
+    "src/components/ui/card-hover-effect.tsx",
+    "src/components/ui/card-spotlight.tsx",
+    "src/components/ui/colourful-text.tsx",
+    "src/components/ui/file-upload.tsx",
+    "src/components/ui/flip-words.tsx",
+    "src/components/ui/floating-dock.tsx",
+    "src/components/ui/glare-card.tsx",
+    "src/components/ui/glowing-effect.tsx",
+    "src/components/ui/hover-border-gradient.tsx",
+    "src/components/ui/moving-border.tsx",
+    "src/components/ui/placeholders-and-vanish-input.tsx",
+    "src/components/ui/sparkles.tsx",
+    "src/components/ui/text-generate-effect.tsx",
+    "src/components/ui/typewriter-effect.tsx",
   ]),
   {
     rules: {
