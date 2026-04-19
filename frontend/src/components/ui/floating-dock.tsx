@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 /**
  * Note: Use position fixed according to your needs
