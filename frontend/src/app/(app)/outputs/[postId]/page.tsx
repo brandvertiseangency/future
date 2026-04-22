@@ -7,7 +7,7 @@ import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { ChevronLeft, RotateCcw, Download, Check, Clock, Loader2 } from 'lucide-react'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
 
 interface Version {

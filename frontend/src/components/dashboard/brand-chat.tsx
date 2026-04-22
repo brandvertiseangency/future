@@ -25,7 +25,7 @@ export function BrandChat({ brand }: { brand: any }) {
   const router = useRouter()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 
   // Auto-resize textarea
   useEffect(() => {
