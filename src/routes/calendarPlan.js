@@ -25,9 +25,18 @@ const getUserWithBrand = async (uid) => {
             b.audience_age_min, b.audience_age_max, b.audience_gender, b.audience_interests,
             b.brand_colors, b.font_mood, b.visual_vibes, b.visual_dna,
             b.usp, b.mission, b.words_to_use, b.words_to_avoid, b.brand_persona,
-            b.calendar_prefs
+            b.calendar_prefs,
+            b.color_primary, b.color_secondary, b.color_accent,
+            b.industry_subtype, b.price_segment, b.posting_frequency, b.content_mix,
+            bic.usp_keywords, bic.industry_answers,
+            bsp.dominant_aesthetic, bsp.mood_keywords, bsp.photography_style,
+            bsp.layout_style, bsp.font_mood_detected,
+            ccp.weekly_post_count AS pref_weekly_posts, ccp.content_type_mix AS pref_content_mix
      FROM users u
      LEFT JOIN brands b ON b.user_id = u.id AND b.is_default = TRUE
+     LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+     LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+     LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
      WHERE u.firebase_uid = $1 LIMIT 1`,
     [uid]
   );
@@ -138,6 +147,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
     const brand = {
       name: user.brand_name || 'Brand',
       industry: user.industry || 'general',
+      industrySubtype: user.industry_subtype || '',
       description: user.description || '',
       tone: user.tone || 50,
       styles: user.styles || [],
@@ -147,22 +157,45 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       audienceAgeMax: user.audience_age_max || 65,
       audienceGender: user.audience_gender || 'mixed',
       audienceInterests: user.audience_interests || [],
-      usp: user.usp || '',
+      usp: user.usp || (user.usp_keywords && user.usp_keywords.length ? user.usp_keywords.join(', ') : ''),
       mission: user.mission || '',
+      priceSegment: user.price_segment || '',
+      brandPersona: user.brand_persona || '',
+      wordsToUse: user.words_to_use || [],
+      wordsToAvoid: user.words_to_avoid || [],
+      dominantAesthetic: user.dominant_aesthetic || '',
+      moodKeywords: user.mood_keywords || [],
+      photographyStyle: user.photography_style || '',
+      layoutStyle: user.layout_style || '',
+      industryAnswers: user.industry_answers ? JSON.stringify(user.industry_answers) : '',
     };
     const platforms = brand.platforms.length ? brand.platforms : ['instagram'];
+    const toneLabel = brand.tone <= 25 ? 'Casual' : brand.tone <= 50 ? 'Conversational' : brand.tone <= 74 ? 'Balanced' : 'Professional';
+
+    const brandContext = [
+      `Brand: ${brand.name}`,
+      `Industry: ${brand.industry}${brand.industrySubtype ? ` (${brand.industrySubtype})` : ''}`,
+      `Description: ${brand.description}`,
+      brand.mission ? `Mission: ${brand.mission}` : '',
+      brand.usp ? `USP / Key differentiators: ${brand.usp}` : '',
+      brand.priceSegment ? `Price segment: ${brand.priceSegment}` : '',
+      brand.brandPersona ? `Brand persona: ${brand.brandPersona}` : '',
+      `Tone: ${toneLabel}`,
+      brand.styles && brand.styles.length ? `Personality styles: ${brand.styles.join(', ')}` : '',
+      brand.wordsToUse && brand.wordsToUse.length ? `Words to use: ${brand.wordsToUse.join(', ')}` : '',
+      brand.wordsToAvoid && brand.wordsToAvoid.length ? `Words to avoid: ${brand.wordsToAvoid.join(', ')}` : '',
+      `Platforms: ${platforms.join(', ')}`,
+      `Target Audience: ${brand.audienceAgeMin}–${brand.audienceAgeMax} yrs, ${brand.audienceGender}, interests: ${(brand.audienceInterests || []).join(', ') || 'general'}`,
+      `Goals: ${(brand.goals || []).join(', ') || 'awareness'}`,
+      brand.dominantAesthetic ? `Visual aesthetic: ${brand.dominantAesthetic}` : '',
+      brand.moodKeywords && brand.moodKeywords.length ? `Visual mood: ${brand.moodKeywords.join(', ')}` : '',
+      brand.photographyStyle ? `Photography style: ${brand.photographyStyle}` : '',
+      brand.industryAnswers && brand.industryAnswers !== '{}' ? `Industry-specific context: ${brand.industryAnswers}` : '',
+    ].filter(Boolean).join('\n');
 
     const aiPrompt = `You are a senior social media strategist. Generate a ${postCount}-post content calendar for the following brand.
 
-Brand: ${brand.name}
-Industry: ${brand.industry}
-Description: ${brand.description}
-Mission: ${brand.mission}
-USP: ${brand.usp}
-Tone: ${brand.tone <= 25 ? 'Casual' : brand.tone <= 50 ? 'Conversational' : brand.tone <= 74 ? 'Balanced' : 'Professional'}
-Platforms: ${platforms.join(', ')}
-Target Audience: ${brand.audienceAgeMin}–${brand.audienceAgeMax}, ${brand.audienceGender}, interests: ${(brand.audienceInterests || []).join(', ') || 'general'}
-Goals: ${(brand.goals || []).join(', ') || 'awareness'}
+${brandContext}
 Content Categories: ${categories.join(', ')}
 
 Return a JSON object: { "posts": [ ...array of ${postCount} objects... ] }
@@ -177,9 +210,10 @@ Each object must have:
 
 Rules:
 - Match content_type to category: educational→carousel, bts→reel, others→post or mix
-- Captions must feel natural, on-brand, engaging
+- Captions must feel natural, on-brand, and directly reflect the brand's tone, mission, and USP
 - Each post should be distinct and build campaign cohesion
 - Distribute platforms across ${platforms.join(', ')} evenly if multiple
+- Use the brand's vocabulary and avoid flagged words if provided
 - Return ONLY valid JSON, no markdown`;
 
     const raw = await callAI(aiPrompt);

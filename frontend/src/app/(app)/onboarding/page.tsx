@@ -110,13 +110,19 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {/* Step indicator */}
+      {/* Step indicator + skip */}
       {showProgressBar && (
-        <div className="pt-6 pb-4 flex justify-center">
+        <div className="pt-6 pb-4 flex items-center justify-between px-6 max-w-[640px] mx-auto w-full">
           <span className="text-[12px] text-white/40 font-medium tracking-wide">
             Step {step} of {STEPS.length} —{' '}
             <span className="text-white/60">{STEP_NAMES[step - 1]}</span>
           </span>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
+          >
+            Skip for now
+          </button>
         </div>
       )}
 

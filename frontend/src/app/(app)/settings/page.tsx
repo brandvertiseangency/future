@@ -109,6 +109,7 @@ function BillingSection() {
 	const plan = data?.plan ?? 'trial'
 	const trialDays = data?.trial_days_left ?? 14
 	const maxCredits = plan === 'pro' ? 5000 : plan === 'starter' ? 1000 : 500
+	const planLabel = plan === 'trial' ? 'Free Trial' : plan.charAt(0).toUpperCase() + plan.slice(1)
 
 	return (
 		<div className="space-y-6">
@@ -122,7 +123,7 @@ function BillingSection() {
 					<div className="flex items-start justify-between">
 						<div>
 							<p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--text-3)] mb-1">Current Plan</p>
-							<p className="text-[var(--text-1)] font-bold text-xl capitalize">{plan === 'trial' ? 'Free Trial' : plan}</p>
+							<p className="text-[var(--text-1)] font-bold text-xl capitalize">{planLabel}</p>
 							{plan === 'trial' && <p className="text-[var(--text-3)] text-sm mt-1">{trialDays} days remaining · {balance} credits left</p>}
 							{plan !== 'trial' && <p className="text-[var(--text-3)] text-sm mt-1">{balance} credits remaining</p>}
 						</div>
@@ -130,7 +131,7 @@ function BillingSection() {
 							plan === 'pro' ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
 								: plan === 'trial' ? 'bg-orange-500/10 border-orange-500/20 text-orange-400'
 									: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400')}>
-							{plan === 'trial' ? 'Trial' : plan.charAt(0).toUpperCase() + plan.slice(1)}
+							{planLabel}
 						</span>
 					</div>
 					<div className="mt-4 h-2 rounded-full bg-[var(--bg-muted)] overflow-hidden">
