@@ -7,31 +7,47 @@ import { Loader2 } from 'lucide-react'
 import useSWR from 'swr'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
+
+// Step 1: reuse existing welcome
 import { StepWelcome } from '@/components/onboarding/step-welcome'
-import { StepBrandIdentity } from '@/components/onboarding/step-brand-identity'
-import { StepBrandVoice } from '@/components/onboarding/step-brand-voice'
+// Step 2: new industry grid
+import { StepIndustry } from '@/components/onboarding/step-industry'
+// Step 3: personality (replaces old brand-voice)
+import { StepPersonality } from '@/components/onboarding/step-personality'
+// Step 4: visual identity (new)
+import { StepVisualIdentity } from '@/components/onboarding/step-visual-identity'
+// Step 5: audience (existing)
 import { StepAudience } from '@/components/onboarding/step-audience'
-import { StepPlatforms } from '@/components/onboarding/step-platforms'
-import { StepGoals } from '@/components/onboarding/step-goals'
+// Step 6: industry-specific adaptive questions (new)
+import { StepIndustryConfig } from '@/components/onboarding/step-industry-config'
+// Step 7: reference image upload + vision AI (new)
+import { StepReferences } from '@/components/onboarding/step-references'
+// Step 8: calendar prefs (new)
+import { StepCalendarPrefs } from '@/components/onboarding/step-calendar-prefs'
+// Step 9: first post (existing — completion step)
 import { StepFirstPost } from '@/components/onboarding/step-first-post'
 
 const STEP_NAMES = [
   'Welcome',
-  'Brand identity',
-  'Brand voice',
-  'Target audience',
-  'Platforms',
-  'Goals',
-  'First post',
+  'Industry',
+  'Personality',
+  'Visual Style',
+  'Audience',
+  'Your Brand',
+  'References',
+  'Content Plan',
+  'First Post',
 ]
 
 const STEPS = [
   StepWelcome,
-  StepBrandIdentity,
-  StepBrandVoice,
+  StepIndustry,
+  StepPersonality,
+  StepVisualIdentity,
   StepAudience,
-  StepPlatforms,
-  StepGoals,
+  StepIndustryConfig,
+  StepReferences,
+  StepCalendarPrefs,
   StepFirstPost,
 ]
 
@@ -44,10 +60,9 @@ const variants = {
 export default function OnboardingPage() {
   const { step, setStep } = useOnboardingStore()
   const router = useRouter()
-  const StepComponent = STEPS[step - 1]
+  const StepComponent = STEPS[step - 1] || StepWelcome
   const progress = ((step - 1) / (STEPS.length - 1)) * 100
 
-  // Check if user has already completed onboarding
   const { data, isLoading } = useSWR(
     '/api/users/me',
     (url: string) => apiCall<{ user: { onboarding_complete?: boolean } }>(url),
@@ -60,7 +75,6 @@ export default function OnboardingPage() {
     }
   }, [data, isLoading, router])
 
-  // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === 'Escape' && step > 1) setStep(step - 1)

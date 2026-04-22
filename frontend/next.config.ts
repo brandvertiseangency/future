@@ -9,6 +9,8 @@ const localDist = `${homeDir}/.brandvertise-next`;
 
 const nextConfig: NextConfig = {
   ...(isDev ? { distDir: localDist } : {}),
+  // Allow dev server to serve to local network (silences cross-origin warning)
+  allowedDevOrigins: ["localhost", "127.0.0.1", "192.168.0.100"],
   // Silence "multiple lockfiles" workspace root warning
   outputFileTracingRoot: path.join(__dirname, "../"),
   env: {

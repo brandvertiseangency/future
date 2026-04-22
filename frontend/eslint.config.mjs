@@ -46,6 +46,10 @@ const eslintConfig = defineConfig([
       "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }],
       // Allow anonymous default exports in config/utility files
       "import/no-anonymous-default-export": "warn",
+      // any is acceptable in API/SWR response shapes — warn only
+      "@typescript-eslint/no-explicit-any": "warn",
+      // Unused eslint-disable directives — warn only
+      "reportUnusedDisableDirectives": "warn",
     },
   },
 ]);

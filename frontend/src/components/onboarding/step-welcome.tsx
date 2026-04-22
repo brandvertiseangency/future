@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Sparkles } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { Spotlight } from '@/components/ui/spotlight'
@@ -22,7 +23,16 @@ export function StepWelcome() {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
         >
-          <span className="text-[15px] font-semibold tracking-tight text-white/80">brandvertise.ai</span>
+          <span className="text-[15px] font-semibold tracking-tight text-white/80">
+            <Image
+              src="/Brandvertise-Light-Logo.webp"
+              alt="Brandvertise"
+              width={130}
+              height={30}
+              className="object-contain mx-auto"
+              priority
+            />
+          </span>
         </motion.div>
 
         <motion.div

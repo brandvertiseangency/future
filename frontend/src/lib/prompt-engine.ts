@@ -213,3 +213,173 @@ export function imageRatioToAspect(ratio: string): string {
   const map: Record<string, string> = { '1:1': '1:1', '4:5': '4:5', '9:16': '9:16', '16:9': '16:9' }
   return map[ratio] || '1:1'
 }
+
+// ─── AGENT PROMPT ENGINE ───────────────────────────────────────────────────
+
+export interface AgentBrandContext {
+  name: string
+  description?: string
+  industry?: string
+  voice?: string
+  goals?: string[]
+  audience?: Record<string, unknown>
+  designPrefs?: Record<string, unknown>
+}
+
+function getAgentToneLabel(voice?: string): string {
+  if (!voice) return 'professional and approachable'
+  const map: Record<string, string> = {
+    bold: 'bold and confident',
+    minimal: 'clean and minimal',
+    luxury: 'premium and aspirational',
+    playful: 'fun and energetic',
+    professional: 'formal and authoritative',
+    conversational: 'warm and conversational',
+  }
+  return map[voice.toLowerCase()] || voice
+}
+
+export function buildWebsitePrompt(brand: AgentBrandContext): string {
+  const tone = getAgentToneLabel(brand.voice)
+  const industry = brand.industry || 'technology'
+  const audience = brand.audience
+    ? `${(brand.audience.age_min as number) ?? 25}–${(brand.audience.age_max as number) ?? 44} year olds in ${(brand.audience.location as string) ?? 'global markets'}`
+    : 'a broad professional audience'
+  const goals = (brand.goals || ['awareness', 'growth']).join(', ')
+
+  return `You are a world-class web strategist and copywriter. Build a complete landing page structure for the following brand:
+
+BRAND: ${brand.name}
+INDUSTRY: ${industry}
+DESCRIPTION: ${brand.description || 'A modern brand focused on delivering exceptional value'}
+TONE: ${tone}
+TARGET AUDIENCE: ${audience}
+GOALS: ${goals}
+
+Generate a complete landing page architecture with the following sections. For each section provide:
+- Section name
+- Headline copy
+- Subheadline / supporting copy
+- Key elements / components to include
+- Design direction
+
+REQUIRED SECTIONS:
+1. Hero — Above-the-fold. Make the value proposition crystal clear in under 8 words. Include CTA.
+2. Problem / Pain Point — Why does the audience need this? Agitate the problem.
+3. Solution / Features — 3–4 core feature cards with icons, headlines, and 2-line descriptions.
+4. Social Proof — Testimonials, logos, or stats that build trust.
+5. How It Works — 3-step process. Simple, scannable.
+6. Pricing — Tiered pricing table (3 tiers recommended).
+7. FAQ — 5 most common objections, answered concisely.
+8. Final CTA — Urgency-driven close. Repeat the core value prop.
+
+OUTPUT FORMAT: Structured JSON with each section as a key. Be specific with copy — write actual headlines, not placeholders.`
+}
+
+export function buildBrandingPrompt(brand: AgentBrandContext, format: 'poster' | 'banner' | 'visiting-card'): string {
+  const tone = getAgentToneLabel(brand.voice)
+  const industry = brand.industry || 'technology'
+
+  const formatGuide: Record<string, string> = {
+    poster: `ASSET TYPE: Marketing Poster (A3 / 18×24" print or digital)
+LAYOUT: Single bold visual with headline, subheadline, brand mark, CTA
+HIERARCHY: Headline (largest) → Visual → Subheadline → CTA → Logo
+STYLE: High contrast, impactful, bold typography
+OUTPUT: Provide headline copy, body copy, CTA text, color palette (hex codes), typography direction, and a detailed image generation prompt for the visual element.`,
+
+    banner: `ASSET TYPE: Digital Banner Ad (Multiple sizes: 728×90, 300×250, 160×600, 1200×628)
+LAYOUT: Brand mark + short headline + CTA button
+HIERARCHY: Logo → Hook (5 words max) → CTA
+STYLE: Clean, fast to read, brand-aligned
+OUTPUT: For each banner size provide: headline, CTA copy, color palette, layout direction, and image prompt.`,
+
+    'visiting-card': `ASSET TYPE: Business / Visiting Card (3.5×2" standard)
+LAYOUT FRONT: Logo / brand mark, name, title — clean and premium
+LAYOUT BACK: Contact details, optional QR / tagline
+STYLE: Minimal, premium, memorable
+OUTPUT: Provide front copy, back copy, color palette (hex), typography suggestion, finishing notes (matte/gloss/foil), and logo placement direction.`,
+  }
+
+  return `You are a senior brand designer and creative director. Create a complete branding asset brief for:
+
+BRAND: ${brand.name}
+INDUSTRY: ${industry}
+DESCRIPTION: ${brand.description || 'A modern brand delivering exceptional experiences'}
+TONE: ${tone}
+DESIGN PREFERENCES: ${JSON.stringify(brand.designPrefs || { style: 'modern', colors: 'auto-generate' })}
+
+${formatGuide[format]}
+
+Ensure all copy and design direction is:
+- Consistent with the brand voice (${tone})
+- Suitable for the ${industry} industry
+- Differentiated and memorable
+- Ready to hand off to a designer or AI image tool
+
+Be specific. Write actual copy, actual hex codes, actual font pairings. No generic placeholders.`
+}
+
+export function buildPresentationPrompt(brand: AgentBrandContext, type: 'company-profile' | 'pitch-deck'): string {
+  const tone = getAgentToneLabel(brand.voice)
+  const industry = brand.industry || 'technology'
+  const audience = brand.audience
+    ? `${(brand.audience.location as string) ?? 'global'} market`
+    : 'investors and stakeholders'
+
+  const typeGuide: Record<string, string> = {
+    'company-profile': `PRESENTATION TYPE: Company Profile (10–14 slides)
+PURPOSE: Introduce the company to potential partners, clients, or investors
+AUDIENCE: B2B decision-makers, procurement teams, enterprise clients
+REQUIRED SLIDES:
+1. Cover — Brand name, tagline, logo, visual
+2. Executive Summary — 3 bullet points: Who, What, Why
+3. Our Story — Founding story, mission, vision
+4. The Problem — Market gap or pain point addressed
+5. Our Solution — Core product/service overview
+6. Why Us — Competitive differentiators (3–4 points)
+7. Products / Services — Key offerings with brief descriptions
+8. Our Process — How you deliver value (3–5 steps)
+9. Team — Key team members with roles and 1-line bios
+10. Clients / Partners — Logos or case study highlights
+11. Achievements / Milestones — Awards, metrics, traction
+12. Contact — CTA, website, email, LinkedIn`,
+
+    'pitch-deck': `PRESENTATION TYPE: Investor Pitch Deck (10–12 slides)
+PURPOSE: Raise funding — seed to Series A
+AUDIENCE: Venture capitalists, angel investors, accelerator panels
+REQUIRED SLIDES:
+1. Cover — Company name, tagline, contact
+2. Problem — The pain. Make it visceral. Data-backed.
+3. Solution — The "aha" moment. Clear and compelling.
+4. Market Opportunity — TAM / SAM / SOM with sources
+5. Product — Demo or product highlights. What makes it sticky?
+6. Business Model — How you make money. Unit economics.
+7. Traction — Key metrics, growth rate, notable customers
+8. Go-to-Market — How you acquire customers at scale
+9. Competition — Competitive landscape map or matrix
+10. Team — Founders + key hires. Why you?
+11. The Ask — Amount raising, use of funds (% breakdown)
+12. Vision — Where are you in 5 years?`,
+  }
+
+  return `You are a world-class pitch consultant and presentation strategist. Create a complete ${type === 'pitch-deck' ? 'investor pitch deck' : 'company profile'} for:
+
+COMPANY: ${brand.name}
+INDUSTRY: ${industry}
+DESCRIPTION: ${brand.description || 'An innovative company solving real-world problems'}
+TONE: ${tone}
+TARGET MARKET: ${audience}
+GOALS: ${(brand.goals || ['growth', 'revenue']).join(', ')}
+
+${typeGuide[type]}
+
+For EACH slide provide:
+- Slide title
+- Headline copy (the main statement)
+- Supporting copy (2–4 bullet points or paragraph)
+- Suggested visual direction
+- Speaker notes (2–3 sentences for the presenter)
+
+Make the copy punchy, specific, and investor-ready. No corporate fluff. Every word must earn its place.
+Tone throughout: ${tone}.`
+}

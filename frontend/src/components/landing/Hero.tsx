@@ -1,134 +1,52 @@
 "use client";
 
-import { motion } from "framer-motion";
-
-const floatingCards = [
-	{
-		icon: (
-			<svg
-				width="18"
-				height="18"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				strokeWidth={2}
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					d="M5 13l4 4L19 7"
-				/>
-			</svg>
-		),
-		text: "New user signed up",
-		sub: "Just 2 seconds ago",
-		delay: 0,
-	},
-	{
-		icon: (
-			<svg
-				width="18"
-				height="18"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				strokeWidth={2}
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-				/>
-			</svg>
-		),
-		text: "Revenue +24% this week",
-		sub: "AI-optimised campaigns",
-		delay: 0.5,
-	},
-	{
-		icon: (
-			<svg
-				width="18"
-				height="18"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				strokeWidth={2}
-			>
-				<path
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-				/>
-			</svg>
-		),
-		text: "10M+ posts generated",
-		sub: "Across all platforms",
-		delay: 1,
-	},
-];
+import { useRef, useEffect, useState } from "react";
+import { motion, useInView } from "framer-motion";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { FlickeringGrid } from "@/components/magicui/flickering-grid";
+import { TextReveal } from "@/components/ui/TextReveal";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-const fadeUp = {
-	hidden: { opacity: 0, y: 28 },
-	show: (i: number) => ({
-		opacity: 1,
-		y: 0,
-		transition: {
-			delay: i * 0.1,
-			duration: 0.65,
-			ease: EASE,
-		},
-	}),
-};
-
 export default function Hero() {
+	const ref = useRef(null);
+	// amount: 0 ensures it triggers as soon as ANY part of the section is in view.
+	// This matters for above-the-fold content where the element is already visible on load.
+	const inView = useInView(ref, { once: true, amount: 0 });
+	// Hydration-safe: only animate after client mounts to avoid flash of invisible content
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => { setMounted(true); }, []);
+
 	return (
 		<section
+			ref={ref}
 			style={{
-				minHeight: "100vh",
-				display: "flex",
-				alignItems: "center",
+				background: "#000000",
+				paddingTop: 64,
 				position: "relative",
 				overflow: "hidden",
-				background: "#050505",
-				paddingTop: 64,
+				paddingBottom: 80,
 			}}
 		>
-			{/* Radial ambient glows */}
-			<div style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
-				<div style={{ position: "absolute", top: "-10%", left: "20%", width: 600, height: 600, borderRadius: "50%", background: "radial-gradient(circle, rgba(0,212,255,0.12) 0%, transparent 70%)" }} />
-				<div style={{ position: "absolute", top: "30%", right: "5%", width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)" }} />
-				<div style={{ position: "absolute", bottom: "0%", left: "40%", width: 500, height: 500, borderRadius: "50%", background: "radial-gradient(circle, rgba(52,211,153,0.06) 0%, transparent 70%)" }} />
-			</div>
+			{/* FlickeringGrid background */}
+			<FlickeringGrid
+				className="absolute inset-0 z-0"
+				squareSize={4}
+				gridGap={6}
+				color="#ffffff"
+				maxOpacity={0.12}
+				flickerChance={0.08}
+			/>
 
-			{/* Grid background */}
+			{/* Radial fade — keeps centre dark so text reads clean */}
 			<div
-				className="grid-bg"
 				style={{
 					position: "absolute",
 					inset: 0,
-					zIndex: 0,
-					opacity: 0.6,
-				}}
-			/>
-
-			{/* Radial spotlight */}
-			<div
-				style={{
-					position: "absolute",
-					top: "20%",
-					left: "50%",
-					transform: "translate(-50%, -50%)",
-					width: "80vw",
-					height: "80vw",
-					maxWidth: 900,
-					maxHeight: 900,
-					background:
-						"radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 65%)",
-					zIndex: 0,
+					zIndex: 1,
 					pointerEvents: "none",
+					background:
+						"radial-gradient(ellipse 80% 60% at 50% 0%, transparent 0%, #000000 75%)",
 				}}
 			/>
 
@@ -136,334 +54,216 @@ export default function Hero() {
 				style={{
 					position: "relative",
 					zIndex: 2,
-					maxWidth: 1280,
+					maxWidth: 1100,
 					margin: "0 auto",
-					padding: "80px 24px",
-					width: "100%",
-					display: "grid",
-					gridTemplateColumns: "1fr 1fr",
-					gap: 80,
+					padding: "0 40px",
+					display: "flex",
+					flexDirection: "column",
 					alignItems: "center",
+					textAlign: "center",
+					paddingTop: 72,
 				}}
-				className="hero-grid"
 			>
-				<div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-					{/* Badge */}
-					<motion.div
-						custom={0}
-						initial="hidden"
-						animate="show"
-						variants={fadeUp}
+				{/* Badge */}
+				<motion.div
+					initial={mounted ? { opacity: 0, y: 12 } : false}
+					animate={inView ? { opacity: 1, y: 0 } : {}}
+					transition={{ duration: 0.5, ease: EASE }}
+				>
+					<span
+						style={{
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 8,
+							border: "1px solid rgba(255,255,255,0.1)",
+							borderRadius: 999,
+							padding: "5px 14px 5px 8px",
+							fontSize: 12,
+							fontWeight: 600,
+							color: "rgba(255,255,255,0.45)",
+							background: "rgba(255,255,255,0.03)",
+							letterSpacing: "0.05em",
+						}}
 					>
 						<span
 							style={{
 								display: "inline-flex",
 								alignItems: "center",
-								gap: 8,
-								border: "1px solid rgba(255,255,255,0.12)",
+								gap: 4,
+								background: "rgba(255,255,255,0.08)",
+								color: "rgba(255,255,255,0.7)",
 								borderRadius: 999,
-								padding: "5px 14px",
-								fontSize: 12,
-								fontWeight: 600,
-								color: "rgba(255,255,255,0.55)",
-								background: "rgba(255,255,255,0.03)",
-								letterSpacing: "0.06em",
-								textTransform: "uppercase",
-							}}
-						>
-							<span style={{ color: "#e8e0d0", fontSize: 11 }}>★★★★★</span>
-							&nbsp;4.9/5 from 500+ brands
-						</span>
-					</motion.div>
-
-					<motion.h1
-						custom={1}
-						initial="hidden"
-						animate="show"
-						variants={fadeUp}
-						style={{
-							fontSize: "clamp(44px, 6.5vw, 84px)",
-							fontWeight: 800,
-							lineHeight: 1.04,
-							letterSpacing: "-0.04em",
-							color: "#ffffff",
-							margin: 0,
-						}}
-					>
-						Drive results
-						<br />
-						through{" "}
-						<span style={{ color: "rgba(255,255,255,0.4)" }}>
-							social media
-						</span>
-						<br />
-						<em className="accent" style={{ fontStyle: "italic" }}>mastery.</em>
-					</motion.h1>
-
-					<motion.p
-						custom={2}
-						initial="hidden"
-						animate="show"
-						variants={fadeUp}
-						style={{
-							fontSize: 17,
-							fontWeight: 400,
-							lineHeight: 1.72,
-							color: "rgba(255,255,255,0.5)",
-							maxWidth: 480,
-							margin: 0,
-						}}
-					>
-						Brandvertise AI generates scroll-stopping visuals, writes
-						platform-native captions, and auto-publishes across all social
-						platforms — completely on autopilot.
-					</motion.p>
-
-					<motion.div
-						custom={3}
-						initial="hidden"
-						animate="show"
-						variants={fadeUp}
-						style={{ display: "flex", gap: 10, flexWrap: "wrap" }}
-					>
-						<a href="/auth?tab=signup" className="btn-primary">
-							Start Free Trial
-							<svg
-								width="14"
-								height="14"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-								strokeWidth={2.5}
-							>
-								<path
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									d="M17 8l4 4m0 0l-4 4m4-4H3"
-								/>
-							</svg>
-						</a>
-						<a href="#how-it-works" className="btn-outline">
-							See How It Works
-						</a>
-					</motion.div>
-
-					{/* Trust line */}
-					<motion.div
-						custom={4}
-						initial="hidden"
-						animate="show"
-						variants={fadeUp}
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: 16,
-							paddingTop: 8,
-						}}
-					>
-						<div style={{ display: "flex" }}>
-							{[
-								"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&q=80",
-								"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&q=80",
-								"https://images.unsplash.com/photo-1580489944761-15a19d654956?w=60&q=80",
-							].map((src, i) => (
-								<img
-									key={i}
-									src={src}
-									alt=""
-									style={{
-										width: 28,
-										height: 28,
-										borderRadius: "50%",
-										border: "2px solid #050505",
-										objectFit: "cover",
-										marginLeft: i === 0 ? 0 : -10,
-									}}
-								/>
-							))}
-						</div>
-						<span
-							style={{
-								fontSize: 13,
-								color: "rgba(255,255,255,0.4)",
-							}}
-						>
-							Joined by{" "}
-							<strong
-								style={{
-									color: "rgba(255,255,255,0.7)",
-									fontWeight: 600,
-								}}
-							>
-								2,000+
-							</strong>{" "}
-							brands this month
-						</span>
-					</motion.div>
-				</div>
-
-				{/* Right side floating cards */}
-				<div
-					className="hero-cards-col"
-					style={{ display: "flex", flexDirection: "column", gap: 14 }}
-				>
-					{floatingCards.map((card, i) => (
-						<motion.div
-							key={i}
-							initial={{ opacity: 0, x: 30 }}
-							animate={{ opacity: 1, x: 0 }}
-							transition={{
-								delay: 0.6 + card.delay,
-								duration: 0.65,
-								ease: EASE,
-							}}
-						>
-							<motion.div
-								animate={{ y: [0, -8, 0] }}
-								transition={{
-									delay: i * 0.3,
-									duration: 4 + i,
-									repeat: Infinity,
-									ease: "easeInOut",
-								}}
-								className="gradient-border"
-								style={{
-									backdropFilter: "blur(16px)",
-									WebkitBackdropFilter: "blur(16px)",
-									padding: "18px 22px",
-									display: "flex",
-									alignItems: "center",
-									gap: 14,
-								}}
-							>
-								<span
-									style={{
-										width: 40,
-										height: 40,
-										borderRadius: 10,
-										background: "rgba(255,255,255,0.07)",
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "center",
-										color: "rgba(255,255,255,0.7)",
-										flexShrink: 0,
-									}}
-								>
-									{card.icon}
-								</span>
-								<div>
-									<p
-										style={{
-											margin: 0,
-											fontSize: 14,
-											fontWeight: 600,
-											color: "#ffffff",
-										}}
-									>
-										{card.text}
-									</p>
-									<p
-										style={{
-											margin: 0,
-											fontSize: 12,
-											color: "rgba(255,255,255,0.4)",
-											marginTop: 2,
-										}}
-									>
-										{card.sub}
-									</p>
-								</div>
-							</motion.div>
-						</motion.div>
-					))}
-
-					{/* Dashboard preview card */}
-					<motion.div
-						initial={{ opacity: 0, x: 30 }}
-						animate={{ opacity: 1, x: 0 }}
-						transition={{
-							delay: 1.4,
-							duration: 0.65,
-							ease: EASE,
-						}}
-						className="gradient-border"
-						style={{
-							padding: "20px 22px",
-							marginTop: 4,
-						}}
-					>
-						<p
-							style={{
-								margin: "0 0 12px",
+								padding: "2px 8px",
 								fontSize: 11,
-								fontWeight: 600,
-								letterSpacing: "0.08em",
-								textTransform: "uppercase",
-								color: "rgba(255,255,255,0.3)",
 							}}
 						>
-							Content Performance
-						</p>
-						<svg
-							width="100%"
-							height="60"
-							viewBox="0 0 300 60"
-							fill="none"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							{[22, 38, 28, 50, 42, 65, 58, 72, 80, 70].map((h, i) => (
-								<rect
-									key={i}
-									x={i * 30 + 2}
-									y={60 - h}
-									width={24}
-									height={h}
-									rx={4}
-									fill={
-										i === 9
-											? "rgba(255,255,255,0.8)"
-											: "rgba(255,255,255,0.1)"
-									}
-								/>
-							))}
-						</svg>
-						<div
-							style={{
-								display: "flex",
-								justifyContent: "space-between",
-								marginTop: 12,
-								alignItems: "flex-end",
-							}}
-						>
-							<span
-								style={{
-									fontSize: 28,
-									fontWeight: 800,
-									color: "#ffffff",
-									letterSpacing: "-0.04em",
-								}}
-							>
-								+80%
-							</span>
-							<span
-								style={{
-									fontSize: 12,
-									color: "rgba(255,255,255,0.35)",
-								}}
-							>
-								engagement lift
-							</span>
-						</div>
-					</motion.div>
-				</div>
-			</div>
+							<Sparkles size={10} /> NEW
+						</span>
+						Agent System now live — unlock 3 new AI agents
+					</span>
+				</motion.div>
 
-			<style>{`
-        @media (max-width: 767px) {
-          .hero-grid { grid-template-columns: 1fr !important; gap: 40px !important; }
-          .hero-cards-col { display: none !important; }
-        }
-      `}</style>
+				{/* Headline */}
+				<h1
+					style={{
+						fontSize: "clamp(60px, 8.5vw, 120px)",
+						fontWeight: 900,
+						lineHeight: 1.05,
+						letterSpacing: "-0.04em",
+						color: "#ffffff",
+						margin: "28px 0 0",
+						textAlign: "center",
+					}}
+				>
+					<span style={{ display: "block", whiteSpace: "nowrap" }}>
+						Your brand&apos;s social media
+					</span>
+					<span style={{ display: "block", marginTop: "0.04em", whiteSpace: "nowrap" }}>
+						on{" "}
+						<TextReveal
+							text="full autopilot."
+							inView={inView}
+							delay={0.1}
+							stagger={0.05}
+							className="highlight"
+							style={{ fontStyle: "italic" }}
+							gradientCss="linear-gradient(90deg, #ff4ecd, #ff8c00, #ffe600, #00e676, #00cfff, #a259ff, #ff4ecd)"
+						/>
+					</span>
+				</h1>
+
+				{/* Subheadline */}
+				<motion.p
+					initial={mounted ? { opacity: 0, y: 16 } : false}
+					animate={inView ? { opacity: 1, y: 0 } : {}}
+					transition={{ delay: 0.18, duration: 0.6, ease: EASE }}
+					style={{
+						fontSize: "clamp(15px, 1.6vw, 18px)",
+						lineHeight: 1.75,
+						color: "rgba(255,255,255,0.38)",
+						maxWidth: 520,
+						margin: "20px auto 0",
+					}}
+				>
+					Brandvertise AI generates on-brand visuals, writes platform-native
+					captions, and auto-schedules across all channels — powered by your
+					brand DNA.
+				</motion.p>
+
+				{/* CTAs */}
+				<motion.div
+					initial={mounted ? { opacity: 0, y: 14 } : false}
+					animate={inView ? { opacity: 1, y: 0 } : {}}
+					transition={{ delay: 0.26, duration: 0.6, ease: EASE }}
+					style={{
+						display: "flex",
+						gap: 12,
+						flexWrap: "wrap",
+						justifyContent: "center",
+						marginTop: 36,
+					}}
+				>
+					<a
+						href="/auth?tab=signup"
+						style={{
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 8,
+							background: "#ffffff",
+							color: "#000000",
+							fontWeight: 700,
+							fontSize: 14,
+							padding: "14px 28px",
+							borderRadius: 14,
+							textDecoration: "none",
+							transition: "opacity 0.15s",
+						}}
+						onMouseEnter={(e) =>
+							((e.currentTarget as HTMLAnchorElement).style.opacity = "0.88")
+						}
+						onMouseLeave={(e) =>
+							((e.currentTarget as HTMLAnchorElement).style.opacity = "1")
+						}
+					>
+						Start Free Trial <ArrowRight size={14} />
+					</a>
+					<a
+						href="#how-it-works"
+						style={{
+							display: "inline-flex",
+							alignItems: "center",
+							gap: 8,
+							background: "transparent",
+							color: "rgba(255,255,255,0.55)",
+							fontWeight: 600,
+							fontSize: 14,
+							padding: "14px 28px",
+							borderRadius: 14,
+							textDecoration: "none",
+							border: "1px solid rgba(255,255,255,0.1)",
+							transition: "all 0.15s",
+						}}
+						onMouseEnter={(e) => {
+							(e.currentTarget as HTMLAnchorElement).style.borderColor =
+								"rgba(255,255,255,0.25)";
+							(e.currentTarget as HTMLAnchorElement).style.color = "#fff";
+						}}
+						onMouseLeave={(e) => {
+							(e.currentTarget as HTMLAnchorElement).style.borderColor =
+								"rgba(255,255,255,0.1)";
+							(e.currentTarget as HTMLAnchorElement).style.color =
+								"rgba(255,255,255,0.55)";
+						}}
+					>
+						See How It Works
+					</a>
+				</motion.div>
+
+				{/* Trust line */}
+				<motion.div
+					initial={mounted ? { opacity: 0 } : false}
+					animate={inView ? { opacity: 1 } : {}}
+					transition={{ delay: 0.38, duration: 0.6 }}
+					style={{
+						display: "flex",
+						alignItems: "center",
+						gap: 16,
+						marginTop: 28,
+						flexWrap: "wrap",
+						justifyContent: "center",
+					}}
+				>
+					<div style={{ display: "flex" }}>
+						{[
+							"https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=60&q=80",
+							"https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&q=80",
+							"https://images.unsplash.com/photo-1580489944761-15a19d654956?w=60&q=80",
+							"https://images.unsplash.com/photo-1517841905240-472988babdf9?w=60&q=80",
+						].map((src, i) => (
+							<img
+								key={i}
+								src={src}
+								alt=""
+								style={{
+									width: 28,
+									height: 28,
+									borderRadius: "50%",
+									border: "2px solid #000000",
+									objectFit: "cover",
+									marginLeft: i === 0 ? 0 : -9,
+								}}
+							/>
+						))}
+					</div>
+					<span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>
+						Trusted by{" "}
+						<strong style={{ color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>
+							2,000+
+						</strong>{" "}
+						brands · No credit card required
+					</span>
+				</motion.div>
+			</div>
 		</section>
 	);
 }

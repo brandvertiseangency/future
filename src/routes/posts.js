@@ -7,6 +7,7 @@ const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 
+
 const getUserId = async (uid) => {
   const pool = getPool();
   if (!pool) return null;
@@ -144,6 +145,183 @@ router.delete('/:id', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete post.' });
+  }
+});
+
+/** GET /api/posts/:id — get post with versions */
+router.get('/:id', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+    const userId = await getUserId(req.user.uid);
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const { rows } = await pool.query('SELECT * FROM posts WHERE id=$1 AND user_id=$2', [req.params.id, userId]);
+    if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+
+    // Fetch versions if table exists
+    let versions = [];
+    try {
+      const { rows: vRows } = await pool.query(
+        'SELECT * FROM post_versions WHERE post_id=$1 ORDER BY version_number ASC',
+        [req.params.id]
+      );
+      versions = vRows;
+    } catch { /* post_versions table may not exist yet */ }
+
+    res.json({ post: rows[0], versions });
+  } catch (err) {
+    logger.error('Get post failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch post.' });
+  }
+});
+
+/** POST /api/posts/:id/approve — approve a post */
+router.post('/:id/approve', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+    const userId = await getUserId(req.user.uid);
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const { rows } = await pool.query(
+      `UPDATE posts SET approval_status='approved', approved_at=NOW(), updated_at=NOW()
+       WHERE id=$1 AND user_id=$2 RETURNING *`,
+      [req.params.id, userId]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    res.json({ post: rows[0] });
+  } catch (err) {
+    logger.error('Post approve failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to approve post.' });
+  }
+});
+
+/** POST /api/posts/:id/regenerate — regenerate with feedback */
+router.post('/:id/regenerate', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+    const userId = await getUserId(req.user.uid);
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const { feedback = '' } = req.body;
+    const { rows: postRows } = await pool.query(
+      'SELECT * FROM posts WHERE id=$1 AND user_id=$2',
+      [req.params.id, userId]
+    );
+    if (!postRows[0]) return res.status(404).json({ error: 'Post not found.' });
+    const post = postRows[0];
+
+    // Check credits
+    const { rows: userRows } = await pool.query('SELECT id, credits FROM users WHERE id=$1', [userId]);
+    const user = userRows[0];
+    if (!user || user.credits < 2) {
+      return res.status(402).json({ error: 'insufficient_credits', creditsRequired: 2, creditsAvailable: user?.credits ?? 0 });
+    }
+
+    // Get brand
+    const { rows: brandRows } = await pool.query('SELECT * FROM brands WHERE id=$1', [post.brand_id]);
+    const brand = brandRows[0];
+
+    // Build AI prompts
+    const { buildSystemPrompt, buildUserPrompt } = require('../lib/prompt-engine');
+    let sysPrompt, userPrompt;
+    try {
+      sysPrompt = buildSystemPrompt({
+        name: brand?.name || 'Brand', industry: brand?.industry || 'general',
+        description: brand?.description || '', tone: brand?.tone || 50,
+        styles: brand?.styles || [], goals: brand?.goals || [],
+        audienceAgeMin: brand?.audience_age_min, audienceAgeMax: brand?.audience_age_max,
+        audienceGender: brand?.audience_gender, audienceInterests: brand?.audience_interests || [],
+        audienceLocation: '', platforms: brand?.platforms || [],
+      });
+      userPrompt = buildUserPrompt(
+        { platform: post.platform, contentType: post.content_type, brief: feedback || post.caption, mood: '' },
+        {}
+      );
+    } catch {
+      sysPrompt = `You are a social media expert. Return valid JSON: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
+      userPrompt = `Regenerate this ${post.content_type} for ${post.platform}. Feedback: ${feedback}. Original: ${post.caption}`;
+    }
+
+    // Call AI
+    let caption = post.caption, hashtags = post.hashtags || [], imagePrompt = '';
+    try {
+      const callAI = async (prompt) => {
+        if (process.env.GOOGLE_AI_API_KEY) {
+          const { GoogleGenAI } = require('@google/genai');
+          const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+          const r = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: [{ role: 'user', parts: [{ text: prompt }] }] });
+          return r.text;
+        }
+        if (process.env.OPENAI_API_KEY) {
+          const OpenAI = require('openai');
+          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const r = await openai.chat.completions.create({ model: 'gpt-4o-mini', max_tokens: 1024, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: prompt }] });
+          return r.choices[0].message.content;
+        }
+        throw new Error('No AI provider');
+      };
+      const raw = await callAI(sysPrompt + '\n\n' + userPrompt);
+      const match = raw.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : raw);
+      caption = parsed.caption || caption;
+      hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : hashtags;
+      imagePrompt = parsed.imagePrompt || '';
+    } catch (e) {
+      logger.warn('AI regen failed, keeping original', { error: e.message });
+    }
+
+    // Generate new image if we have a prompt
+    let imageUrl = post.image_url;
+    if (imagePrompt && process.env.GOOGLE_AI_API_KEY) {
+      try {
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+        const r = await ai.models.generateImages({
+          model: 'imagen-4.0-fast-generate-001',
+          prompt: `${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image, no text.`,
+          config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
+        });
+        const b64 = r?.generatedImages?.[0]?.image?.imageBytes;
+        if (b64) imageUrl = `data:image/jpeg;base64,${b64}`;
+      } catch { /* keep original */ }
+    }
+
+    const newVersion = (post.version_number || 1) + 1;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [userId]);
+      try {
+        await client.query(`INSERT INTO credit_transactions (user_id,amount,type,description) VALUES ($1,-2,'usage',$2)`, [userId, `Regenerated ${post.content_type}`]);
+      } catch {
+        await client.query(`INSERT INTO credit_transactions (user_id,amount,type,reason) VALUES ($1,-2,'usage',$2)`, [userId, `Regenerated ${post.content_type}`]);
+      }
+      const { rows: updated } = await client.query(
+        `UPDATE posts SET caption=$1, hashtags=$2, image_url=$3, version_number=$4, approval_status='pending', updated_at=NOW()
+         WHERE id=$5 RETURNING *`,
+        [caption, hashtags, imageUrl, newVersion, req.params.id]
+      );
+      try {
+        await client.query(
+          `INSERT INTO post_versions (post_id, version_number, caption, image_url, hashtags, generation_prompt, feedback_note)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+          [req.params.id, newVersion, caption, imageUrl, hashtags, JSON.stringify({ imagePrompt }), feedback]
+        );
+      } catch { /* post_versions may not exist */ }
+      await client.query('COMMIT');
+      res.json({ post: updated[0], version: newVersion });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    logger.error('Post regenerate failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to regenerate post.', details: err.message });
   }
 });
 

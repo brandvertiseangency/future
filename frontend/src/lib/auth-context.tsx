@@ -1,12 +1,11 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useRef, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   sendPasswordResetEmail,
@@ -47,8 +46,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-  // Prevent double-redirect from both getRedirectResult and onAuthStateChanged
-  const redirectHandledRef = useRef(false)
 
   const registerWithBackend = async (_u: User) => {
     try {
@@ -80,17 +77,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const auth = getFirebaseAuth()
     if (!auth) { setLoading(false); return }
-
-    // Handle Google redirect result
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (!result?.user) return
-        redirectHandledRef.current = true
-        const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime
-        await registerWithBackend(result.user)
-        await routeAfterAuth(result.user, isNewUser)
-      })
-      .catch(() => {})
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser)
@@ -131,8 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const auth = getFirebaseAuth()
     if (!auth) throw new Error('Firebase not configured')
     const provider = new GoogleAuthProvider()
-    await signInWithRedirect(auth, provider)
-    // Result handled via getRedirectResult in useEffect above
+    const result = await signInWithPopup(auth, provider)
+    const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime
+    await registerWithBackend(result.user)
+    await routeAfterAuth(result.user, isNewUser)
   }
 
   const signOut = async () => {

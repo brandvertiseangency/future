@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
@@ -21,12 +21,14 @@ export function BlurFade({
   yOffset = 12,
 }: BlurFadeProps) {
   const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-20px' })
+  const inView = useInView(ref, { once: true, amount: 0 })
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
 
   return (
     <motion.div
       ref={ref}
-      initial={{ opacity: 0, y: yOffset, filter: 'blur(4px)' }}
+      initial={mounted ? { opacity: 0, y: yOffset, filter: 'blur(4px)' } : false}
       animate={inView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
       transition={{
         delay,

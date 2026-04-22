@@ -14,7 +14,10 @@ const getUserWithBrand = async (uid) => {
   const { rows } = await pool.query(
     `SELECT u.*, b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
             b.tone, b.styles, b.audience_age_min, b.audience_age_max,
-            b.audience_gender, b.audience_interests, b.platforms, b.goals
+            b.audience_gender, b.audience_interests, b.platforms, b.goals,
+            b.brand_colors, b.font_mood, b.visual_vibes, b.visual_dna,
+            b.industry_config, b.calendar_prefs, b.usp, b.mission,
+            b.words_to_use, b.words_to_avoid, b.brand_persona
      FROM users u
      LEFT JOIN brands b ON b.user_id = u.id AND b.is_default = TRUE
      WHERE u.firebase_uid = $1 LIMIT 1`,
@@ -22,6 +25,8 @@ const getUserWithBrand = async (uid) => {
   );
   return rows[0] || null;
 };
+
+const { buildSystemPrompt: buildSystemPromptV2, buildUserPrompt: buildUserPromptV2, getToneTemperature } = require('../lib/prompt-engine');
 
 const toneDescriptor = (tone) => {
   if (tone <= 25) return 'Casual';
@@ -31,14 +36,36 @@ const toneDescriptor = (tone) => {
 };
 
 const buildSystemPrompt = (user) => {
-  const interests = (user.audience_interests || []).join(', ') || 'general topics';
-  const styles = (user.styles || []).join(', ') || 'modern';
-  const goals = (user.goals || []).join(', ') || 'growth';
-  return `You are a social media content expert for ${user.brand_name || 'a brand'}, a ${user.industry || 'general'} brand.\n\nBrand voice: ${toneDescriptor(user.tone || 50)} (${user.tone || 50}/100 on casual-to-professional scale)\nStyle: ${styles}\nTarget audience: ${user.audience_age_min || 18}–${user.audience_age_max || 65} year olds, ${user.audience_gender || 'mixed'}, interested in ${interests}\nGoals: ${goals}\n\nGenerate content that is authentic to this brand, uses natural language for the platform, includes relevant hashtags (5–10), and has a clear call-to-action.\n\nAlways respond in valid JSON only, no markdown: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
+  // Map flat DB row to brand intelligence shape expected by prompt engine
+  const brand = {
+    name: user.brand_name,
+    industry: user.industry,
+    description: user.description,
+    tone: user.tone || 50,
+    styles: user.styles || [],
+    goals: user.goals || [],
+    audienceAgeMin: user.audience_age_min,
+    audienceAgeMax: user.audience_age_max,
+    audienceGender: user.audience_gender,
+    audienceInterests: user.audience_interests,
+    audienceLocation: user.audience_location,
+    brandColors: user.brand_colors,
+    fontMood: user.font_mood,
+    visualVibes: user.visual_vibes,
+    visualDNA: user.visual_dna,
+    industryConfig: user.industry_config,
+    calendarPrefs: user.calendar_prefs,
+    usp: user.usp,
+    mission: user.mission,
+    wordsToUse: user.words_to_use,
+    wordsToAvoid: user.words_to_avoid,
+    persona: user.brand_persona,
+  };
+  return buildSystemPromptV2(brand);
 };
 
-const buildUserPrompt = ({ platform, contentType, brief, mood }) =>
-  `Create a ${contentType || 'post'} for ${platform}.\nBrief: ${brief || 'General brand content'}\n${mood ? `Mood: ${mood}` : ''}\nPlatform-specific: write in the native style of ${platform} users.\nReturn valid JSON only.`;
+const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }) =>
+  buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, {});
 
 const callAI = async (systemPrompt, userPrompt) => {
   if (process.env.GOOGLE_AI_API_KEY) {
@@ -99,7 +126,7 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   const client = await pool.connect();
   try {
-    const { platform, contentType, brief, mood } = req.body;
+    const { platform, contentType, brief, mood, theme, campaign } = req.body;
     if (!platform) return res.status(400).json({ error: 'platform is required' });
     if (!brief) return res.status(400).json({ error: 'brief is required' });
 
@@ -110,7 +137,7 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const systemPrompt = buildSystemPrompt(user);
-    const userPrompt = buildUserPrompt({ platform, contentType, brief, mood });
+    const userPrompt = buildUserPrompt({ platform, contentType, brief, mood, theme, campaign });
     const raw = await callAI(systemPrompt, userPrompt);
     const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
 

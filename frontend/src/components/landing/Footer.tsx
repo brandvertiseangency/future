@@ -70,9 +70,12 @@ export default function Footer() {
           {/* Brand column */}
           <div>
             <Link href="/" style={{ textDecoration: "none", display: "inline-block", marginBottom: 14 }}>
-              <span style={{ fontWeight: 800, fontSize: 16, color: "#ffffff", letterSpacing: "-0.03em" }}>
-                brandvertise<span style={{ color: "rgba(255,255,255,0.35)" }}>.ai</span>
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/Brandvertise-Light-Logo.webp"
+                alt="Brandvertise"
+                style={{ height: 28, width: "auto" }}
+              />
             </Link>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", lineHeight: 1.75, maxWidth: 230, marginBottom: 24 }}>
               The fully automated AI creative agency for fast-growing brands. Generate, schedule and grow — on autopilot.

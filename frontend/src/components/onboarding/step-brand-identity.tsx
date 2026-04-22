@@ -84,7 +84,7 @@ export function StepBrandIdentity() {
               <motion.button
                 key={ind.id}
                 whileTap={{ scale: 0.96 }}
-                onClick={() => updateData({ industry: ind.id })}
+                onClick={() => updateData({ industry: ind.id as import('@/stores/onboarding').Industry })}
                 className={cn(
                   'relative flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all',
                   selected

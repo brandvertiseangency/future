@@ -2,44 +2,43 @@
 
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
-import { fadeUpVariants, staggerContainer, EASE } from "@/lib/motion";
+import { Upload, Brain, Wand2, CalendarCheck } from "lucide-react";
+
+const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 const steps = [
 	{
 		num: "01",
+		icon: Upload,
 		title: "Onboard Your Brand",
-		desc: "Upload logo, colors, fonts, tone and target audience. Takes 5 minutes. Works forever.",
+		desc: "Upload your logo, colours, fonts, tone and target audience. Takes 5 minutes. Works forever.",
 		tags: ["Fast Setup", "No-Code"],
-		img: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&q=80",
+		color: "#10b981",
 	},
 	{
 		num: "02",
+		icon: Brain,
 		title: "AI Builds Your Strategy",
-		desc: "Content Strategy Engine analyses your brand, industry and competitors — full monthly plan generated automatically.",
+		desc: "The Content Strategy Engine analyses your brand, industry and competitors — full monthly plan generated automatically.",
 		tags: ["AI-Powered", "Auto Strategy"],
-		img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&q=80",
+		color: "#00d4ff",
 	},
 	{
 		num: "03",
+		icon: Wand2,
 		title: "Creatives Are Generated",
-		desc: "AI designs on-brand visuals and writes captions, hashtags, CTAs for each platform.",
+		desc: "AI designs on-brand visuals and writes captions, hashtags, CTAs for each platform — in seconds.",
 		tags: ["Instant Output", "On-Brand"],
-		img: "https://images.unsplash.com/photo-1542744094-24638eff58bb?w=600&q=80",
+		color: "#7c3aed",
 	},
 	{
 		num: "04",
+		icon: CalendarCheck,
 		title: "Review & Auto-Schedule",
-		desc: "Approve in one click or go full autopilot. Posts publish at peak engagement times.",
+		desc: "Approve in one click or go full autopilot. Posts publish at peak engagement times automatically.",
 		tags: ["Auto-Publish", "Full Autopilot"],
-		img: "https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80",
+		color: "#f59e0b",
 	},
-];
-
-const stepAccents = [
-	{ bg: "rgba(52,211,153,0.10)", border: "rgba(52,211,153,0.25)", text: "#6ee7b7" },
-	{ bg: "rgba(59,130,246,0.10)", border: "rgba(59,130,246,0.25)", text: "#93c5fd" },
-	{ bg: "rgba(0,212,255,0.10)", border: "rgba(0,212,255,0.25)", text: "#67e8f9" },
-	{ bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.25)", text: "#fde68a" },
 ];
 
 export default function HowItWorks() {
@@ -54,138 +53,190 @@ export default function HowItWorks() {
 		>
 			<div style={{ maxWidth: 1280, margin: "0 auto", padding: "0 24px" }}>
 				<motion.div
-					initial="hidden"
-					animate={isInView ? "show" : "hidden"}
-					variants={staggerContainer}
+					initial={{ opacity: 0, y: 24 }}
+					animate={isInView ? { opacity: 1, y: 0 } : {}}
+					transition={{ duration: 0.6, ease: EASE }}
 					style={{ marginBottom: 72 }}
 				>
-					<motion.span variants={fadeUpVariants} className="section-tag">
-						Our Process
-					</motion.span>
-					<motion.h2
-						variants={fadeUpVariants}
+					<span
 						style={{
-							fontSize: "clamp(32px, 4.5vw, 56px)",
+							display: "inline-block",
+							fontSize: 11,
+							fontWeight: 700,
+							letterSpacing: "0.12em",
+							textTransform: "uppercase",
+							color: "#00d4ff",
+							marginBottom: 14,
+							border: "1px solid rgba(0,212,255,0.25)",
+							borderRadius: 999,
+							padding: "3px 12px",
+							background: "rgba(0,212,255,0.06)",
+						}}
+					>
+						Our Process
+					</span>
+					<h2
+						style={{
+							fontSize: "clamp(32px, 4vw, 52px)",
 							fontWeight: 800,
 							lineHeight: 1.08,
 							color: "#ffffff",
 							letterSpacing: "-0.04em",
-							maxWidth: 560,
 							margin: 0,
+							maxWidth: 520,
 						}}
 					>
-						From onboarding to <em className="accent">full growth.</em>
-					</motion.h2>
+						From onboarding to{" "}
+						<em
+							style={{
+								fontStyle: "italic",
+								color: "rgba(255,255,255,0.3)",
+							}}
+						>
+							full growth.
+						</em>
+					</h2>
 				</motion.div>
 
-				<div style={{ display: "flex", flexDirection: "column" }}>
-					{steps.map((step, i) => {
-						const isEven = i % 2 === 0;
-						return (
-							<div key={step.num}>
-								<motion.div
-									initial={{ opacity: 0, y: 40 }}
-									whileInView={{ opacity: 1, y: 0 }}
-									viewport={{ once: true, margin: "-60px" }}
-									transition={{ duration: 0.65, ease: EASE }}
-									className="process-row"
+				<div
+					style={{
+						display: "grid",
+						gridTemplateColumns: "repeat(4, 1fr)",
+						gap: 14,
+						position: "relative",
+					}}
+					className="hiw-grid"
+				>
+					{/* Connector line */}
+					<div
+						style={{
+							position: "absolute",
+							top: 42,
+							left: "calc(25% + 21px)",
+							right: "calc(25% - 21px)",
+							height: 1,
+							background:
+								"linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.12), rgba(255,255,255,0.04))",
+							pointerEvents: "none",
+							zIndex: 0,
+						}}
+						className="hiw-connector"
+					/>
+
+					{steps.map(
+						({ num, icon: Icon, title, desc, tags, color }, i) => (
+							<motion.div
+								key={num}
+								initial={{ opacity: 0, y: 24 }}
+								animate={isInView ? { opacity: 1, y: 0 } : {}}
+								transition={{
+									delay: i * 0.1,
+									duration: 0.55,
+									ease: EASE,
+								}}
+								style={{
+									background: "rgba(255,255,255,0.02)",
+									border: "1px solid rgba(255,255,255,0.07)",
+									borderRadius: 20,
+									padding: 24,
+									display: "flex",
+									flexDirection: "column",
+									gap: 16,
+									position: "relative",
+									zIndex: 1,
+								}}
+							>
+								<div
 									style={{
-										display: "grid",
-										gridTemplateColumns: "1fr 1fr",
-										gap: 72,
+										display: "flex",
 										alignItems: "center",
-										padding: "60px 0",
+										justifyContent: "space-between",
 									}}
 								>
-									{/* Text side */}
-									<div style={{ order: isEven ? 0 : 1 }}>
-										<p
-											style={{
-												fontSize: 80,
-												fontWeight: 800,
-												color: "#ffffff",
-												opacity: 0.05,
-												lineHeight: 1,
-												margin: "0 0 4px",
-												letterSpacing: "-0.06em",
-											}}
-										>
-											{step.num}
-										</p>
-										<h3
-											style={{
-												fontSize: 26,
-												fontWeight: 700,
-												color: "#ffffff",
-												marginBottom: 12,
-												letterSpacing: "-0.02em",
-											}}
-										>
-											{step.title}
-										</h3>
-										<p
-											style={{
-												fontSize: 15,
-												color: "rgba(255,255,255,0.5)",
-												lineHeight: 1.75,
-												marginBottom: 20,
-												maxWidth: 420,
-											}}
-										>
-											{step.desc}
-										</p>
-										<div style={{ display: "flex", gap: 8 }}>
-											{step.tags.map((tag) => (
-												<span
-													key={tag}
-													style={{
-														borderRadius: 999,
-														padding: "4px 13px",
-														fontSize: 11,
-														fontWeight: 600,
-														letterSpacing: "0.04em",
-														background: stepAccents[i].bg,
-														border: `1px solid ${stepAccents[i].border}`,
-														color: stepAccents[i].text,
-													}}
-												>
-													{tag}
-												</span>
-											))}
-										</div>
+									<div
+										style={{
+											width: 42,
+											height: 42,
+											borderRadius: 12,
+											background: `${color}12`,
+											border: `1px solid ${color}25`,
+											display: "flex",
+											alignItems: "center",
+											justifyContent: "center",
+											color,
+										}}
+									>
+										<Icon size={19} />
 									</div>
-
-									{/* Image side */}
-									<div style={{ order: isEven ? 1 : 0 }}>
-										<motion.img
-											whileHover={{ scale: 1.02 }}
-											transition={{ duration: 0.4, ease: EASE }}
-											src={step.img}
-											alt={step.title}
-											className="img-cinematic"
+									<span
+										style={{
+											fontSize: 12,
+											fontWeight: 700,
+											color: "rgba(255,255,255,0.18)",
+											letterSpacing: "0.04em",
+											fontFeatureSettings: '"tnum"',
+										}}
+									>
+										{num}
+									</span>
+								</div>
+								<div>
+									<h3
+										style={{
+											fontSize: 16,
+											fontWeight: 700,
+											color: "#ffffff",
+											letterSpacing: "-0.02em",
+											marginBottom: 8,
+										}}
+									>
+										{title}
+									</h3>
+									<p
+										style={{
+											fontSize: 13,
+											color: "rgba(255,255,255,0.42)",
+											lineHeight: 1.7,
+											margin: 0,
+										}}
+									>
+										{desc}
+									</p>
+								</div>
+								<div
+									style={{
+										display: "flex",
+										gap: 6,
+										flexWrap: "wrap",
+										marginTop: "auto",
+									}}
+								>
+									{tags.map((tag) => (
+										<span
+											key={tag}
 											style={{
-												width: "100%",
-												height: 280,
-												objectFit: "cover",
+												fontSize: 11,
+												fontWeight: 600,
+												color: "rgba(255,255,255,0.38)",
+												background: "rgba(255,255,255,0.04)",
+												border: "1px solid rgba(255,255,255,0.07)",
+												borderRadius: 999,
+												padding: "2px 9px",
 											}}
-										/>
-									</div>
-								</motion.div>
-
-								{ i < steps.length - 1 && (
-									<div style={{ width: "100%", height: 1, background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08) 30%, rgba(255,255,255,0.08) 70%, transparent)" }} />
-								)}
-							</div>
-						);
-					})}
+										>
+											{tag}
+										</span>
+									))}
+								</div>
+							</motion.div>
+						)
+					)}
 				</div>
 			</div>
 
 			<style>{`
-        @media (max-width: 767px) {
-          .process-row { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .process-row > div { order: unset !important; }
-        }
+        @media (max-width: 1023px) { .hiw-grid { grid-template-columns: repeat(2, 1fr) !important; } .hiw-connector { display: none !important; } }
+        @media (max-width: 639px) { .hiw-grid { grid-template-columns: 1fr !important; } }
       `}</style>
 		</section>
 	);

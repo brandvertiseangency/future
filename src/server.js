@@ -32,6 +32,8 @@ const paymentRoutes = require("./routes/payment");
 const onboardingRoutes = require("./routes/onboarding");
 const creditsRoutes = require("./routes/credits");
 const notificationsRoutes = require("./routes/notifications");
+const calendarPlanRoutes = require("./routes/calendarPlan");
+const chatRoutes = require("./routes/chat");
 
 const app = express();
 
@@ -80,6 +82,8 @@ app.use("/api/payment", paymentRoutes);
 app.use("/api/onboarding", onboardingRoutes);
 app.use("/api/credits", creditsRoutes);
 app.use("/api/notifications", notificationsRoutes);
+app.use("/api/calendar", calendarPlanRoutes);  // new content pipeline (generate-plan, plans/, jobs/)
+app.use("/api/chat", chatRoutes);
 
 // ─── Legacy routes (backward compatibility) ───
 app.post("/generate", (req, res) => res.redirect(307, "/api/generate/legacy"));

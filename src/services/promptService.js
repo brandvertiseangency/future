@@ -24,12 +24,12 @@ function buildPrompt(post, brand, assets = [], feedback = null) {
   } = post;
 
   const {
-    brand_name = "Brand",
+    brand_name = brand.name || "Brand",
     industry = "General",
-    target_audience = "General audience",
+    target_audience = brand.audienceLocation || "General audience",
     tone = "professional and engaging",
     color_style = "",
-    design_preference = "modern and minimal",
+    design_preference = brand.fontMood || "modern and minimal",
     goals = "",
   } = brand;
 
@@ -62,10 +62,40 @@ Product must be the hero — well-lit, clearly visible, center of composition.`
       ? `Brand Identity: Subtly integrate brand visual identity. Do NOT overlay logo as text.`
       : "";
 
+  // ── Visual DNA from v2 onboarding ─────────────────────────────────────
+  const brandColors = brand.brandColors || brand.brand_colors || [];
+  const visualDNA = brand.visualDNA || brand.visual_dna;
+  const vibes = brand.visualVibes || brand.visual_vibes || brand.vibes || [];
+  const fontMood = brand.fontMood || brand.font_mood;
+
+  const fontMoodMap = {
+    modern: 'clean geometric sans-serif',
+    classic: 'traditional serif',
+    playful: 'rounded bubbly',
+    luxury: 'high-contrast editorial',
+    tech: 'monospace futuristic',
+    handwritten: 'organic handcrafted',
+  };
+
+  let colorGuide = color_style;
+  if (!colorGuide && brandColors.length) colorGuide = brandColors.join(', ');
+  if (!colorGuide && visualDNA?.colorPalette?.length) colorGuide = visualDNA.colorPalette.join(', ');
+
   // ── Color guidance ────────────────────────────────────────────────────
-  const colorBlock = color_style
-    ? `Color Palette: ${color_style}. Maintain strict color consistency.`
+  const colorBlock = colorGuide
+    ? `Color Palette: ${colorGuide}. Maintain strict color consistency.`
     : `Color Palette: Use sophisticated, industry-appropriate tones for ${industry}.`;
+
+  // ── Visual vibe / aesthetic ────────────────────────────────────────────
+  const vibeBlock = (() => {
+    const parts = [];
+    if (vibes.length) parts.push(`Visual vibes: ${vibes.join(', ')}`);
+    if (fontMood) parts.push(`Typography feel: ${fontMoodMap[fontMood] || fontMood}`);
+    if (visualDNA?.aestheticStyle) parts.push(`Aesthetic style: ${visualDNA.aestheticStyle}`);
+    if (visualDNA?.moodKeywords?.length) parts.push(`Mood: ${visualDNA.moodKeywords.join(', ')}`);
+    if (visualDNA?.designElements?.length) parts.push(`Design elements: ${visualDNA.designElements.join(', ')}`);
+    return parts.length ? parts.join('\n') : '';
+  })();
 
   // ── Post type specific guidance ───────────────────────────────────────
   const typeGuidance = getTypeGuidance(type);
@@ -100,6 +130,7 @@ ${logoBlock}
 
 ${colorBlock}
 
+${vibeBlock ? `BRAND AESTHETIC:\n${vibeBlock}\n` : ''}
 ${typeGuidance}
 
 TECHNICAL SPECIFICATIONS:
