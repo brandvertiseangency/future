@@ -383,6 +383,26 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
 
 // ─── GET /api/calendar/jobs/:jobId ───────────────────────────────────────────
 
+router.get('/jobs/recent', authMiddleware, async (req, res) => {
+  const pool = getPool();
+  if (!pool) return res.json({ jobs: [] });
+  try {
+    const { rows: userRows } = await pool.query('SELECT id FROM users WHERE firebase_uid=$1', [req.user.uid]);
+    const userId = userRows[0]?.id;
+    if (!userId) return res.json({ jobs: [] });
+
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const { rows } = await pool.query(
+      `SELECT * FROM generation_jobs WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2`,
+      [userId, limit]
+    );
+    res.json({ jobs: rows });
+  } catch (err) {
+    logger.error('recent jobs failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch recent jobs.' });
+  }
+});
+
 router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });

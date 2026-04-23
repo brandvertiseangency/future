@@ -15,6 +15,34 @@ const getUserId = async (uid) => {
   return rows[0]?.id || null;
 };
 
+/** GET /api/posts?limit=6&status=approved&offset=0 */
+router.get('/', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    const userId = await getUserId(req.user.uid);
+    if (!userId || !pool) return res.json({ posts: [] });
+
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const offset = parseInt(req.query.offset) || 0;
+    const status = req.query.status; // optional filter
+
+    let query, params;
+    if (status) {
+      query = `SELECT * FROM posts WHERE user_id=$1 AND status=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`;
+      params = [userId, status, limit, offset];
+    } else {
+      query = `SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+      params = [userId, limit, offset];
+    }
+
+    const { rows } = await pool.query(query, params);
+    res.json({ posts: rows });
+  } catch (err) {
+    logger.error('List posts failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch posts.' });
+  }
+});
+
 /** GET /api/posts/stats */
 router.get('/stats', authMiddleware, async (req, res) => {
   try {

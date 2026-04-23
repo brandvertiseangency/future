@@ -21,6 +21,7 @@ export interface GenerationForm {
   textOverlay: boolean
   fontStyle: string
   referenceImageUrls: string[]
+  selectedProductId: string | null   // brand product to feature
 }
 
 interface GenerationStore {
@@ -45,6 +46,7 @@ const defaultForm: GenerationForm = {
   textOverlay: true,
   fontStyle: 'minimal',
   referenceImageUrls: [],
+  selectedProductId: null,
 }
 
 export const useGenerationStore = create<GenerationStore>()(

@@ -3,22 +3,22 @@
 import { usePathname } from 'next/navigation'
 import { Bell, Sparkles, X, CheckCheck, Megaphone, CalendarDays, AlertTriangle, BarChart2, type LucideIcon } from 'lucide-react'
 import Link from 'next/link'
-import { ThemeToggle } from './theme-toggle'
-import { AIButton } from '@/components/ui/ai-button'
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { cn } from '@/lib/utils'
+import { useBrandStore } from '@/stores/brand'
 
-const PAGE_TITLES: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/calendar': 'Calendar',
-  '/generate': 'Generate',
-  '/assets': 'Assets',
-  '/settings': 'Settings',
-  '/onboarding': 'Setup',
+const PAGE_META: Record<string, { title: string; sub?: string }> = {
+  '/dashboard': { title: 'Dashboard',  sub: 'Overview' },
+  '/calendar':  { title: 'Calendar',   sub: 'Content Schedule' },
+  '/generate':  { title: 'Generate',   sub: 'Create Content' },
+  '/assets':    { title: 'Assets',     sub: 'Brand Files' },
+  '/outputs':   { title: 'Outputs',    sub: 'Generated Content' },
+  '/settings':  { title: 'Settings',   sub: 'Preferences' },
+  '/onboarding':{ title: 'Setup',      sub: 'Brand Configuration' },
 }
 
 interface Notification {
@@ -38,13 +38,13 @@ const NOTIF_ICON_COMPONENTS: Record<string, LucideIcon> = {
 
 export function Topbar() {
   const pathname = usePathname()
-  const title = Object.entries(PAGE_TITLES).find(([k]) => pathname.startsWith(k))?.[1] ?? 'Brandvertise'
+  const meta = Object.entries(PAGE_META).find(([k]) => pathname.startsWith(k))?.[1] ?? { title: 'Brandvertise' }
   const [time, setTime] = useState('')
   const { user } = useAuth()
+  const { currentBrand } = useBrandStore()
   const [notifOpen, setNotifOpen] = useState(false)
   const notifRef = useRef<HTMLDivElement>(null)
 
-  // Real notifications from backend
   const { data: notifData, mutate: mutateNotifs } = useSWR(
     '/api/notifications',
     fetcher<{ notifications: Notification[] }>,
@@ -74,35 +74,68 @@ export function Topbar() {
   }, [notifOpen])
 
   const initials = (user?.displayName ?? user?.email ?? 'U').charAt(0).toUpperCase()
+  const brandName = currentBrand?.name ?? null
 
   return (
-    <header className="fixed top-0 left-0 md:left-[220px] right-0 h-16 z-30
-                       bg-[var(--bg-canvas)]/90 backdrop-blur-xl
-                       border-b border-[var(--border-dim)]
-                       flex items-center justify-between px-4 md:px-6">
-
-      {/* LEFT */}
-      <div>
-        <h1 className="text-[15px] font-semibold text-[var(--text-1)] leading-none">{title}</h1>
-        <div className="flex items-center gap-1.5 mt-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[11px] text-[var(--text-3)]">AI ready · {time}</span>
+    <header
+      className="fixed top-0 left-0 md:left-[220px] right-0 h-14 z-30 flex items-center justify-between px-5 md:px-7"
+      style={{
+        background: 'rgba(0,0,0,0.80)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.055)',
+      }}
+    >
+      {/* LEFT — page title */}
+      <div className="flex items-center gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-[14px] font-semibold text-[var(--text-1)] leading-none tracking-[-0.01em]">
+              {meta.title}
+            </h1>
+            {brandName && (
+              <>
+                <span style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>/</span>
+                <span className="text-[12px] text-[var(--text-3)] font-medium">{brandName}</span>
+              </>
+            )}
+          </div>
+          {/* AI Status chip */}
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                boxShadow: '0 0 5px rgba(255,255,255,0.5)',
+                animation: 'pulse-glow 2.5s ease-in-out infinite',
+              }}
+            />
+            <span className="text-[10.5px] text-[var(--text-4)] tracking-[0.02em]">AI ready · {time}</span>
+          </div>
         </div>
       </div>
 
       {/* RIGHT */}
-      <div className="flex items-center gap-2">
-        <ThemeToggle />
+      <div className="flex items-center gap-1.5">
 
         {/* Notifications */}
         <div ref={notifRef} className="relative">
-          <button onClick={() => setNotifOpen((v) => !v)}
-            className="relative w-8 h-8 rounded-lg flex items-center justify-center hover:bg-[var(--bg-subtle)] transition-colors">
-            <Bell size={15} className="text-[var(--text-2)]" />
+          <button
+            onClick={() => setNotifOpen((v) => !v)}
+            className="relative w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
+            style={{
+              background: notifOpen ? 'rgba(255,255,255,0.08)' : 'transparent',
+              border: notifOpen ? '1px solid rgba(255,255,255,0.12)' : '1px solid transparent',
+            }}
+            onMouseEnter={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)' }}
+            onMouseLeave={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
+            <Bell size={14} style={{ color: 'rgba(255,255,255,0.55)' }} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full bg-[var(--ai-color)]
-                               ring-1 ring-[var(--bg-canvas)] text-[9px] text-white font-bold
-                               flex items-center justify-center px-0.5">
+              <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full
+                               ring-1 ring-black text-[8.5px] text-black font-bold
+                               flex items-center justify-center px-0.5"
+                style={{ background: 'linear-gradient(135deg, #fff 0%, #c0c0c0 100%)' }}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -111,50 +144,67 @@ export function Topbar() {
           <AnimatePresence>
             {notifOpen && (
               <motion.div
-                initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                initial={{ opacity: 0, y: 6, scale: 0.97 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 8, scale: 0.97 }}
-                transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 top-10 w-80 rounded-xl border border-[var(--border-base)]
-                           bg-[var(--card-bg)] shadow-2xl overflow-hidden z-50"
+                exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden z-50"
+                style={{
+                  background: '#0d0d0d',
+                  border: '1px solid rgba(255,255,255,0.10)',
+                  boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
+                }}
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border-dim)]">
-                  <span className="text-sm font-semibold text-[var(--text-1)]">Notifications</span>
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                  <span className="text-[13px] font-semibold text-[var(--text-1)]">Notifications</span>
                   <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
-                        className="flex items-center gap-1 text-[11px] text-[var(--ai-color)] hover:text-[var(--ai-color)] transition-colors">
-                        <CheckCheck size={12} />Mark all read
+                        className="flex items-center gap-1 text-[11px] text-[var(--text-3)] hover:text-white transition-colors">
+                        <CheckCheck size={11} />All read
                       </button>
                     )}
-                    <button onClick={() => setNotifOpen(false)} className="text-[var(--text-4)] hover:text-[var(--text-2)]">
-                      <X size={14} />
+                    <button onClick={() => setNotifOpen(false)} className="text-[var(--text-4)] hover:text-[var(--text-2)] transition-colors">
+                      <X size={13} />
                     </button>
                   </div>
                 </div>
-                <div className="max-h-72 overflow-y-auto divide-y divide-[var(--border-dim)]">
+
+                {/* List */}
+                <div className="max-h-72 overflow-y-auto divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                   {notifications.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <Bell size={24} className="text-[var(--text-4)] mx-auto mb-2" />
-                      <p className="text-sm text-[var(--text-3)]">No notifications yet</p>
+                    <div className="py-10 text-center">
+                      <Bell size={20} style={{ color: 'rgba(255,255,255,0.10)', margin: '0 auto 10px' }} />
+                      <p className="text-[12px] text-[var(--text-4)]">No notifications yet</p>
                     </div>
                   ) : (
-                    notifications.slice(0, 20).map((n) => (
-                      <div key={n.id} onClick={() => !n.read && markRead(n.id)}
-                        className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-[var(--bg-subtle)]',
-                          !n.read && 'bg-[var(--ai-glow)]')}>
-                        <span className="text-base flex-shrink-0 mt-0.5">{(() => { const Icon: LucideIcon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell; return <Icon size={14} className="text-[var(--text-3)]" />; })()}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className={cn('text-[13px] leading-snug', n.read ? 'text-[var(--text-3)]' : 'text-[var(--text-1)]')}>
-                            {n.message}
-                          </p>
-                          <p className="text-[10px] text-[var(--text-4)] mt-0.5">
-                            {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                          </p>
+                    notifications.slice(0, 20).map((n) => {
+                      const Icon: LucideIcon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell
+                      return (
+                        <div key={n.id} onClick={() => !n.read && markRead(n.id)}
+                          className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors',
+                            !n.read ? 'bg-white/[0.025]' : '')}
+                          style={{ ':hover': { background: 'rgba(255,255,255,0.04)' } } as React.CSSProperties}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,255,255,0.025)')}
+                        >
+                          <Icon size={13} style={{ color: 'rgba(255,255,255,0.35)', marginTop: 2, flexShrink: 0 }} />
+                          <div className="flex-1 min-w-0">
+                            <p className={cn('text-[12.5px] leading-snug', n.read ? 'text-[var(--text-3)]' : 'text-[var(--text-1)]')}>
+                              {n.message}
+                            </p>
+                            <p className="text-[10px] text-[var(--text-4)] mt-0.5">
+                              {new Date(n.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          {!n.read && (
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                              style={{ background: 'rgba(255,255,255,0.7)', boxShadow: '0 0 4px rgba(255,255,255,0.4)' }} />
+                          )}
                         </div>
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-[var(--ai-color)] flex-shrink-0 mt-1.5" />}
-                      </div>
-                    ))
+                      )
+                    })
                   )}
                 </div>
               </motion.div>
@@ -162,20 +212,29 @@ export function Topbar() {
           </AnimatePresence>
         </div>
 
-        {/* User avatar → settings */}
+        {/* User avatar */}
         <Link href="/settings">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600
-                          flex items-center justify-center text-white text-[11px] font-semibold
-                          cursor-pointer ring-2 ring-transparent hover:ring-[var(--ai-border)] transition-all">
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-black text-[11px] font-bold cursor-pointer transition-all duration-150"
+            style={{
+              background: 'linear-gradient(135deg, #ffffff 0%, #b0b0b0 100%)',
+              boxShadow: '0 0 0 1px rgba(255,255,255,0.15)',
+            }}
+            title="Settings"
+          >
             {initials}
           </div>
         </Link>
 
+        {/* CTA */}
         <Link href="/generate">
-          <AIButton className="h-8 px-4 text-[13px] font-medium rounded-lg">
-            <Sparkles size={13} className="text-[var(--ai-color)]" />
-            New Post
-          </AIButton>
+          <button
+            className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11.5px] font-semibold text-black transition-all duration-150 hover:opacity-90 hover:-translate-y-px"
+            style={{ background: 'linear-gradient(135deg, #ffffff 0%, #cccccc 100%)' }}
+          >
+            <Sparkles size={11} />
+            Generate
+          </button>
         </Link>
       </div>
     </header>

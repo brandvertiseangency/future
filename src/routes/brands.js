@@ -32,13 +32,13 @@ router.get('/current', authMiddleware, async (req, res) => {
   try {
     const pool = getPool();
     const userId = await getUserId(req.user.uid);
-    if (!userId || !pool) return res.status(404).json({ error: 'User not found.' });
+    if (!userId || !pool) return res.json({ brand: null });
     const { rows } = await pool.query(
       'SELECT * FROM brands WHERE user_id=$1 AND is_default=TRUE ORDER BY created_at ASC LIMIT 1',
       [userId]
     );
-    if (!rows[0]) return res.status(404).json({ error: 'No brand found.' });
-    res.json({ brand: rows[0] });
+    // Return null brand instead of 404 — dashboard handles the empty state gracefully
+    res.json({ brand: rows[0] || null });
   } catch (err) {
     res.status(500).json({ error: 'Failed to get brand.' });
   }

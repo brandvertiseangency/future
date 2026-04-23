@@ -1,99 +1,124 @@
 /**
  * Credit & Usage Control Service.
- * Manages credit deductions, usage tracking, and plan enforcement.
+ * Reads/writes from PostgreSQL — single source of truth for credits.
  */
-const { db, initialized } = require("../config/firebase");
-const config = require("../config");
-const logger = require("../utils/logger");
-
-const USAGE_COLLECTION = "credit_usage";
+const { getPool } = require('../config/postgres');
+const config = require('../config');
+const logger = require('../utils/logger');
 
 /**
- * Check if a user can perform an action based on credits and plan limits.
+ * Check if a user can perform an action based on credits.
  */
-async function canPerform(uid, action = "generate") {
-  if (!initialized) return { allowed: true, credits: 999 };
+async function canPerform(uid, action = 'generate') {
+  const pool = getPool();
+  if (!pool) return { allowed: true, credits: 999 };
 
-  const userDoc = await db.collection("users").doc(uid).get();
-  if (!userDoc.exists) return { allowed: false, reason: "User not found" };
-
-  const user = userDoc.data();
   const cost =
-    action === "regenerate"
+    action === 'regenerate'
       ? config.credits.costRegenerate
       : config.credits.costGenerate;
 
-  if ((user.credits || 0) < cost) {
+  const { rows } = await pool.query(
+    'SELECT id, credits, plan FROM users WHERE firebase_uid = $1',
+    [uid]
+  );
+
+  if (!rows[0]) return { allowed: false, reason: 'User not found' };
+
+  const user = rows[0];
+  const currentCredits = user.credits || 0;
+
+  if (currentCredits < cost) {
     return {
       allowed: false,
-      reason: "Insufficient credits",
-      credits: user.credits,
+      reason: 'Insufficient credits',
+      credits: currentCredits,
       cost,
       plan: user.plan,
     };
   }
 
-  return { allowed: true, credits: user.credits, cost, plan: user.plan };
+  return { allowed: true, credits: currentCredits, cost, plan: user.plan, userId: user.id };
 }
 
 /**
- * Deduct credits and log usage.
+ * Deduct credits and log usage in PostgreSQL.
  */
 async function deductAndLog(uid, action, metadata = {}) {
-  if (!initialized) {
-    logger.warn("Credit deduction skipped — Firestore offline");
+  const pool = getPool();
+  if (!pool) {
+    logger.warn('Credit deduction skipped — PostgreSQL not available');
     return { success: true, remaining: 999 };
   }
 
   const cost =
-    action === "regenerate"
+    action === 'regenerate'
       ? config.credits.costRegenerate
       : config.credits.costGenerate;
 
-  const userRef = db.collection("users").doc(uid);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  const remaining = await db.runTransaction(async (tx) => {
-    const doc = await tx.get(userRef);
-    if (!doc.exists) throw new Error("User not found");
+    const { rows } = await client.query(
+      'SELECT id, credits FROM users WHERE firebase_uid = $1 FOR UPDATE',
+      [uid]
+    );
+    if (!rows[0]) throw new Error('User not found');
 
-    const current = doc.data().credits || 0;
-    if (current < cost) throw new Error("Insufficient credits");
+    const current = rows[0].credits || 0;
+    if (current < cost) throw new Error('Insufficient credits');
 
     const updated = current - cost;
-    tx.update(userRef, { credits: updated });
-    return updated;
-  });
+    await client.query(
+      'UPDATE users SET credits = $1, updated_at = NOW() WHERE firebase_uid = $2',
+      [updated, uid]
+    );
 
-  // Log usage
-  await db.collection(USAGE_COLLECTION).add({
-    user_id: uid,
-    action,
-    cost,
-    remaining,
-    metadata,
-    created_at: new Date().toISOString(),
-  });
+    // Log to credit_transactions if table exists
+    try {
+      await client.query(
+        `INSERT INTO credit_transactions (user_id, type, amount, description, metadata)
+         VALUES ($1, 'debit', $2, $3, $4)`,
+        [rows[0].id, cost, action, JSON.stringify(metadata)]
+      );
+    } catch { /* table may not exist yet — non-fatal */ }
 
-  logger.info("Credit deducted", { uid, action, cost, remaining });
-  return { success: true, remaining };
+    await client.query('COMMIT');
+    logger.info('Credit deducted', { uid, action, cost, remaining: updated });
+    return { success: true, remaining: updated };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    logger.error('Credit deduction failed', { error: err.message, uid });
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
  * Check regeneration limit based on plan.
  */
 async function checkRegenLimit(uid, postId) {
-  if (!initialized) return { allowed: true };
+  const pool = getPool();
+  if (!pool) return { allowed: true };
 
-  const userDoc = await db.collection("users").doc(uid).get();
-  if (!userDoc.exists) return { allowed: false, reason: "User not found" };
+  const { rows: userRows } = await pool.query(
+    'SELECT plan FROM users WHERE firebase_uid = $1',
+    [uid]
+  );
+  if (!userRows[0]) return { allowed: false, reason: 'User not found' };
 
-  const plan = userDoc.data().plan || "free";
-  const maxRegen = config.plans[plan]?.maxRegenerations || 2;
+  const plan = userRows[0].plan || 'trial';
+  const maxRegen = config.plans[plan]?.maxRegenerations ?? config.plans['free']?.maxRegenerations ?? 2;
 
-  const postDoc = await db.collection("posts").doc(postId).get();
-  if (!postDoc.exists) return { allowed: false, reason: "Post not found" };
+  const { rows: postRows } = await pool.query(
+    'SELECT regeneration_count FROM posts WHERE id = $1',
+    [postId]
+  );
+  if (!postRows[0]) return { allowed: false, reason: 'Post not found' };
 
-  const regenCount = postDoc.data().regeneration_count || 0;
+  const regenCount = postRows[0].regeneration_count || 0;
 
   if (regenCount >= maxRegen) {
     return {
@@ -112,16 +137,21 @@ async function checkRegenLimit(uid, postId) {
  * Get usage history for a user.
  */
 async function getUsageHistory(uid, limit = 50) {
-  if (!initialized) return [];
+  const pool = getPool();
+  if (!pool) return [];
 
-  const snap = await db
-    .collection(USAGE_COLLECTION)
-    .where("user_id", "==", uid)
-    .orderBy("created_at", "desc")
-    .limit(limit)
-    .get();
-
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  try {
+    const { rows } = await pool.query(
+      `SELECT ct.* FROM credit_transactions ct
+       JOIN users u ON u.id = ct.user_id
+       WHERE u.firebase_uid = $1
+       ORDER BY ct.created_at DESC LIMIT $2`,
+      [uid, limit]
+    );
+    return rows;
+  } catch {
+    return [];
+  }
 }
 
 module.exports = {

@@ -1,49 +1,57 @@
 /**
  * Credit check middleware — ensures user has enough credits for the operation.
+ * Reads from PostgreSQL (single source of truth for credits).
  */
-const { db, initialized } = require("../config/firebase");
-const config = require("../config");
-const logger = require("../utils/logger");
+const { getPool } = require('../config/postgres');
+const config = require('../config');
+const logger = require('../utils/logger');
 
-function creditCheck(costType = "generate") {
+function creditCheck(costType = 'generate') {
   return async (req, res, next) => {
-    if (!initialized) {
-      logger.warn("Credit check skipped — Firebase not initialized");
-      return next();
-    }
+    const uid = req.user?.uid;
+    if (!uid) return res.status(401).json({ error: 'Unauthorized.' });
 
-    const uid = req.user.uid;
     const cost =
-      costType === "regenerate"
+      costType === 'regenerate'
         ? config.credits.costRegenerate
         : config.credits.costGenerate;
 
     try {
-      const userDoc = await db.collection("users").doc(uid).get();
-
-      if (!userDoc.exists) {
-        return res.status(404).json({ error: "User profile not found." });
+      const pool = getPool();
+      if (!pool) {
+        logger.warn('Credit check skipped — PostgreSQL not available');
+        return next();
       }
 
-      const userData = userDoc.data();
-      const currentCredits = userData.credits || 0;
+      const { rows } = await pool.query(
+        'SELECT id, credits, plan FROM users WHERE firebase_uid = $1',
+        [uid]
+      );
+
+      if (!rows[0]) {
+        return res.status(404).json({ error: 'User profile not found.' });
+      }
+
+      const user = rows[0];
+      const currentCredits = user.credits || 0;
 
       if (currentCredits < cost) {
         return res.status(402).json({
-          error: "Insufficient credits.",
+          error: 'Insufficient credits.',
           credits_available: currentCredits,
           credits_required: cost,
-          plan: userData.plan,
+          plan: user.plan,
         });
       }
 
       // Attach for downstream use
-      req.userPlan = userData.plan || "free";
+      req.userPlan = user.plan || 'trial';
       req.userCredits = currentCredits;
+      req.userId = user.id;
       next();
     } catch (err) {
-      logger.error("Credit check failed", { error: err.message, uid });
-      return res.status(500).json({ error: "Failed to verify credits." });
+      logger.error('Credit check failed', { error: err.message, uid });
+      return res.status(500).json({ error: 'Failed to verify credits.' });
     }
   };
 }

@@ -14,8 +14,11 @@ import {
   ImageIcon,
   ChevronDown,
   AlertCircle,
+  Package,
+  CheckCircle2,
 } from 'lucide-react'
 import { useGenerationStore, type OutputCard } from '@/stores/generation'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -162,9 +165,7 @@ function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number 
   )
 }
 
-function SkeletonCard() {
-  return (
-    <div className="rounded-xl border border-[var(--card-border)] overflow-hidden">
+function SkeletonCard() {  return (    <div className="rounded-xl border border-[var(--card-border)] overflow-hidden">
       <div className="aspect-square bg-[var(--bg-subtle)] animate-pulse" />
       <div className="p-3 space-y-2 border-t border-[var(--border-dim)]">
         <div className="h-3 rounded bg-[var(--bg-muted)] w-3/4" />
@@ -173,6 +174,78 @@ function SkeletonCard() {
     </div>
   )
 }
+
+// ─── Product Selector ─────────────────────────────────────────────────────────
+function ProductSelector() {
+  const { form, setForm } = useGenerationStore()
+  const products = useOnboardingStore((s) => s.data.products) || []
+
+  if (products.length === 0) return null
+
+  return (
+    <div>
+      <p className="text-[var(--text-3)] text-xs uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5">
+        <Package size={12} />
+        Which product is this post about?
+      </p>
+      <div className="grid grid-cols-3 gap-2">
+        {products.map((p) => {
+          const selected = form.selectedProductId === p.id
+          return (
+            <button
+              key={p.id}
+              onClick={() => setForm({ selectedProductId: selected ? null : p.id })}
+              className={cn(
+                'rounded-xl border p-2 text-left transition-all',
+                selected
+                  ? 'border-[var(--border-loud)] bg-[var(--bg-subtle)]'
+                  : 'border-[var(--border-base)] hover:border-[var(--border-loud)] bg-[var(--card-bg)]'
+              )}
+            >
+              <div className="w-full aspect-[4/3] rounded-lg bg-[var(--bg-subtle)] mb-1.5 overflow-hidden flex items-center justify-center relative">
+                {p.images[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.images[0]} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon size={14} className="text-[var(--text-4)]" />
+                )}
+                {selected && (
+                  <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center">
+                    <CheckCircle2 size={10} className="text-black" />
+                  </div>
+                )}
+              </div>
+              <p className="text-[var(--text-1)] text-[10px] font-medium truncate">{p.name}</p>
+              <p className="text-[var(--text-4)] text-[9px] truncate">{selected ? 'Selected' : 'Click to select'}</p>
+            </button>
+          )
+        })}
+        {/* No product option */}
+        <button
+          onClick={() => setForm({ selectedProductId: null })}
+          className={cn(
+            'rounded-xl border-2 border-dashed p-2 flex flex-col items-center justify-center aspect-[4/3] transition-all',
+            form.selectedProductId === null
+              ? 'border-[var(--border-loud)] bg-[var(--bg-subtle)]'
+              : 'border-[var(--border-base)] hover:border-[var(--border-loud)]'
+          )}
+        >
+          <p className="text-[var(--text-4)] text-[9px]">No product</p>
+        </button>
+      </div>
+      {form.selectedProductId && (() => {
+        const prod = products.find((p) => p.id === form.selectedProductId)
+        return prod?.visualDescription ? (
+          <p className="text-[var(--text-4)] text-[10px] mt-2 leading-relaxed">
+            AI will use: <span className="text-[var(--text-3)]">{prod.visualDescription}</span>
+          </p>
+        ) : null
+      })()}
+    </div>
+  )
+}
+
+
 
 export default function GeneratePage() {
   const { form, outputs, isGenerating, setForm, setOutputs, setGenerating, setJobId } = useGenerationStore()
@@ -212,9 +285,30 @@ export default function GeneratePage() {
     setGenerating(true)
     setOutputs([])
     const toastId = toast.loading('Starting generation…')
+
+    // Build product context to inject into prompt
+    const allProducts = useOnboardingStore.getState().data.products || []
+    const selectedProduct = form.selectedProductId
+      ? allProducts.find((p) => p.id === form.selectedProductId)
+      : null
+
     try {
       const res = await apiCall<{ jobId: string }>('/api/post/generate', {
-        method: 'POST', body: JSON.stringify(form),
+        method: 'POST',
+        body: JSON.stringify({
+          ...form,
+          productContext: selectedProduct
+            ? {
+                name: selectedProduct.name,
+                description: selectedProduct.description,
+                price: selectedProduct.price,
+                category: selectedProduct.category,
+                tags: selectedProduct.tags,
+                visualDescription: selectedProduct.visualDescription,
+                imageUrl: selectedProduct.images[0] || null,
+              }
+            : null,
+        }),
       })
       setJobId(res.jobId)
       pollingRef.current = setInterval(async () => {
@@ -393,6 +487,9 @@ export default function GeneratePage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* Product selector */}
+          <ProductSelector />
 
           {/* Reference images */}
           <div>

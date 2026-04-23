@@ -29,6 +29,19 @@ export interface ReferenceImage {
   analysed: boolean
 }
 
+export interface ProductItem {
+  id: string                  // local uuid
+  name: string                // e.g. "Signature Kurta Set"
+  description: string         // AI context description
+  price: string               // e.g. "₹2,499 · 20% off"
+  category: string            // e.g. "ethnic wear"
+  tags: string[]
+  images: string[]            // base64 or upload URL (up to 4)
+  visualDescription: string   // filled by Vision AI after analysis
+  useIn: ('calendar' | 'image_generation' | 'social_ads')[]
+  isPrimary: boolean
+}
+
 export interface ExtractedStyleProfile {
   extractedColors: string[]
   fontMoodDetected: string
@@ -96,6 +109,9 @@ export interface OnboardingData {
   referenceAnalysisComplete: boolean
   extractedStyleProfile: ExtractedStyleProfile | null
 
+  // v2 Step 7.5 Product Library
+  products: ProductItem[]
+
   // v2 Step 8 Calendar Prefs
   weeklyPostCount: number
   contentMix: ContentMix
@@ -113,6 +129,10 @@ interface OnboardingStore {
   addReferenceImage: (img: ReferenceImage) => void
   removeReferenceImage: (index: number) => void
   setExtractedStyleProfile: (profile: ExtractedStyleProfile) => void
+  // Product Library
+  addProduct: (product: ProductItem) => void
+  updateProduct: (id: string, partial: Partial<ProductItem>) => void
+  removeProduct: (id: string) => void
   reset: () => void
 }
 
@@ -157,6 +177,7 @@ const defaultData: OnboardingData = {
   referenceImages: [],
   referenceAnalysisComplete: false,
   extractedStyleProfile: null,
+  products: [],
   weeklyPostCount: 4,
   contentMix: { promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 },
   activePlatforms: ['instagram'],
@@ -199,6 +220,26 @@ export const useOnboardingStore = create<OnboardingStore>()(
             ...state.data,
             extractedStyleProfile: profile,
             referenceAnalysisComplete: true,
+          },
+        })),
+      addProduct: (product) =>
+        set((state) => ({
+          data: { ...state.data, products: [...state.data.products, product] },
+        })),
+      updateProduct: (id, partial) =>
+        set((state) => ({
+          data: {
+            ...state.data,
+            products: state.data.products.map((p) =>
+              p.id === id ? { ...p, ...partial } : p
+            ),
+          },
+        })),
+      removeProduct: (id) =>
+        set((state) => ({
+          data: {
+            ...state.data,
+            products: state.data.products.filter((p) => p.id !== id),
           },
         })),
       reset: () => set({ step: 1, data: defaultData }),

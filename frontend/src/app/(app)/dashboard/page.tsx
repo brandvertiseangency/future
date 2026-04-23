@@ -1,6 +1,6 @@
 'use client'
 
-import { Layers, AlertCircle, ArrowRight } from 'lucide-react'
+import { AlertCircle, ArrowRight, Layers } from 'lucide-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
@@ -13,6 +13,13 @@ import { RecentOutputs } from '@/components/dashboard/recent-outputs'
 
 const fetcher = <T,>(url: string) => apiCall<T>(url)
 
+function getGreeting() {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default function DashboardPage() {
   const { user } = useAuth()
   const { data: brandData } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
@@ -22,74 +29,85 @@ export default function DashboardPage() {
 
   const firstName = user?.displayName?.split(' ')[0] ?? 'there'
   const brandName = brand?.name ?? 'My Brand'
+  const greeting = getGreeting()
 
   return (
-    <div style={{ maxWidth: 780, margin: '0 auto', padding: '32px 24px 64px' }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 24px 72px' }}>
 
-      {/* Onboarding incomplete banner */}
+      {/* Onboarding banner */}
       {!onboardingComplete && (
-        <Link href="/onboarding" style={{ display: 'block', marginBottom: 20, textDecoration: 'none' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 14, padding: '14px 18px', gap: 12,
-            cursor: 'pointer',
-          }}>
+        <Link href="/onboarding" style={{ display: 'block', marginBottom: 24, textDecoration: 'none' }}>
+          <div
+            className="card-silver"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              borderRadius: 14, padding: '14px 18px', gap: 12,
+              background: 'rgba(255,255,255,0.025)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 10,
+                width: 34, height: 34, borderRadius: 9,
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.1)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
-                <AlertCircle size={16} color="rgba(255,255,255,0.5)" />
+                <AlertCircle size={15} color="rgba(255,255,255,0.5)" />
               </div>
               <div>
                 <p style={{ color: 'var(--text-1)', fontSize: 13, fontWeight: 500, margin: 0 }}>
-                  Complete your brand setup for better results
+                  Complete your brand setup
                 </p>
-                <p style={{ color: 'var(--text-3)', fontSize: 12, margin: '2px 0 0' }}>
-                  Tell us about your brand so the AI can create more relevant content for you
+                <p style={{ color: 'var(--text-3)', fontSize: 11.5, margin: '2px 0 0' }}>
+                  Unlock personalised AI-generated content
                 </p>
               </div>
             </div>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              color: 'var(--text-2)', fontSize: 12, fontWeight: 500, flexShrink: 0,
-            }}>
-              Set up now <ArrowRight size={13} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-2)', fontSize: 12, fontWeight: 500, flexShrink: 0 }}>
+              Set up <ArrowRight size={12} />
             </div>
           </div>
         </Link>
       )}
 
-      {/* Greeting */}
-      <div style={{ textAlign: 'center', marginBottom: 28 }}>
+      {/* Hero greeting */}
+      <div style={{ marginBottom: 28 }}>
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 11, color: 'var(--text-4)', marginBottom: 10,
-          letterSpacing: '0.06em', textTransform: 'uppercase',
+          display: 'inline-flex', alignItems: 'center', gap: 5,
+          fontSize: 10, color: 'var(--text-4)', marginBottom: 8,
+          letterSpacing: '0.1em', textTransform: 'uppercase',
         }}>
-          <Layers size={11} strokeWidth={1.5} />
+          <Layers size={10} strokeWidth={1.5} />
           {brandName}
         </div>
         <h1 style={{
-          fontSize: 30, fontWeight: 300, letterSpacing: '-0.035em',
-          color: 'var(--text-1)', margin: 0,
+          fontFamily: 'var(--font-display, var(--font-sans))',
+          fontSize: 32, fontWeight: 400,
+          letterSpacing: '-0.03em',
+          color: 'var(--text-1)',
+          lineHeight: 1.15,
+          margin: '0 0 6px',
         }}>
-          Welcome back, <span className="silver-text" style={{ fontWeight: 500 }}>{firstName}</span>
+          {greeting},{' '}
+          <span className="silver-text-anim" style={{ fontStyle: 'italic' }}>
+            {firstName}
+          </span>
         </h1>
+        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+          {onboardingComplete
+            ? "Your brand AI is ready. What would you like to create today?"
+            : "Finish setting up your brand to unlock the full experience."}
+        </p>
       </div>
 
-      {/* Brand AI Chat — centrepiece */}
+      {/* Brand AI Chat */}
       <BrandChat brand={brand} />
 
-      {/* Ideas */}
+      {/* Content Ideas */}
       <IdeasGrid brand={brand} />
 
-      {/* Quick Actions + Queue */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      {/* Quick Actions + Queue — 2-col */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
         <QuickActions />
         <GenQueue />
       </div>

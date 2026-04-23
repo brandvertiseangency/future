@@ -22,6 +22,8 @@ import { StepAudience } from '@/components/onboarding/step-audience'
 import { StepIndustryConfig } from '@/components/onboarding/step-industry-config'
 // Step 7: reference image upload + vision AI (new)
 import { StepReferences } from '@/components/onboarding/step-references'
+// Step 7.5: product library (new)
+import { StepProductLibrary } from '@/components/onboarding/step-product-library'
 // Step 8: calendar prefs (new)
 import { StepCalendarPrefs } from '@/components/onboarding/step-calendar-prefs'
 // Step 9: first post (existing — completion step)
@@ -35,6 +37,7 @@ const STEP_NAMES = [
   'Audience',
   'Your Brand',
   'References',
+  'Products',
   'Content Plan',
   'First Post',
 ]
@@ -47,6 +50,7 @@ const STEPS = [
   StepAudience,
   StepIndustryConfig,
   StepReferences,
+  StepProductLibrary,
   StepCalendarPrefs,
   StepFirstPost,
 ]

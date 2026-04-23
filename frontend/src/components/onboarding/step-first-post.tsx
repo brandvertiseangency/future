@@ -100,6 +100,19 @@ export function StepFirstPost() {
     } catch {
       // Will retry on save
     }
+
+    // Sync product library to DB (non-blocking)
+    try {
+      const products = data.products || []
+      if (products.length > 0) {
+        await apiCall('/api/brand-products/sync-from-onboarding', {
+          method: 'POST',
+          body: JSON.stringify({ products }),
+        })
+      }
+    } catch {
+      // Non-fatal — user can manage products from Brand Settings
+    }
   }
 
   useEffect(() => {
