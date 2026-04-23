@@ -138,8 +138,8 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─── Start server (only when run directly) ───
-if (require.main === module) {
+// ─── Start server (only when run directly, not on Vercel) ───
+if (require.main === module && !process.env.VERCEL) {
   const PORT = config.port;
   app.listen(PORT, async () => {
     logger.info(`🚀 Brandvertise AI Design Hub v2.0 running on port ${PORT}`);

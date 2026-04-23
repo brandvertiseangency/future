@@ -2,10 +2,19 @@ const winston = require("winston");
 const path = require("path");
 const fs = require("fs");
 
-// Ensure logs directory exists
-const logsDir = path.join(__dirname, "../../logs");
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+// On Vercel the filesystem is read-only — skip file transports
+const isVercel = !!process.env.VERCEL;
+
+const fileTransports = [];
+if (!isVercel) {
+  const logsDir = path.join(__dirname, "../../logs");
+  if (!fs.existsSync(logsDir)) {
+    fs.mkdirSync(logsDir, { recursive: true });
+  }
+  fileTransports.push(
+    new winston.transports.File({ filename: path.join(logsDir, "app.log") }),
+    new winston.transports.File({ filename: path.join(logsDir, "error.log"), level: "error" })
+  );
 }
 
 const logger = winston.createLogger({
@@ -20,7 +29,6 @@ const logger = winston.createLogger({
     })
   ),
   transports: [
-    // Console output
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.colorize(),
@@ -33,15 +41,7 @@ const logger = winston.createLogger({
         })
       ),
     }),
-    // File output — all logs
-    new winston.transports.File({
-      filename: path.join(logsDir, "app.log"),
-    }),
-    // File output — errors only
-    new winston.transports.File({
-      filename: path.join(logsDir, "error.log"),
-      level: "error",
-    }),
+    ...fileTransports,
   ],
 });
 
