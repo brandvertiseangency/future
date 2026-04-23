@@ -156,9 +156,9 @@ export function StepCalendarPrefs() {
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(7)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
+        <button onClick={() => setStep(8)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
         <AIButton
-          onClick={() => setStep(9)}
+          onClick={() => setStep(10)}
           disabled={submitting}
           className="px-8 py-2.5 rounded-xl text-sm font-semibold"
         >
