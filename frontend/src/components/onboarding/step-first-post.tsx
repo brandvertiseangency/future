@@ -1,240 +1,226 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { RefreshCw, CalendarPlus, Sparkles } from 'lucide-react'
+import { Calendar, Sparkles, Loader2 } from 'lucide-react'
+import useSWR from 'swr'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
-import { toast } from 'sonner'
-import { MultiStepLoader } from '@/components/ui/multi-step-loader'
 import { AIButton } from '@/components/ui/ai-button'
+import { cn } from '@/lib/utils'
 
-interface GeneratedPost {
-  id: string
-  caption: string
-  platform: string
-  hashtags: string[]
+const MIX_KEYS = ['promotional', 'educational', 'testimonial', 'bts', 'festive'] as const
+const MIX_LABELS: Record<string, string> = {
+  promotional: 'Promotional',
+  educational: 'Educational',
+  testimonial: 'Testimonial',
+  bts: 'Behind the Scenes',
+  festive: 'Festive / Seasonal',
 }
+const PLAN_LIMITS: Record<string, number> = { free: 12, pro: 30, agency: 60 }
 
-const LOADER_STEPS = [
-  { text: 'Analyzing your brand DNA...' },
-  { text: 'Crafting your voice...' },
-  { text: 'Generating your first post...' },
-  { text: 'Adding final touches...' },
-]
+function getNextMonth() {
+  const d = new Date()
+  const next = new Date(d.getFullYear(), d.getMonth() + 1, 1)
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`
+}
 
 export function StepFirstPost() {
   const router = useRouter()
-  const { data, reset } = useOnboardingStore()
-  const [loading, setLoading] = useState(true)
-  const [post, setPost] = useState<GeneratedPost | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [regenerating, setRegenerating] = useState(false)
-  const [onboardingDone, setOnboardingDone] = useState(false)
+  const { data: onboardingData, reset } = useOnboardingStore()
 
-  const firstPlatform = (data.platforms || [])[0] || 'instagram'
-  const firstGoal = (data.goals || [])[0] || 'growth'
+  const { data: brandData } = useSWR('/api/brands/current', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
+  const { data: creditsData } = useSWR('/api/credits/balance', (u: string) => apiCall<{ balance: number }>(u), { revalidateOnFocus: false })
 
-  const generatePost = async () => {
-    setLoading(true)
-    try {
-      const res = await apiCall<{ post: GeneratedPost }>('/api/generate-content', {
-        method: 'POST',
-        body: JSON.stringify({
-          platform: firstPlatform,
-          contentType: 'post',
-          brief: `${data.brandName ? `Brand: ${data.brandName}.` : ''} ${data.description || ''} Goal: ${firstGoal}.`,
-          mood: (data.styles || [])[0] || '',
-        }),
-      })
-      setPost(res.post)
-    } catch {
-      setPost({
-        id: 'preview',
-        caption: `Introducing ${data.brandName || 'your brand'} — where ${data.description || 'great things happen'}. Stay tuned for exciting updates!`,
-        platform: firstPlatform,
-        hashtags: ['brand', 'launch', 'newbeginnings'],
-      })
-    } finally {
-      setLoading(false)
-    }
+  const brand = brandData?.brand ?? brandData
+  const credits = creditsData?.balance ?? 0
+  const plan = brand?.plan ?? 'free'
+  const maxPosts = PLAN_LIMITS[plan] ?? 12
+
+  const [month, setMonth] = useState(getNextMonth())
+  const [postCount, setPostCount] = useState(Math.min((onboardingData.weeklyPostCount || 4) * 4, maxPosts))
+  const [mix, setMix] = useState({
+    promotional: onboardingData.contentMix?.promotional ?? 30,
+    educational: onboardingData.contentMix?.educational ?? 25,
+    testimonial: onboardingData.contentMix?.testimonial ?? 20,
+    bts: onboardingData.contentMix?.bts ?? 15,
+    festive: onboardingData.contentMix?.festive ?? 10,
+  })
+  const [generating, setGenerating] = useState(false)
+  const [error, setError] = useState('')
+
+  const creditsNeeded = postCount * 2
+  const hasCredits = credits >= creditsNeeded
+  const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0)
+  const canGenerate = hasCredits && mixTotal === 100 && !generating
+
+  const adjustMix = (key: string, delta: number) => {
+    setMix((m) => ({ ...m, [key]: Math.max(0, Math.min(100, (m[key as keyof typeof m] ?? 0) + delta)) }))
   }
 
   const completeOnboarding = async () => {
-    if (onboardingDone) return
     try {
       await apiCall('/api/onboarding/complete', {
         method: 'POST',
         body: JSON.stringify({
-          brandName: data.brandName,
-          description: data.description,
-          industry: data.industry,
-          industryLabel: data.industryLabel,
-          tone: data.tone,
-          styles: data.styles || data.vibeStyles || [],
-          audienceAgeMin: data.audienceAgeMin || data.ageRange?.[0] || 22,
-          audienceAgeMax: data.audienceAgeMax || data.ageRange?.[1] || 45,
-          audienceGender: data.audienceGender || data.gender || 'mixed',
-          audienceLocation: data.audienceCity || data.location || '',
-          audienceInterests: data.audienceLifestyle?.length ? data.audienceLifestyle : (data.interests || []),
-          platforms: data.activePlatforms?.length ? data.activePlatforms : (data.platforms || []),
-          goals: data.goals,
-          // v2 new fields
-          colorPrimary: data.colorPrimary,
-          colorSecondary: data.colorSecondary,
-          colorAccent: data.colorAccent,
-          fontMood: data.fontMood,
-          priceSegment: data.priceSegment,
-          industrySubtype: data.industrySubtype,
-          uspKeywords: data.uspKeywords,
-          industryAnswers: data.industryAnswers,
-          weeklyPostCount: data.weeklyPostCount,
-          contentMix: data.contentMix,
-          autoSchedule: data.autoSchedule,
-          extractedStyleProfile: data.extractedStyleProfile,
-          referenceImageUrls: (data.referenceImages || []).map((r) => r.url).slice(0, 5),
+          brandName: onboardingData.brandName,
+          description: onboardingData.description,
+          industry: onboardingData.industry,
+          industryLabel: onboardingData.industryLabel,
+          tone: onboardingData.tone,
+          styles: onboardingData.vibeStyles?.length ? onboardingData.vibeStyles : (onboardingData.styles || []),
+          audienceAgeMin: onboardingData.audienceAgeMin || 22,
+          audienceAgeMax: onboardingData.audienceAgeMax || 45,
+          audienceGender: onboardingData.audienceGender || 'mixed',
+          audienceLocation: onboardingData.audienceCity || '',
+          audienceInterests: onboardingData.audienceLifestyle?.length ? onboardingData.audienceLifestyle : (onboardingData.interests || []),
+          platforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
+          goals: onboardingData.goals || [],
+          colorPrimary: onboardingData.colorPrimary,
+          colorSecondary: onboardingData.colorSecondary,
+          colorAccent: onboardingData.colorAccent,
+          fontMood: onboardingData.fontMood,
+          priceSegment: onboardingData.priceSegment,
+          industrySubtype: onboardingData.industrySubtype,
+          uspKeywords: onboardingData.uspKeywords,
+          industryAnswers: onboardingData.industryAnswers,
+          weeklyPostCount: onboardingData.weeklyPostCount,
+          contentMix: onboardingData.contentMix,
+          autoSchedule: onboardingData.autoSchedule,
+          extractedStyleProfile: onboardingData.extractedStyleProfile,
+          referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
         }),
       })
-      setOnboardingDone(true)
-    } catch {
-      // Will retry on save
-    }
-
-    // Sync product library to DB (non-blocking)
-    try {
-      const products = data.products || []
-      if (products.length > 0) {
-        await apiCall('/api/brand-products/sync-from-onboarding', {
-          method: 'POST',
-          body: JSON.stringify({ products }),
-        })
-      }
-    } catch {
-      // Non-fatal — user can manage products from Brand Settings
-    }
+    } catch { /* non-blocking */ }
   }
 
-  useEffect(() => {
-    generatePost()
+  const handleGenerate = async () => {
+    if (!canGenerate) return
+    setGenerating(true)
+    setError('')
+    // Complete onboarding in parallel (non-blocking)
     completeOnboarding()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const handleSave = async () => {
-    setSaving(true)
     try {
-      if (!onboardingDone) await completeOnboarding()
-      // Fire confetti
-      const confetti = (await import('canvas-confetti')).default
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } })
-      toast.success('Post saved to your calendar!')
-      setTimeout(() => {
-        reset()
-        router.push('/dashboard')
-      }, 1500)
-    } catch {
-      toast.error('Failed to save. Redirecting to dashboard…')
+      const res = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
+        method: 'POST',
+        body: JSON.stringify({ month, postCount, mixPreferences: mix }),
+      })
       reset()
-      router.push('/dashboard')
-    } finally {
-      setSaving(false)
+      router.push(`/calendar/review?planId=${res.planId}`)
+    } catch (e: any) {
+      setError(e?.message ?? 'Failed to generate plan. Please try again.')
+      setGenerating(false)
     }
   }
 
-  const handleSkip = () => {
-    completeOnboarding().finally(() => {
-      reset()
-      router.push('/dashboard')
-    })
-  }
-
-  const handleRegenerate = async () => {
-    setRegenerating(true)
-    await generatePost()
-    setRegenerating(false)
-  }
-
-  const platformColors: Record<string, string> = {
-    instagram: '#e1306c', linkedin: '#0077b5', twitter: '#1da1f2',
-    facebook: '#1877f2', tiktok: '#ff0050', youtube: '#ff0000',
-    pinterest: '#e60023', threads: '#ffffff',
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <MultiStepLoader loadingStates={LOADER_STEPS} loading={true} duration={1200} />
-      </div>
-    )
+  const handleSkip = async () => {
+    await completeOnboarding()
+    reset()
+    router.push('/dashboard')
   }
 
   return (
     <div className="space-y-8">
-      <div className="text-center">
-        <h2 className="text-white font-semibold text-3xl tracking-tight">Your first post is ready</h2>
-        <p className="text-white/40 text-sm mt-2">Based on your brand DNA. Ready to publish.</p>
+      {/* Header */}
+      <div>
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
+            <Calendar size={15} className="text-white/60" />
+          </div>
+          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+            Content Calendar
+          </span>
+        </div>
+        <h2 className="text-white font-bold text-3xl tracking-tight">Plan your content</h2>
+        <p className="text-white/40 text-sm mt-2 leading-relaxed">
+          AI will create a full month of post ideas using your Brand DNA.
+          Review and approve each one before anything is generated.
+        </p>
       </div>
 
-      {/* Phone mockup */}
-      <div className="flex justify-center">
-        <div className="w-[280px] rounded-[44px] border-2 border-white/10 bg-[#0a0a0a] overflow-hidden shadow-[0_0_60px_rgba(0,0,0,0.5)]">
-          {/* Notch */}
-          <div className="h-8 bg-black flex items-center justify-center">
-            <div className="w-20 h-5 bg-black rounded-full border border-white/5" />
+      {/* Config card */}
+      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-6">
+
+        {/* Month */}
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35 block mb-2">Month</label>
+          <input
+            type="month" value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white/80 text-sm focus:outline-none focus:border-white/25 transition-colors"
+          />
+        </div>
+
+        {/* Post count */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">How many posts?</label>
+            <span className="text-white font-semibold text-sm tabular-nums">{postCount}</span>
           </div>
-          {/* Content */}
-          <div className="p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                style={{ background: platformColors[firstPlatform] || '#888' }}>
-                {firstPlatform[0].toUpperCase()}
-              </div>
-              <div>
-                <p className="text-white text-xs font-semibold capitalize">{firstPlatform}</p>
-                <p className="text-white/30 text-[10px]">Just now</p>
-              </div>
-            </div>
+          <input
+            type="range" min={4} max={maxPosts} step={1} value={postCount}
+            onChange={(e) => setPostCount(Number(e.target.value))}
+            className="w-full accent-white/70"
+          />
+          <div className="flex justify-between mt-1">
+            <span className="text-[10px] text-white/25">4 min</span>
+            <span className="text-[10px] text-white/25">{maxPosts} max ({plan})</span>
+          </div>
+        </div>
 
-            <AnimatePresence mode="wait">
-              <motion.div key={post?.caption} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <p className="text-white text-xs leading-relaxed">{post?.caption}</p>
-                {(post?.hashtags || []).length > 0 && (
-                  <p className="text-[var(--ai-color)] text-[10px] mt-2 opacity-70">
-                    {post?.hashtags.slice(0, 5).map((h) => `#${h.replace(/^#/, '')}`).join(' ')}
-                  </p>
-                )}
-              </motion.div>
-            </AnimatePresence>
-
-            <div className="aspect-square rounded-xl bg-gradient-to-br from-cyan-900/30 via-blue-900/20 to-black flex items-center justify-center border border-white/5">
-              <Sparkles size={24} className="text-white/15" />
-            </div>
+        {/* Content mix */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">Content mix</label>
+            <span className={cn('text-[11px] font-mono', mixTotal === 100 ? 'text-emerald-400' : 'text-rose-400')}>
+              {mixTotal}% {mixTotal === 100 ? '✓' : '(must = 100%)'}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {MIX_KEYS.map((key) => (
+              <div key={key} className="flex items-center gap-3">
+                <span className="text-white/55 text-xs w-36 flex-shrink-0">{MIX_LABELS[key]}</span>
+                <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+                  <div className="h-full rounded-full bg-white/40 transition-all" style={{ width: `${mix[key]}%` }} />
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button onClick={() => adjustMix(key, -5)} className="w-5 h-5 rounded bg-white/[0.06] text-white/50 hover:bg-white/10 text-xs transition-all">−</button>
+                  <span className="text-white text-xs font-mono w-6 text-center">{mix[key]}</span>
+                  <button onClick={() => adjustMix(key, 5)} className="w-5 h-5 rounded bg-white/[0.06] text-white/50 hover:bg-white/10 text-xs transition-all">+</button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Actions */}
-      <div className="flex flex-col items-center gap-3 max-w-xs mx-auto">
+      {/* Credits */}
+      <div className={cn(
+        'px-4 py-3 rounded-xl border text-sm',
+        hasCredits ? 'bg-white/[0.02] border-white/[0.06] text-white/50' : 'bg-rose-500/[0.06] border-rose-500/25 text-rose-400'
+      )}>
+        {hasCredits
+          ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after`
+          : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
+      </div>
+
+      {error && <p className="text-rose-400 text-xs">{error}</p>}
+
+      {/* CTA */}
+      <div className="space-y-3">
         <AIButton
-          onClick={handleSave}
-          loading={saving}
-          disabled={saving}
-          className="w-full justify-center"
+          onClick={handleGenerate}
+          disabled={!canGenerate}
+          className="w-full justify-center py-3 text-sm font-semibold"
         >
-          <CalendarPlus size={16} />
-          Save to Calendar
+          {generating
+            ? <><Loader2 size={15} className="animate-spin" /> Building your content plan...</>
+            : <><Sparkles size={15} /> Generate Content Plan</>
+          }
         </AIButton>
-        <button
-          onClick={handleRegenerate}
-          disabled={regenerating}
-          className="w-full flex items-center justify-center gap-2 h-11 rounded-xl border border-white/10 text-white/60 hover:border-white/20 hover:text-white transition-all disabled:opacity-40"
-        >
-          <RefreshCw size={14} className={regenerating ? 'animate-spin' : ''} />
-          Regenerate
-        </button>
-        <button onClick={handleSkip} className="text-center text-white/25 hover:text-white/50 text-sm transition-colors py-2">
-          Skip for now →
+        <p className="text-center text-[11px] text-white/20">Credits charged only after you approve &amp; confirm</p>
+        <button onClick={handleSkip} className="w-full text-center text-white/25 hover:text-white/50 text-sm transition-colors py-2">
+          Skip for now — go to dashboard →
         </button>
       </div>
     </div>

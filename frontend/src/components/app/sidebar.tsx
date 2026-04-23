@@ -118,9 +118,10 @@ type SvgIconComponent = React.ComponentType<{ active: boolean }>
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 const NAV_WORKSPACE: { href: string; label: string; icon: SvgIconComponent }[] = [
-  { href: '/dashboard', label: 'Home',     icon: SvgDashboard },
-  { href: '/calendar',  label: 'Calendar', icon: SvgCalendar  },
-  { href: '/generate',  label: 'Generate', icon: SvgSparkles  },
+  { href: '/dashboard',        label: 'Home',         icon: SvgDashboard },
+  { href: '/calendar',         label: 'Calendar',     icon: SvgCalendar  },
+  { href: '/calendar/review',  label: 'Content Plan', icon: SvgSparkles  },
+  { href: '/generate',         label: 'Generate',     icon: SvgImages    },
 ]
 const NAV_CONTENT: { href: string; label: string; icon: SvgIconComponent }[] = [
   { href: '/outputs', label: 'Outputs', icon: SvgImages },

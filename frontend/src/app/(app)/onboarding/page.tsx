@@ -39,7 +39,7 @@ const STEP_NAMES = [
   'References',
   'Products',
   'Content Plan',
-  'First Post',
+  'Generate',
 ]
 
 const STEPS = [
