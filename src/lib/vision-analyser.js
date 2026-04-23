@@ -1,8 +1,7 @@
 /**
  * Brandvertise AI — Vision Analyser
- * Uses Gemini Vision to extract brand visual style from reference images
+ * Uses Claude Vision (primary) or Gemini Vision (fallback) to extract brand style
  */
-const { GoogleGenAI } = require('@google/genai');
 
 const VISION_USER_PROMPT = `Analyse these brand reference images and extract the visual style profile.
 
@@ -39,51 +38,54 @@ const FALLBACK_PROFILE = {
   dominantAesthetic: 'clean modern professional',
 };
 
+const { GoogleGenAI } = require('@google/genai');
+
 async function analyseReferenceImages(imageBase64Array) {
-  if (!process.env.GOOGLE_AI_API_KEY) {
-    console.warn('Vision analysis skipped — GOOGLE_AI_API_KEY not set');
-    return FALLBACK_PROFILE;
-  }
-
   try {
-    const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-
-    // Build content parts: text prompt + all images
-    const parts = [{ text: VISION_USER_PROMPT }];
-
-    for (const base64 of imageBase64Array.slice(0, 8)) {
-      // base64 may be a data URL like "data:image/jpeg;base64,..."
-      const mimeMatch = base64.match(/^data:([^;]+);base64,/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-      const imageData = base64.replace(/^data:[^;]+;base64,/, '');
-
-      parts.push({
-        inlineData: {
-          mimeType,
-          data: imageData,
-        },
+    // ── Claude Vision (primary) ───────────────────────────────────────────────
+    if (process.env.ANTHROPIC_API_KEY) {
+      const Anthropic = require('@anthropic-ai/sdk');
+      const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const imageContents = imageBase64Array.slice(0, 8).map(base64 => {
+        const mimeMatch = base64.match(/^data:([^;]+);base64,/);
+        const media_type = (mimeMatch ? mimeMatch[1] : 'image/jpeg');
+        const data = base64.replace(/^data:[^;]+;base64,/, '');
+        return { type: 'image', source: { type: 'base64', media_type, data } };
       });
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: VISION_USER_PROMPT }] }],
+      });
+      const raw = response.content[0].text.replace(/```json\n?|\n?```/g, '').trim();
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.dominantAesthetic && parsed.moodKeywords) return parsed;
+      } catch { /* fall through */ }
     }
 
+    // ── Gemini Vision (fallback) ──────────────────────────────────────────────
+    if (!process.env.GOOGLE_AI_API_KEY) {
+      console.warn('Vision analysis skipped — no vision API key set');
+      return FALLBACK_PROFILE;
+    }
+
+    const genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+    const parts = [{ text: VISION_USER_PROMPT }];
+    for (const base64 of imageBase64Array.slice(0, 8)) {
+      const mimeMatch = base64.match(/^data:([^;]+);base64,/);
+      parts.push({ inlineData: { mimeType: mimeMatch ? mimeMatch[1] : 'image/jpeg', data: base64.replace(/^data:[^;]+;base64,/, '') } });
+    }
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-2.5-flash-preview-04-17',
       contents: [{ role: 'user', parts }],
-      config: {
-        temperature: 0.1,
-        maxOutputTokens: 500,
-      },
+      config: { temperature: 0.1, maxOutputTokens: 500 },
     });
-
-    const raw = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    const clean = raw.replace(/```json\n?|\n?```/g, '').trim();
-
+    const raw = (result.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json\n?|\n?```/g, '').trim();
     try {
-      const parsed = JSON.parse(clean);
-      // Validate required fields exist
-      if (parsed.dominantAesthetic && parsed.moodKeywords) {
-        return parsed;
-      }
-    } catch { /* fall through to default */ }
+      const parsed = JSON.parse(raw);
+      if (parsed.dominantAesthetic && parsed.moodKeywords) return parsed;
+    } catch { /* fall through */ }
 
     return FALLBACK_PROFILE;
   } catch (err) {

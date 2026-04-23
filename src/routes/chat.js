@@ -5,6 +5,7 @@ const express = require('express');
 const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
+const { callAI } = require('../lib/ai');
 const { buildSystemPrompt } = require('../lib/prompt-engine');
 const logger = require('../utils/logger');
 
@@ -37,34 +38,21 @@ async function getBrandForUser(uid, pool) {
     audienceAgeMax: b.audience_age_max,
     audienceGender: b.audience_gender,
     audienceInterests: b.audience_interests,
-    brandColors: b.brand_colors,
+    brandColors: [b.color_primary, b.color_secondary, b.color_accent].filter(Boolean),
     fontMood: b.font_mood,
-    visualVibes: b.visual_vibes,
-    visualDNA: b.visual_dna,
-    industryConfig: b.industry_config,
-    calendarPrefs: b.calendar_prefs,
-    usp: b.usp,
-    mission: b.mission,
-    wordsToUse: b.words_to_use,
+    usp: b.usp_keywords,
     wordsToAvoid: b.words_to_avoid,
     persona: b.brand_persona,
     userDbId: b.user_db_id,
   };
 }
 
-async function callGemini(systemPrompt, messages) {
-  const { GoogleGenAI } = require('@google/genai');
-  const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-  const result = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents,
-    config: { systemInstruction: systemPrompt, temperature: 0.8, maxOutputTokens: 600 },
-  });
-  return result.candidates[0].content.parts[0].text;
+async function callClaude(systemPrompt, messages) {
+  // Build conversation: prepend system context into user turn for multi-turn support
+  const lastUserMsg = messages[messages.length - 1]?.content || '';
+  const history = messages.slice(0, -1).map(m => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n');
+  const userContent = history ? `${history}\nUser: ${lastUserMsg}` : lastUserMsg;
+  return callAI({ system: systemPrompt, user: userContent }, { maxTokens: 600 });
 }
 
 router.post('/brand', authMiddleware, async (req, res) => {
@@ -81,7 +69,7 @@ router.post('/brand', authMiddleware, async (req, res) => {
     }
 
     const systemPrompt = buildSystemPrompt(brand) + CHAT_SUFFIX;
-    const response = await callGemini(systemPrompt, messages);
+    const response = await callClaude(systemPrompt, messages);
 
     // Save async (non-blocking)
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';

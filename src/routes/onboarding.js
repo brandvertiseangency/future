@@ -22,34 +22,8 @@ router.post('/preview-caption', authMiddleware, async (req, res) => {
     const promptText = `Write a single short social media caption (2-3 sentences, no hashtags) for a ${industry || 'general'} brand with a ${toneDescriptor} tone and ${(styles || []).join(', ') || 'professional'} personality. Return only the caption text.`;
 
     let caption = '';
-    if (process.env.GOOGLE_AI_API_KEY) {
-      const { GoogleGenAI } = require('@google/genai');
-      const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: promptText }] }],
-        config: { temperature: 0.9, maxOutputTokens: 150 },
-      });
-      caption = response.text?.trim() || '';
-    } else if (process.env.OPENAI_API_KEY) {
-      const OpenAI = require('openai');
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-      const comp = await openai.chat.completions.create({
-        model: 'gpt-4o', max_tokens: 150,
-        messages: [{ role: 'user', content: promptText }]
-      });
-      caption = comp.choices[0].message.content.trim();
-    } else {
-      const samples = {
-        'real_estate': "Every home has a story. We help you find the one that writes your next chapter.",
-        'restaurant_cafe': "The secret ingredient is always love. Come taste the difference freshness makes.",
-        'fashion_clothing': "Style isn't just what you wear — it's how you show up for yourself every day.",
-        'salon_beauty': "Your best look starts here. Because you deserve to feel confident in every room you walk into.",
-        'gym_fitness': "Every rep is a promise to yourself. Keep showing up — your future self is grateful.",
-        default: "We believe in doing things differently. Because good enough was never good enough for us — or for you."
-      };
-      caption = samples[industry] || samples.default;
-    }
+    const { callAI } = require('../lib/ai');
+    caption = (await callAI(promptText, { maxTokens: 150 })).trim();
     res.json({ caption });
   } catch (err) {
     logger.error('Preview caption failed', { error: err.message });

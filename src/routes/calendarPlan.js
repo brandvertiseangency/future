@@ -41,63 +41,9 @@ const getUserWithBrand = async (uid) => {
   return rows[0] || null;
 };
 
-const AI_TIMEOUT_MS = 45_000; // 45s — plan generation needs more tokens
+const { callAI, generateImage } = require('../lib/ai');
 
-const withTimeout = (promise, ms) => {
-  let timer;
-  const timeout = new Promise((_, reject) => {
-    timer = setTimeout(() => reject(new Error('AI_TIMEOUT')), ms);
-  });
-  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
-};
-
-const callAI = async (prompt) => {
-  if (process.env.GOOGLE_AI_API_KEY) {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: 'gemini-2.0-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: { maxOutputTokens: 4096 },
-      }),
-      AI_TIMEOUT_MS
-    );
-    return response.text;
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const OpenAI = require('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: AI_TIMEOUT_MS });
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', max_tokens: 4096,
-      response_format: { type: 'json_object' },
-      messages: [{ role: 'user', content: prompt }],
-    });
-    return completion.choices[0].message.content;
-  }
-  throw new Error('No AI provider configured.');
-};
-
-const generateImage = async (imagePrompt) => {
-  if (!process.env.GOOGLE_AI_API_KEY) return null;
-  try {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await withTimeout(
-      ai.models.generateImages({
-        model: 'imagen-4.0-fast-generate-001',
-        prompt: imagePrompt,
-        config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
-      }),
-      AI_TIMEOUT_MS
-    );
-    const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-    return b64 ? `data:image/jpeg;base64,${b64}` : null;
-  } catch (err) {
-    logger.warn('Imagen generation failed', { error: err.message });
-    return null;
-  }
-};
+const AI_TIMEOUT_MS = 45_000;
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -231,7 +177,7 @@ Rules:
 - Use the brand's vocabulary and avoid flagged words if provided
 - Return ONLY valid JSON, no markdown`;
 
-    const raw = await callAI(aiPrompt);
+    const raw = await callAI(aiPrompt, { maxTokens: 4096, timeoutMs: AI_TIMEOUT_MS });
     let slots;
     try {
       const match = raw.match(/\{[\s\S]*\}/);

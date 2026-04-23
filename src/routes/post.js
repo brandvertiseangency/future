@@ -84,60 +84,10 @@ const buildUserPrompt = ({ platform, contentType, brief, mood }, user) => {
   }
 };
 
-const callAI = async (systemPrompt, userPrompt) => {
-  if (process.env.GOOGLE_AI_API_KEY) {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
-    });
-    return response.text;
-  }
-  if (process.env.OPENAI_API_KEY) {
-    const OpenAI = require('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', max_tokens: 1024,
-      response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-    });
-    return completion.choices[0].message.content;
-  }
-  // Fallback placeholder
-  return JSON.stringify({
-    caption: `✨ Exciting content — stay tuned for more from us!`,
-    hashtags: ['#brand', '#content', '#marketing'],
-    imagePrompt: `Professional social media image`,
-  });
-};
+const { callAI: _callAI, generateImage } = require('../lib/ai');
 
-/**
- * Generate an image using Google Imagen 3 (nano) via the GenAI SDK.
- * Returns a base64 data URL string, or null if generation fails.
- */
-const generateImage = async (imagePrompt) => {
-  if (!process.env.GOOGLE_AI_API_KEY) return null;
-  try {
-    const { GoogleGenAI } = require('@google/genai');
-    const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-fast-generate-001',
-      prompt: imagePrompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: '1:1',
-        outputMimeType: 'image/jpeg',
-      },
-    });
-    const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-    if (!b64) return null;
-    return `data:image/jpeg;base64,${b64}`;
-  } catch (err) {
-    logger.warn('Imagen generation failed', { error: err.message });
-    return null;
-  }
-};
+const callAI = (systemPrompt, userPrompt) =>
+  _callAI({ system: systemPrompt, user: userPrompt }, { maxTokens: 1024 });
 
 const parseAIResponse = (raw) => {
   try {

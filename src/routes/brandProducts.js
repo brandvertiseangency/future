@@ -136,39 +136,37 @@ router.post('/analyse-image', authMiddleware, async (req, res) => {
     if (!image) return res.status(400).json({ error: 'No image provided.' });
 
     let visualDescription = '';
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+    const mimeType = image.startsWith('data:image/png') ? 'image/png'
+                   : image.startsWith('data:image/webp') ? 'image/webp'
+                   : 'image/jpeg';
+    const visionText = `Describe this product image in 1-2 concise sentences that an AI image generator can use as a reference.\nFocus on: the exact product appearance, colours, textures, style, and any key visual features.\nProduct name: "${productName || 'unknown'}".\nReturn ONLY the description text, no markdown, no prefix.`;
 
-    if (process.env.GOOGLE_AI_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
+      const Anthropic = require('@anthropic-ai/sdk');
+      const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 150,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mimeType, data: base64Data } },
+          { type: 'text', text: visionText },
+        ]}],
+      });
+      visualDescription = response.content[0].text.trim();
+    } else if (process.env.GOOGLE_AI_API_KEY) {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-
-      // Strip data URI prefix if present
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-      const mimeType = image.startsWith('data:image/png') ? 'image/png'
-                     : image.startsWith('data:image/webp') ? 'image/webp'
-                     : 'image/jpeg';
-
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{
-          role: 'user',
-          parts: [
-            {
-              inlineData: { mimeType, data: base64Data },
-            },
-            {
-              text: `Describe this product image in 1-2 concise sentences that an AI image generator can use as a reference.
-Focus on: the exact product appearance, colours, textures, style, and any key visual features.
-Product name: "${productName || 'unknown'}".
-Return ONLY the description text, no markdown, no prefix.`,
-            },
-          ],
-        }],
+        model: 'gemini-2.5-flash-preview-04-17',
+        contents: [{ role: 'user', parts: [
+          { inlineData: { mimeType, data: base64Data } },
+          { text: visionText },
+        ]}],
         config: { temperature: 0.3, maxOutputTokens: 120 },
       });
-
       visualDescription = response.text?.trim() || '';
     } else {
-      // Fallback when no Vision API key
       visualDescription = `${productName || 'Product'} — a clearly branded item with distinctive visual characteristics`;
     }
 

@@ -275,46 +275,23 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
 
     // Call AI
     let caption = post.caption, hashtags = post.hashtags || [], imagePrompt = '';
+    let imageUrl = post.image_url;
     try {
-      const callAI = async (prompt) => {
-        if (process.env.GOOGLE_AI_API_KEY) {
-          const { GoogleGenAI } = require('@google/genai');
-          const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-          const r = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: [{ role: 'user', parts: [{ text: prompt }] }] });
-          return r.text;
-        }
-        if (process.env.OPENAI_API_KEY) {
-          const OpenAI = require('openai');
-          const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-          const r = await openai.chat.completions.create({ model: 'gpt-4o-mini', max_tokens: 1024, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: prompt }] });
-          return r.choices[0].message.content;
-        }
-        throw new Error('No AI provider');
-      };
-      const raw = await callAI(sysPrompt + '\n\n' + userPrompt);
+      const { callAI, generateImage: genImg } = require('../lib/ai');
+      const raw = await callAI({ system: sysPrompt, user: userPrompt }, { maxTokens: 1024 });
       const match = raw.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : raw);
       caption = parsed.caption || caption;
       hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : hashtags;
       imagePrompt = parsed.imagePrompt || '';
+
+      // Generate new image if we have a prompt
+      if (imagePrompt) {
+        const newImg = await genImg(`${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image, no text.`);
+        if (newImg) imageUrl = newImg;
+      }
     } catch (e) {
       logger.warn('AI regen failed, keeping original', { error: e.message });
-    }
-
-    // Generate new image if we have a prompt
-    let imageUrl = post.image_url;
-    if (imagePrompt && process.env.GOOGLE_AI_API_KEY) {
-      try {
-        const { GoogleGenAI } = require('@google/genai');
-        const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-        const r = await ai.models.generateImages({
-          model: 'imagen-4.0-fast-generate-001',
-          prompt: `${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image, no text.`,
-          config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
-        });
-        const b64 = r?.generatedImages?.[0]?.image?.imageBytes;
-        if (b64) imageUrl = `data:image/jpeg;base64,${b64}`;
-      } catch { /* keep original */ }
     }
 
     const newVersion = (post.version_number || 1) + 1;
