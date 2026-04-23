@@ -1,7 +1,0 @@
-# Ignore frontend — it is deployed separately on Vercel
-frontend/
-logs/
-outputs/
-*.md
-.env
-.env.*
