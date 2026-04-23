@@ -40,7 +40,24 @@ const app = express();
 
 // ─── Security & global middleware ─────────────
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+const allowedOrigins = [
+  "https://future-gilt-psi.vercel.app",
+  "https://future-lcbe.vercel.app",
+  "http://localhost:3000",
+  "http://localhost:4000",
+];
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow server-to-server (no origin) and listed origins
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`CORS: origin ${origin} not allowed`));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+// Handle preflight for all routes
+app.options("*", cors());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
