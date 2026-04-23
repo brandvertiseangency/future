@@ -23,9 +23,7 @@ const getUserWithBrand = async (uid) => {
             b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
             b.tone, b.styles, b.goals, b.platforms,
             b.audience_age_min, b.audience_age_max, b.audience_gender, b.audience_interests,
-            b.brand_colors, b.font_mood, b.visual_vibes, b.visual_dna,
-            b.usp, b.mission, b.words_to_use, b.words_to_avoid, b.brand_persona,
-            b.calendar_prefs,
+            b.font_mood,
             b.color_primary, b.color_secondary, b.color_accent,
             b.industry_subtype, b.price_segment, b.posting_frequency, b.content_mix,
             bic.usp_keywords, bic.industry_answers,
@@ -43,19 +41,33 @@ const getUserWithBrand = async (uid) => {
   return rows[0] || null;
 };
 
+const AI_TIMEOUT_MS = 45_000; // 45s — plan generation needs more tokens
+
+const withTimeout = (promise, ms) => {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('AI_TIMEOUT')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
 const callAI = async (prompt) => {
   if (process.env.GOOGLE_AI_API_KEY) {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-    });
+    const response = await withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: { maxOutputTokens: 4096 },
+      }),
+      AI_TIMEOUT_MS
+    );
     return response.text;
   }
   if (process.env.OPENAI_API_KEY) {
     const OpenAI = require('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: AI_TIMEOUT_MS });
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini', max_tokens: 4096,
       response_format: { type: 'json_object' },
@@ -71,11 +83,14 @@ const generateImage = async (imagePrompt) => {
   try {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-fast-generate-001',
-      prompt: imagePrompt,
-      config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
-    });
+    const response = await withTimeout(
+      ai.models.generateImages({
+        model: 'imagen-4.0-fast-generate-001',
+        prompt: imagePrompt,
+        config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
+      }),
+      AI_TIMEOUT_MS
+    );
     const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
     return b64 ? `data:image/jpeg;base64,${b64}` : null;
   } catch (err) {
@@ -157,12 +172,12 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       audienceAgeMax: user.audience_age_max || 65,
       audienceGender: user.audience_gender || 'mixed',
       audienceInterests: user.audience_interests || [],
-      usp: user.usp || (user.usp_keywords && user.usp_keywords.length ? user.usp_keywords.join(', ') : ''),
-      mission: user.mission || '',
+      usp: user.usp_keywords && user.usp_keywords.length ? user.usp_keywords.join(', ') : '',
+      mission: '',
       priceSegment: user.price_segment || '',
-      brandPersona: user.brand_persona || '',
-      wordsToUse: user.words_to_use || [],
-      wordsToAvoid: user.words_to_avoid || [],
+      brandPersona: '',
+      wordsToUse: [],
+      wordsToAvoid: [],
       dominantAesthetic: user.dominant_aesthetic || '',
       moodKeywords: user.mood_keywords || [],
       photographyStyle: user.photography_style || '',
@@ -267,6 +282,7 @@ Rules:
     }
   } catch (err) {
     logger.error('generate-plan failed', { error: err.message });
+    if (err.message === 'AI_TIMEOUT') return res.status(503).json({ error: 'Generation timed out. The AI is busy — please try again.' });
     res.status(500).json({ error: 'Failed to generate plan.', details: err.message });
   }
 });
@@ -468,11 +484,12 @@ async function runGenerationJob(jobId, slotIds, pool) {
         audienceAgeMin: brand.audience_age_min, audienceAgeMax: brand.audience_age_max,
         audienceGender: brand.audience_gender, audienceInterests: brand.audience_interests || [],
         audienceLocation: '', platforms: brand.platforms || [],
-        brandColors: brand.brand_colors, fontMood: brand.font_mood,
-        visualVibes: brand.visual_vibes, visualDNA: brand.visual_dna,
-        usp: brand.usp, mission: brand.mission,
-        wordsToUse: brand.words_to_use, wordsToAvoid: brand.words_to_avoid,
-        persona: brand.brand_persona,
+        brandColors: [brand.color_primary, brand.color_secondary, brand.color_accent].filter(Boolean),
+        fontMood: brand.font_mood || brand.font_mood_detected,
+        usp: brand.usp_keywords && brand.usp_keywords.length ? brand.usp_keywords.join(', ') : '',
+        mission: '',
+        wordsToUse: [], wordsToAvoid: [],
+        persona: '',
       });
     } catch {
       sysPrompt = `You are a social media expert for ${brand.name}. Return valid JSON only: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
