@@ -224,13 +224,16 @@ export const useOnboardingStore = create<OnboardingStore>()(
         })),
       addProduct: (product) =>
         set((state) => ({
-          data: { ...state.data, products: [...state.data.products, product] },
+          data: {
+            ...state.data,
+            products: [...(Array.isArray(state.data.products) ? state.data.products : []), product],
+          },
         })),
       updateProduct: (id, partial) =>
         set((state) => ({
           data: {
             ...state.data,
-            products: state.data.products.map((p) =>
+            products: (Array.isArray(state.data.products) ? state.data.products : []).map((p) =>
               p.id === id ? { ...p, ...partial } : p
             ),
           },
@@ -239,7 +242,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
         set((state) => ({
           data: {
             ...state.data,
-            products: state.data.products.filter((p) => p.id !== id),
+            products: (Array.isArray(state.data.products) ? state.data.products : []).filter((p) => p.id !== id),
           },
         })),
       reset: () => set({ step: 1, data: defaultData }),

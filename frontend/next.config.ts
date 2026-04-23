@@ -13,9 +13,8 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["localhost", "127.0.0.1", "192.168.0.100"],
   // Silence "multiple lockfiles" workspace root warning
   outputFileTracingRoot: path.join(__dirname, "../"),
-  env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? "",
-  },
+  // Do NOT override NEXT_PUBLIC_API_URL here — let .env.local or the real env var win.
+  // api.ts falls back to http://localhost:4000 in local dev automatically.
   // Allow Firebase Google OAuth popups (removes COOP restriction in dev)
   async headers() {
     return [

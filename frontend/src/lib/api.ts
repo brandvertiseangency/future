@@ -2,11 +2,14 @@ import { getFirebaseAuth } from './firebase'
 
 // In production (Vercel) NEXT_PUBLIC_API_URL is unset — vercel.json rewrites /api/* to Railway.
 // In local dev it points to http://localhost:4000.
+// Treat empty string same as unset so the next.config.ts env override doesn't break local dev.
+const _envUrl = process.env.NEXT_PUBLIC_API_URL
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ??
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
-    ? ''
-    : 'http://localhost:4000')
+  (_envUrl && _envUrl.trim() !== '')
+    ? _envUrl
+    : (typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+        ? ''
+        : 'http://localhost:4000')
 
 async function getFirebaseToken(): Promise<string | null> {
   try {
