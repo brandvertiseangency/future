@@ -180,10 +180,13 @@ Rules:
     const raw = await callAI(aiPrompt, { maxTokens: 4096, timeoutMs: AI_TIMEOUT_MS });
     let slots;
     try {
-      const match = raw.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : raw);
+      // Strip markdown fences Gemini sometimes wraps around JSON
+      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : cleaned);
       slots = parsed.posts || parsed.slots || [];
     } catch {
+      logger.error('AI plan parse failed', { raw: raw.slice(0, 300) });
       return res.status(500).json({ error: 'AI returned invalid response. Please try again.' });
     }
 
@@ -469,8 +472,9 @@ async function runGenerationJob(jobId, slotIds, pool) {
 
         let caption = '', hashtags = [], imagePrompt = '';
         try {
-          const match = raw.match(/\{[\s\S]*\}/);
-          const parsed = JSON.parse(match ? match[0] : raw);
+          const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+          const match = cleaned.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(match ? match[0] : cleaned);
           caption = parsed.caption || slot.post_idea;
           hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
           imagePrompt = parsed.imagePrompt || `Professional social media ${slot.content_type} for ${brand.name}`;

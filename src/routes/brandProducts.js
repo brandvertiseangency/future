@@ -142,7 +142,19 @@ router.post('/analyse-image', authMiddleware, async (req, res) => {
                    : 'image/jpeg';
     const visionText = `Describe this product image in 1-2 concise sentences that an AI image generator can use as a reference.\nFocus on: the exact product appearance, colours, textures, style, and any key visual features.\nProduct name: "${productName || 'unknown'}".\nReturn ONLY the description text, no markdown, no prefix.`;
 
-    if (process.env.ANTHROPIC_API_KEY) {
+    if (process.env.OPENAI_API_KEY) {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        max_tokens: 150,
+        messages: [{ role: 'user', content: [
+          { type: 'image_url', image_url: { url: image.startsWith('data:') ? image : `data:image/jpeg;base64,${base64Data}` } },
+          { type: 'text', text: visionText },
+        ]}],
+      });
+      visualDescription = response.choices[0].message.content.trim();
+    } else if (process.env.ANTHROPIC_API_KEY) {
       const Anthropic = require('@anthropic-ai/sdk');
       const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
       const response = await client.messages.create({

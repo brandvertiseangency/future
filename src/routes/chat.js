@@ -48,9 +48,9 @@ async function getBrandForUser(uid, pool) {
 }
 
 async function callClaude(systemPrompt, messages) {
-  // Build conversation: prepend system context into user turn for multi-turn support
-  const lastUserMsg = messages[messages.length - 1]?.content || '';
+  const { callAI } = require('../lib/ai');
   const history = messages.slice(0, -1).map(m => `${m.role === 'assistant' ? 'Assistant' : 'User'}: ${m.content}`).join('\n');
+  const lastUserMsg = messages[messages.length - 1]?.content || '';
   const userContent = history ? `${history}\nUser: ${lastUserMsg}` : lastUserMsg;
   return callAI({ system: systemPrompt, user: userContent }, { maxTokens: 600 });
 }

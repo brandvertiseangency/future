@@ -42,22 +42,20 @@ const { GoogleGenAI } = require('@google/genai');
 
 async function analyseReferenceImages(imageBase64Array) {
   try {
-    // ── Claude Vision (primary) ───────────────────────────────────────────────
-    if (process.env.ANTHROPIC_API_KEY) {
-      const Anthropic = require('@anthropic-ai/sdk');
-      const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
-      const imageContents = imageBase64Array.slice(0, 8).map(base64 => {
-        const mimeMatch = base64.match(/^data:([^;]+);base64,/);
-        const media_type = (mimeMatch ? mimeMatch[1] : 'image/jpeg');
-        const data = base64.replace(/^data:[^;]+;base64,/, '');
-        return { type: 'image', source: { type: 'base64', media_type, data } };
-      });
-      const response = await client.messages.create({
-        model: 'claude-sonnet-4-20250514',
+    // ── OpenAI Vision (primary) ───────────────────────────────────────────────
+    if (process.env.OPENAI_API_KEY) {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      const imageContents = imageBase64Array.slice(0, 8).map(base64 => ({
+        type: 'image_url',
+        image_url: { url: base64.startsWith('data:') ? base64 : `data:image/jpeg;base64,${base64}` },
+      }));
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o',
         max_tokens: 600,
         messages: [{ role: 'user', content: [...imageContents, { type: 'text', text: VISION_USER_PROMPT }] }],
       });
-      const raw = response.content[0].text.replace(/```json\n?|\n?```/g, '').trim();
+      const raw = response.choices[0].message.content.replace(/```json\n?|\n?```/g, '').trim();
       try {
         const parsed = JSON.parse(raw);
         if (parsed.dominantAesthetic && parsed.moodKeywords) return parsed;

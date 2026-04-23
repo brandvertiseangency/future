@@ -1,12 +1,13 @@
 /**
- * Shared AI helper — Claude claude-sonnet-4-20250514 primary, Gemini flash fallback
+ * Shared AI helper — OpenAI primary, Gemini flash fallback
  *
- * callAI(prompt, opts)   → text string
- * callAIJSON(prompt, opts) → parsed object (auto-extracts JSON)
+ * callAI(prompt, opts)     → text string
+ * callAIJSON(prompt, opts) → parsed object (auto-extracts + strips markdown fences)
+ * generateImage(prompt)    → base64 data URL or null
  */
 
 const DEFAULT_TIMEOUT_MS = 45_000;
-const TEXT_MODEL = 'claude-sonnet-4-20250514';
+const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
 
@@ -19,25 +20,35 @@ const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
 };
 
 /**
- * Call Claude claude-sonnet-4-20250514 (primary) or Gemini flash (fallback).
+ * Call OpenAI gpt-4o (primary) or Gemini 2.5 Flash (fallback).
  * @param {string|{system:string,user:string}} prompt
- * @param {{ maxTokens?: number, timeoutMs?: number, jsonMode?: boolean }} opts
+ * @param {{ maxTokens?: number, timeoutMs?: number }} opts
  * @returns {Promise<string>}
  */
 const callAI = async (prompt, opts = {}) => {
   const { maxTokens = 2048, timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
   const systemPrompt = typeof prompt === 'object' ? prompt.system : undefined;
-  const userPrompt = typeof prompt === 'object' ? prompt.user : prompt;
+  const userPrompt   = typeof prompt === 'object' ? prompt.user   : prompt;
 
-  // ── Claude (primary) ──────────────────────────────────────────────────────
-  if (process.env.ANTHROPIC_API_KEY) {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client = new Anthropic.default({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const messages = [{ role: 'user', content: userPrompt }];
-    const params = { model: TEXT_MODEL, max_tokens: maxTokens, messages };
-    if (systemPrompt) params.system = systemPrompt;
-    const response = await withTimeout(client.messages.create(params), timeoutMs);
-    return response.content[0].text;
+  // ── OpenAI (primary) ──────────────────────────────────────────────────────
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const OpenAI = require('openai');
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: timeoutMs });
+      const messages = [];
+      if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
+      messages.push({ role: 'user', content: userPrompt });
+      const completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        max_tokens: maxTokens,
+        messages,
+      });
+      return completion.choices[0].message.content;
+    } catch (openaiErr) {
+      if (openaiErr.message === 'AI_TIMEOUT') throw openaiErr;
+      const logger = require('../utils/logger');
+      logger.warn('OpenAI unavailable, falling back to Gemini', { error: openaiErr.message });
+    }
   }
 
   // ── Gemini (fallback) ─────────────────────────────────────────────────────
@@ -56,18 +67,23 @@ const callAI = async (prompt, opts = {}) => {
     return response.text;
   }
 
-  throw new Error('No AI provider configured. Set ANTHROPIC_API_KEY or GOOGLE_AI_API_KEY.');
+  throw new Error('No AI provider configured. Set OPENAI_API_KEY or GOOGLE_AI_API_KEY.');
 };
 
 /**
  * Same as callAI but automatically parses and returns JSON.
+ * Strips markdown fences that Gemini/OpenAI sometimes wrap around JSON.
  */
 const callAIJSON = async (prompt, opts = {}) => {
   const raw = await callAI(prompt, opts);
+  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
   try {
-    const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-    return JSON.parse(match ? match[0] : raw);
+    return JSON.parse(cleaned);
   } catch {
+    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+    if (match) {
+      try { return JSON.parse(match[0]); } catch { /* fall through */ }
+    }
     throw new Error(`AI returned invalid JSON. Raw: ${raw.slice(0, 200)}`);
   }
 };
