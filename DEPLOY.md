@@ -78,12 +78,32 @@ BUFFER_ACCESS_TOKEN=xxxx
 
 ## 🚀 Deployment Platforms
 
-### Backend (Express API) — Recommended: Railway
-1. Push to GitHub
-2. Connect repo to [Railway](https://railway.app)
-3. Set all env vars in Railway dashboard
-4. Set `PORT=4000`, `NODE_ENV=production`
-5. Deploy command: `npm start`
+### Backend (Express API) — Railway
+
+> ⚠️ The `railway.json`, `Procfile`, and `.railwayignore` files are now committed.
+> Railway will auto-detect the Express app and run `node src/server.js`.
+
+#### First-time setup (if no Railway project exists)
+1. Go to https://railway.app → **New Project** → **Deploy from GitHub repo**
+2. Select `brandvertiseangency/future`
+3. Railway will detect `railway.json` automatically
+4. **Service Settings** → confirm:
+   - Start command: `node src/server.js`
+   - Health check: `/health`
+   - Root directory: *(leave blank — repo root)*
+5. Add all env vars (see table below) in **Variables** tab
+6. Click **Deploy** — Railway will build and start the server
+7. Copy the generated domain (e.g. `https://future-production.up.railway.app`)
+
+#### If a Railway project already exists but is broken
+1. Open your Railway project → **Settings** → **Danger** → Delete this service
+2. Re-add service: **+ New** → **GitHub Repo** → `brandvertiseangency/future`
+3. Repeat steps 4–7 above
+
+#### After deploy — update Vercel
+- Set `NEXT_PUBLIC_API_URL` in Vercel to the new Railway URL
+- Update `frontend/vercel.json` rewrite `destination` to match
+- Redeploy Vercel frontend (`git push` or click Redeploy in dashboard)
 
 ### Frontend (Next.js) — Recommended: Vercel
 1. Push `frontend/` to GitHub (or same repo)

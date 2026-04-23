@@ -8,7 +8,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://brandvertise-backend.up.railway.app/api/:path*"
+      "destination": "https://future-production.up.railway.app/api/:path*"
     }
   ],
   "headers": [
