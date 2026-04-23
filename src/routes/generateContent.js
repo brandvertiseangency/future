@@ -15,9 +15,9 @@ const getUserWithBrand = async (uid) => {
     `SELECT u.*, b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
             b.tone, b.styles, b.audience_age_min, b.audience_age_max,
             b.audience_gender, b.audience_interests, b.platforms, b.goals,
-            b.brand_colors, b.font_mood, b.visual_vibes, b.visual_dna,
-            b.industry_config, b.calendar_prefs, b.usp, b.mission,
-            b.words_to_use, b.words_to_avoid, b.brand_persona
+            b.color_primary, b.color_secondary, b.color_accent, b.font_mood,
+            b.industry_subtype, b.price_segment,
+            b.usp_keywords
      FROM users u
      LEFT JOIN brands b ON b.user_id = u.id AND b.is_default = TRUE
      WHERE u.firebase_uid = $1 LIMIT 1`,
@@ -49,15 +49,9 @@ const buildSystemPrompt = (user) => {
     audienceGender: user.audience_gender,
     audienceInterests: user.audience_interests,
     audienceLocation: user.audience_location,
-    brandColors: user.brand_colors,
+    brandColors: [user.color_primary, user.color_secondary, user.color_accent].filter(Boolean),
     fontMood: user.font_mood,
-    visualVibes: user.visual_vibes,
-    visualDNA: user.visual_dna,
-    industryConfig: user.industry_config,
-    calendarPrefs: user.calendar_prefs,
-    usp: user.usp,
-    mission: user.mission,
-    wordsToUse: user.words_to_use,
+    usp: user.usp_keywords,
     wordsToAvoid: user.words_to_avoid,
     persona: user.brand_persona,
   };
@@ -67,21 +61,35 @@ const buildSystemPrompt = (user) => {
 const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }) =>
   buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, {});
 
+const AI_TIMEOUT_MS = 30_000; // 30 seconds
+
+const withTimeout = (promise, ms) => {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('AI_TIMEOUT')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+};
+
 const callAI = async (systemPrompt, userPrompt) => {
   if (process.env.GOOGLE_AI_API_KEY) {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
-    });
+    const response = await withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-2.0-flash',
+        contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
+        config: { maxOutputTokens: 1024 },
+      }),
+      AI_TIMEOUT_MS
+    );
     return response.text;
   }
   if (process.env.OPENAI_API_KEY) {
     const OpenAI = require('openai');
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: AI_TIMEOUT_MS });
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o', max_tokens: 1024,
+      model: 'gpt-4o-mini', max_tokens: 1024,
       response_format: { type: 'json_object' },
       messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }]
     });
@@ -95,11 +103,14 @@ const generateImage = async (imagePrompt) => {
   try {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
-    const response = await ai.models.generateImages({
-      model: 'imagen-4.0-fast-generate-001',
-      prompt: imagePrompt,
-      config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
-    });
+    const response = await withTimeout(
+      ai.models.generateImages({
+        model: 'imagen-4.0-fast-generate-001',
+        prompt: imagePrompt,
+        config: { numberOfImages: 1, aspectRatio: '1:1', outputMimeType: 'image/jpeg' },
+      }),
+      AI_TIMEOUT_MS
+    );
     const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
     if (!b64) return null;
     return `data:image/jpeg;base64,${b64}`;
@@ -172,6 +183,7 @@ router.post('/', authMiddleware, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     logger.error('Generate content failed', { error: err.message });
+    if (err.message === 'AI_TIMEOUT') return res.status(503).json({ error: 'Generation timed out. The AI is busy — please try again.' });
     if (err.message.includes('insufficient_credits')) return res.status(402).json({ error: 'insufficient_credits' });
     res.status(500).json({ error: err.message || 'Content generation failed.' });
   } finally {
