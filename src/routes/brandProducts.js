@@ -158,7 +158,7 @@ router.post('/analyse-image', authMiddleware, async (req, res) => {
       const { GoogleGenAI } = require('@google/genai');
       const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-preview-04-17',
+        model: 'gemini-2.5-flash',
         contents: [{ role: 'user', parts: [
           { inlineData: { mimeType, data: base64Data } },
           { text: visionText },

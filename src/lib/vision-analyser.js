@@ -77,7 +77,7 @@ async function analyseReferenceImages(imageBase64Array) {
       parts.push({ inlineData: { mimeType: mimeMatch ? mimeMatch[1] : 'image/jpeg', data: base64.replace(/^data:[^;]+;base64,/, '') } });
     }
     const result = await genAI.models.generateContent({
-      model: 'gemini-2.5-flash-preview-04-17',
+      model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts }],
       config: { temperature: 0.1, maxOutputTokens: 500 },
     });

@@ -7,7 +7,7 @@
 
 const DEFAULT_TIMEOUT_MS = 45_000;
 const TEXT_MODEL = 'claude-sonnet-4-20250514';
-const GEMINI_TEXT_MODEL = 'gemini-2.5-flash-preview-04-17'; // latest available preview
+const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
 
 const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
