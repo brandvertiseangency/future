@@ -4,7 +4,9 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '@/lib/api'
-import { ImageIcon, Download, RotateCcw } from 'lucide-react'
+import { ImageIcon, Sparkles } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
 interface Post {
   id: string
@@ -19,6 +21,14 @@ interface Post {
 
 const PLATFORM_FILTERS = ['all', 'instagram', 'linkedin', 'twitter', 'tiktok', 'facebook']
 const STATUS_FILTERS = ['all', 'draft', 'approved', 'scheduled']
+
+const PLATFORM_COLORS: Record<string, string> = {
+  instagram: '#e1306c',
+  linkedin: '#0077b5',
+  twitter: '#94a3b8',
+  tiktok: '#ff0050',
+  facebook: '#1877f2',
+}
 
 export default function OutputsPage() {
   const router = useRouter()
@@ -36,56 +46,62 @@ export default function OutputsPage() {
   )
   const posts: Post[] = data?.posts ?? []
 
-  const filterBtnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '5px 12px', borderRadius: 20,
-    background: active ? 'rgba(255,255,255,0.12)' : 'none',
-    border: `1px solid ${active ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)'}`,
-    color: active ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.35)',
-    fontSize: 11, fontWeight: 500, cursor: 'pointer', transition: 'all 0.15s',
-    textTransform: 'capitalize',
-  })
-
   return (
-    <div style={{ maxWidth: 1080, margin: '0 auto', padding: '28px 24px 64px' }}>
+    <div className="max-w-[1100px] mx-auto px-6 py-8 pb-20">
 
       {/* Header */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 400, color: '#fff', letterSpacing: '-0.025em', marginBottom: 4 }}>Outputs</h1>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)' }}>{posts.length} creatives generated</p>
+      <div className="mb-7">
+        <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-white mb-1">Outputs</h1>
+        <p className="text-[13px] text-white/35">{posts.length} creatives generated</p>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-        {PLATFORM_FILTERS.map(p => (
-          <button key={p} onClick={() => setPlatform(p)} style={filterBtnStyle(platform === p)}>
-            {p === 'all' ? 'All platforms' : p}
-          </button>
-        ))}
-        <div style={{ width: 1, background: 'rgba(255,255,255,0.07)', margin: '0 4px' }} />
-        {STATUS_FILTERS.map(s => (
-          <button key={s} onClick={() => setStatus(s)} style={filterBtnStyle(status === s)}>
-            {s === 'all' ? 'All statuses' : s}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center gap-2 mb-7">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {PLATFORM_FILTERS.map(p => (
+            <FilterPill key={p} active={platform === p} onClick={() => setPlatform(p)}>
+              {p === 'all' ? 'All Platforms' : p.charAt(0).toUpperCase() + p.slice(1)}
+            </FilterPill>
+          ))}
+        </div>
+        <div className="w-px h-5 bg-white/[0.07] mx-1" />
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {STATUS_FILTERS.map(s => (
+            <FilterPill key={s} active={status === s} onClick={() => setStatus(s)}>
+              {s === 'all' ? 'All Statuses' : s.charAt(0).toUpperCase() + s.slice(1)}
+            </FilterPill>
+          ))}
+        </div>
       </div>
 
       {/* Grid */}
       {posts.length === 0 ? (
-        <div className="card-silver" style={{ borderRadius: 16, padding: '60px 24px', textAlign: 'center' }}>
-          <ImageIcon size={28} color="rgba(255,255,255,0.1)" style={{ margin: '0 auto 12px' }} />
-          <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.25)' }}>No outputs yet</p>
+        <div className="flex flex-col items-center justify-center py-24 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
+          <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mb-4">
+            <ImageIcon size={20} className="text-white/20" />
+          </div>
+          <p className="text-[14px] font-medium text-white/40 mb-1">No outputs yet</p>
+          <p className="text-[12px] text-white/20 mb-5">Generate your first content to see it here</p>
           <button
-            onClick={() => router.push('/calendar/generate')}
-            className="btn-silver"
-            style={{ marginTop: 16, padding: '10px 22px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            onClick={() => router.push('/generate')}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold text-black transition-all hover:opacity-90"
+            style={{ background: 'linear-gradient(135deg, #ffffff 0%, #d0d0d0 100%)' }}
           >
-            Generate your first content
+            <Sparkles size={12} />
+            Generate Content
           </button>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
-          {posts.map(post => (
-            <OutputCard key={post.id} post={post} onClick={() => router.push(`/outputs/${post.id}`)} />
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+          {posts.map((post, i) => (
+            <motion.div
+              key={post.id}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <OutputCard post={post} onClick={() => router.push(`/outputs/${post.id}`)} />
+            </motion.div>
           ))}
         </div>
       )}
@@ -93,40 +109,62 @@ export default function OutputsPage() {
   )
 }
 
+function FilterPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'px-3 py-1.5 rounded-full text-[11.5px] font-medium transition-all duration-150 border',
+        active
+          ? 'bg-white/[0.12] border-white/[0.25] text-white'
+          : 'bg-transparent border-white/[0.07] text-white/35 hover:text-white/60 hover:border-white/[0.14]'
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
 function OutputCard({ post, onClick }: { post: Post; onClick: () => void }) {
+  const platformColor = PLATFORM_COLORS[post.platform?.toLowerCase()] ?? 'rgba(255,255,255,0.5)'
+  const isApproved = post.approval_status === 'approved' || post.status === 'approved'
+
   return (
     <div
-      className="card-silver"
       onClick={onClick}
-      style={{ borderRadius: 14, overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.1s' }}
-      onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
-      onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
+      className="group rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a] cursor-pointer transition-all duration-200 hover:border-white/[0.18] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.6)]"
     >
-      {/* Image */}
-      <div style={{ aspectRatio: '1', background: 'rgba(255,255,255,0.03)', position: 'relative' }}>
-        {post.image_url
-          ? <img src={post.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ImageIcon size={24} color="rgba(255,255,255,0.1)" />
-            </div>
-        }
-        {/* Status badge */}
-        {post.approval_status === 'approved' && (
-          <span style={{
-            position: 'absolute', top: 8, right: 8,
-            fontSize: 9, padding: '2px 6px', borderRadius: 4,
-            background: 'rgba(200,255,200,0.12)', border: '1px solid rgba(200,255,200,0.2)', color: 'rgba(200,255,200,0.7)',
-          }}>approved</span>
+      <div className="aspect-square relative bg-white/[0.03] overflow-hidden">
+        {post.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={post.image_url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <ImageIcon size={28} className="text-white/10" />
+          </div>
+        )}
+        {post.status && (
+          <span className={cn(
+            'absolute top-2.5 right-2.5 text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border',
+            isApproved
+              ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400'
+              : post.status === 'scheduled'
+              ? 'bg-white/[0.08] border-white/[0.14] text-white/50'
+              : 'bg-white/[0.06] border-white/[0.10] text-white/35'
+          )}>
+            {isApproved ? 'approved' : post.status}
+          </span>
         )}
       </div>
-      {/* Info */}
-      <div style={{ padding: '10px 12px' }}>
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', lineHeight: 1.4, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-          {post.caption}
-        </p>
-        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 5, textTransform: 'capitalize' }}>
-          {post.platform} · {new Date(post.created_at).toLocaleDateString()}
-        </p>
+      <div className="p-3">
+        <p className="text-[12px] text-white/60 leading-[1.5] line-clamp-2 mb-2.5">{post.caption}</p>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10.5px] font-medium capitalize" style={{ color: platformColor }}>{post.platform}</span>
+          <span className="text-white/15 text-[10px]">·</span>
+          <span className="text-[10.5px] text-white/25">
+            {new Date(post.created_at).toLocaleDateString([], { day: '2-digit', month: '2-digit', year: 'numeric' })}
+          </span>
+        </div>
       </div>
     </div>
   )

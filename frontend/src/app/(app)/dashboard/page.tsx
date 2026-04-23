@@ -1,8 +1,9 @@
 'use client'
 
-import { AlertCircle, ArrowRight, Layers } from 'lucide-react'
+import { AlertCircle, ArrowRight, Layers, TrendingUp, ImageIcon, CalendarDays, Sparkles } from 'lucide-react'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { apiCall } from '@/lib/api'
 import { BrandChat } from '@/components/dashboard/brand-chat'
@@ -11,7 +12,8 @@ import { GenQueue } from '@/components/dashboard/gen-queue'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { RecentOutputs } from '@/components/dashboard/recent-outputs'
 
-const fetcher = <T,>(url: string) => apiCall<T>(url)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fetcher = (url: string) => apiCall<any>(url)
 
 function getGreeting() {
   const h = new Date().getHours()
@@ -22,48 +24,38 @@ function getGreeting() {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const router = useRouter()
   const { data: brandData } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
-  const { data: userData } = useSWR('/api/users/me', fetcher<{ user: { onboarding_complete?: boolean } }>, { revalidateOnFocus: false })
+  const { data: userData } = useSWR('/api/users/me', fetcher, { revalidateOnFocus: false })
+  const { data: postsData } = useSWR('/api/posts?limit=3&status=approved', fetcher, { revalidateOnFocus: false })
+  const { data: creditsData } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
+
   const brand = (brandData as any)?.brand ?? brandData
   const onboardingComplete = (userData as any)?.user?.onboarding_complete ?? true
+  const recentPosts = (postsData as any)?.posts ?? []
+  const credits = (creditsData as any)?.balance ?? 0
 
   const firstName = user?.displayName?.split(' ')[0] ?? 'there'
   const brandName = brand?.name ?? 'My Brand'
   const greeting = getGreeting()
 
   return (
-    <div style={{ maxWidth: 800, margin: '0 auto', padding: '28px 24px 72px' }}>
+    <div className="max-w-[820px] mx-auto px-6 py-8 pb-20 space-y-5">
 
       {/* Onboarding banner */}
       {!onboardingComplete && (
-        <Link href="/onboarding" style={{ display: 'block', marginBottom: 24, textDecoration: 'none' }}>
-          <div
-            className="card-silver"
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              borderRadius: 14, padding: '14px 18px', gap: 12,
-              background: 'rgba(255,255,255,0.025)',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 9,
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                <AlertCircle size={15} color="rgba(255,255,255,0.5)" />
+        <Link href="/onboarding" className="block no-underline">
+          <div className="flex items-center justify-between rounded-2xl border border-white/[0.10] bg-white/[0.025] px-4 py-3.5 gap-3 hover:border-white/[0.18] transition-all group">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0">
+                <AlertCircle size={14} className="text-white/50" />
               </div>
               <div>
-                <p style={{ color: 'var(--text-1)', fontSize: 13, fontWeight: 500, margin: 0 }}>
-                  Complete your brand setup
-                </p>
-                <p style={{ color: 'var(--text-3)', fontSize: 11.5, margin: '2px 0 0' }}>
-                  Unlock personalised AI-generated content
-                </p>
+                <p className="text-[13px] font-medium text-white/80">Complete your brand setup</p>
+                <p className="text-[11.5px] text-white/35 mt-0.5">Unlock personalised AI-generated content</p>
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--text-2)', fontSize: 12, fontWeight: 500, flexShrink: 0 }}>
+            <div className="flex items-center gap-1.5 text-white/35 text-[12px] font-medium group-hover:text-white/60 transition-colors flex-shrink-0">
               Set up <ArrowRight size={12} />
             </div>
           </div>
@@ -71,33 +63,42 @@ export default function DashboardPage() {
       )}
 
       {/* Hero greeting */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 5,
-          fontSize: 10, color: 'var(--text-4)', marginBottom: 8,
-          letterSpacing: '0.1em', textTransform: 'uppercase',
-        }}>
-          <Layers size={10} strokeWidth={1.5} />
+      <div className="pt-1 pb-2">
+        <div className="flex items-center gap-1.5 text-[10px] text-white/20 uppercase tracking-[0.12em] mb-3">
+          <Layers size={9} strokeWidth={1.5} />
           {brandName}
         </div>
-        <h1 style={{
-          fontFamily: 'var(--font-display, var(--font-sans))',
-          fontSize: 32, fontWeight: 400,
-          letterSpacing: '-0.03em',
-          color: 'var(--text-1)',
-          lineHeight: 1.15,
-          margin: '0 0 6px',
-        }}>
+        <h1 className="text-[34px] font-semibold tracking-[-0.035em] text-white leading-[1.1] mb-2">
           {greeting},{' '}
-          <span className="silver-text-anim" style={{ fontStyle: 'italic' }}>
-            {firstName}
-          </span>
+          <span className="silver-text-anim italic font-normal">{firstName}</span>
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--text-3)', margin: 0 }}>
+        <p className="text-[13.5px] text-white/35 leading-relaxed">
           {onboardingComplete
-            ? "Your brand AI is ready. What would you like to create today?"
-            : "Finish setting up your brand to unlock the full experience."}
+            ? 'Your brand AI is ready. What would you like to create today?'
+            : 'Finish setting up your brand to unlock the full experience.'}
         </p>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        {[
+          { label: 'Posts generated', value: recentPosts.length > 0 ? '12+' : '0', icon: ImageIcon, href: '/outputs' },
+          { label: 'Credits remaining', value: credits.toString(), icon: Sparkles, href: '/pricing' },
+          { label: 'Scheduled posts', value: '0', icon: CalendarDays, href: '/calendar' },
+        ].map(({ label, value, icon: Icon, href }) => (
+          <button
+            key={label}
+            onClick={() => router.push(href)}
+            className="bento-card rounded-2xl p-4 text-left hover:cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <Icon size={14} className="text-white/25 group-hover:text-white/50 transition-colors" />
+              <TrendingUp size={10} className="text-white/15" />
+            </div>
+            <p className="text-[22px] font-semibold tracking-[-0.02em] text-white">{value}</p>
+            <p className="text-[11px] text-white/30 mt-0.5">{label}</p>
+          </button>
+        ))}
       </div>
 
       {/* Brand AI Chat */}
@@ -106,8 +107,8 @@ export default function DashboardPage() {
       {/* Content Ideas */}
       <IdeasGrid brand={brand} />
 
-      {/* Quick Actions + Queue — 2-col */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+      {/* Quick Actions + Queue */}
+      <div className="grid grid-cols-2 gap-3">
         <QuickActions />
         <GenQueue />
       </div>

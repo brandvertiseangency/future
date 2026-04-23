@@ -9,10 +9,46 @@ const { JOB_TYPE } = require("../queues/generationQueue");
 const { db, initialized } = require("../config/firebase");
 const { query } = require("../config/postgres");
 const { buildPrompt } = require("../services/promptService");
+const { buildSystemPrompt, buildUserPrompt } = require("../lib/prompt-engine");
 const { generateImage } = require("../services/imageService");
 const creditService = require("../services/creditService");
 const notificationService = require("../services/notificationService");
 const logger = require("../utils/logger");
+
+/**
+ * Enrich brand object with brand_style_profiles + brand_industry_configs from Postgres.
+ */
+async function enrichBrandFromDB(brandId) {
+  try {
+    const [styleRes, configRes, prefRes] = await Promise.all([
+      query(`SELECT * FROM brand_style_profiles WHERE brand_id = $1 LIMIT 1`, [brandId]),
+      query(`SELECT * FROM brand_industry_configs WHERE brand_id = $1 LIMIT 1`, [brandId]),
+      query(`SELECT * FROM content_calendar_preferences WHERE brand_id = $1 LIMIT 1`, [brandId]),
+    ]);
+    const style = styleRes.rows[0] || {};
+    const config = configRes.rows[0] || {};
+    const prefs = prefRes.rows[0] || {};
+    return {
+      visualDNA: (style.dominant_aesthetic || style.mood_keywords?.length || style.extracted_colors?.length) ? {
+        colorPalette: style.extracted_colors || [],
+        aestheticStyle: style.dominant_aesthetic || null,
+        moodKeywords: style.mood_keywords || [],
+        designElements: style.layout_style ? [style.layout_style] : [],
+        contentStyle: style.photography_style || null,
+      } : null,
+      industryConfig: config.industry_answers || null,
+      calendarPrefs: prefs.weekly_post_count ? {
+        postsPerWeek: prefs.weekly_post_count,
+        primaryPlatforms: prefs.active_platforms || [],
+        contentMix: prefs.content_type_mix || {},
+      } : null,
+      usp: config.usp_keywords || [],
+    };
+  } catch (err) {
+    logger.warn("Failed to enrich brand from DB", { brandId, error: err.message });
+    return {};
+  }
+}
 
 /**
  * Main job handler — called for each dequeued job.
@@ -22,8 +58,12 @@ async function handleGenerationJob(job) {
 
   logger.info("Worker processing job", { id: job.id, postId, attempt: job.attempts });
 
-  // Step 1: Build prompt
-  const prompt = buildPrompt(post, brand, assets || []);
+  // Enrich brand with style profiles + industry config from Postgres
+  const enriched = brand.id ? await enrichBrandFromDB(brand.id) : {};
+  const enrichedBrand = { ...brand, ...enriched };
+
+  // Step 1: Build prompt using enriched brand intelligence
+  const prompt = buildPrompt(post, enrichedBrand, assets || []);
 
   // Step 2: Generate image
   const result = await generateImage(

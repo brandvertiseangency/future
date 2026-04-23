@@ -12,14 +12,27 @@ const getUserWithBrand = async (uid) => {
   const pool = getPool();
   if (!pool) return null;
   const { rows } = await pool.query(
-    `SELECT u.*, b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
+    `SELECT u.*, 
+            b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
             b.tone, b.styles, b.audience_age_min, b.audience_age_max,
-            b.audience_gender, b.audience_interests, b.platforms, b.goals,
+            b.audience_gender, b.audience_interests, b.audience_location,
+            b.platforms, b.goals,
             b.color_primary, b.color_secondary, b.color_accent, b.font_mood,
             b.industry_subtype, b.price_segment,
-            b.usp_keywords
+            b.usp_keywords,
+            -- brand style profile (from vision-analysed reference images)
+            bsp.extracted_colors, bsp.font_mood_detected, bsp.layout_style,
+            bsp.photography_style, bsp.mood_keywords, bsp.composition_style,
+            bsp.dominant_aesthetic, bsp.reference_image_urls,
+            -- industry config
+            bic.usp_keywords AS industry_usp, bic.industry_answers,
+            -- calendar prefs
+            ccp.weekly_post_count, ccp.content_type_mix, ccp.active_platforms
      FROM users u
      LEFT JOIN brands b ON b.user_id = u.id AND b.is_default = TRUE
+     LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+     LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+     LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
      WHERE u.firebase_uid = $1 LIMIT 1`,
     [uid]
   );
@@ -36,7 +49,7 @@ const toneDescriptor = (tone) => {
 };
 
 const buildSystemPrompt = (user) => {
-  // Map flat DB row to brand intelligence shape expected by prompt engine
+  // Map flat DB row → full brand intelligence shape expected by prompt-engine.js
   const brand = {
     name: user.brand_name,
     industry: user.industry,
@@ -44,16 +57,33 @@ const buildSystemPrompt = (user) => {
     tone: user.tone || 50,
     styles: user.styles || [],
     goals: user.goals || [],
+    // Audience
     audienceAgeMin: user.audience_age_min,
     audienceAgeMax: user.audience_age_max,
     audienceGender: user.audience_gender,
     audienceInterests: user.audience_interests,
     audienceLocation: user.audience_location,
+    // Visual identity — from onboarding
     brandColors: [user.color_primary, user.color_secondary, user.color_accent].filter(Boolean),
     fontMood: user.font_mood,
-    usp: user.usp_keywords,
-    wordsToAvoid: user.words_to_avoid,
-    persona: user.brand_persona,
+    // Visual DNA — from Gemini Vision analysis of reference images
+    visualDNA: (user.dominant_aesthetic || user.mood_keywords?.length || user.extracted_colors?.length) ? {
+      colorPalette: user.extracted_colors || [],
+      aestheticStyle: user.dominant_aesthetic || null,
+      moodKeywords: user.mood_keywords || [],
+      designElements: user.layout_style ? [user.layout_style] : [],
+      contentStyle: user.photography_style || null,
+    } : null,
+    // Industry config
+    usp: user.usp_keywords || user.industry_usp,
+    industrySubtype: user.industry_subtype,
+    priceSegment: user.price_segment,
+    // Calendar prefs
+    calendarPrefs: user.weekly_post_count ? {
+      postsPerWeek: user.weekly_post_count,
+      primaryPlatforms: user.active_platforms || [],
+      contentMix: user.content_type_mix || {},
+    } : null,
   };
   return buildSystemPromptV2(brand);
 };
@@ -99,10 +129,28 @@ router.post('/', authMiddleware, async (req, res) => {
     const raw = await callAIWrapped(systemPrompt, userPrompt);
     const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
 
-    // Generate image with Imagen 3 nano
-    const imageUrl = await generateImage(
-      `${imagePrompt}. Style: social media ${contentType||'post'} for ${platform}. Brand: ${user.brand_name || 'modern brand'}. High quality, professional, no text overlays.`
-    );
+    // Build a rich image prompt using brand visual DNA + AI-generated imagePrompt
+    const brandColors = [user.color_primary, user.color_secondary, user.color_accent].filter(Boolean);
+    const visualDNAParts = [];
+    if (brandColors.length) visualDNAParts.push(`Brand color palette: ${brandColors.join(', ')}`);
+    if (user.font_mood) visualDNAParts.push(`Typography mood: ${user.font_mood}`);
+    if (user.dominant_aesthetic) visualDNAParts.push(`Aesthetic: ${user.dominant_aesthetic}`);
+    if (user.photography_style) visualDNAParts.push(`Photography style: ${user.photography_style}`);
+    if (user.mood_keywords?.length) visualDNAParts.push(`Mood: ${(user.mood_keywords).join(', ')}`);
+    if (user.extracted_colors?.length) visualDNAParts.push(`Detected palette: ${(user.extracted_colors).join(', ')}`);
+
+    const enrichedImagePrompt = [
+      imagePrompt,
+      visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
+      `\nFormat: social media ${contentType || 'post'} for ${platform}.`,
+      `Brand: ${user.brand_name || 'modern brand'}.`,
+      'High quality, professional, photorealistic, no text overlays, no watermarks.',
+    ].filter(Boolean).join(' ');
+
+    // Generate image
+    const imageUrl = await generateImage(enrichedImagePrompt, {
+      aspectRatio: contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1',
+    });
 
     await client.query('BEGIN');
     await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);

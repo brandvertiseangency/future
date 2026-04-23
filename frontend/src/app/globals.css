@@ -455,13 +455,14 @@
 /* Silver card border */
 .card-silver {
   background: var(--surface-1);
-  border: 1px solid rgba(255,255,255,0.10);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
 }
 .card-silver:hover {
-  border-color: rgba(255,255,255,0.20);
-  box-shadow: 0 0 20px rgba(255,255,255,0.03), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+  border-color: rgba(255,255,255,0.18);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.10), inset 0 1px 0 rgba(255,255,255,0.07);
+  transform: translateY(-1px);
 }
 
 /* Active nav item — silver left bar */
@@ -469,6 +470,83 @@
   background: rgba(255,255,255,0.05);
   color: #ffffff;
   box-shadow: inset 2px 0 0 rgba(255,255,255,0.6);
+}
+
+/* ── BENTO GRID SYSTEM ─────────────────────────────────────────────────────── */
+
+/* Hero / featured bento cell — animated shimmer border + faint inner glow */
+@property --bento-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes bento-spin {
+  to { --bento-angle: 360deg; }
+}
+
+.bento-hero {
+  position: relative;
+  background: #0a0a0a;
+  border-radius: 14px;
+  /* Conic-gradient border via background-clip trick */
+  background-image:
+    linear-gradient(#0a0a0a, #0a0a0a),
+    conic-gradient(from var(--bento-angle), rgba(255,255,255,0) 0%, rgba(255,255,255,0.55) 20%, rgba(255,255,255,0) 40%);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  border: 1px solid transparent;
+  animation: bento-spin 4s linear infinite;
+  transition: box-shadow 0.25s, transform 0.15s;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 0 28px rgba(255,255,255,0.03);
+}
+.bento-hero:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.09),
+    0 0 40px rgba(255,255,255,0.07),
+    0 8px 32px rgba(0,0,0,0.55);
+  transform: translateY(-1px);
+}
+
+/* Inner content wrapper so the rotating border doesn't clip children */
+.bento-hero-inner {
+  position: relative;
+  z-index: 1;
+  border-radius: 13px;
+  overflow: hidden;
+  height: 100%;
+}
+
+/* Bento standard — elevated card with glowing top edge */
+.bento-card {
+  position: relative;
+  background: var(--surface-1);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 1px 2px rgba(0,0,0,0.8);
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+  overflow: hidden;
+}
+.bento-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18) 40%, rgba(255,255,255,0.10) 60%, transparent);
+  pointer-events: none;
+}
+.bento-card:hover {
+  border-color: rgba(255,255,255,0.16);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.07),
+    0 8px 28px rgba(0,0,0,0.5),
+    0 0 0 1px rgba(255,255,255,0.08);
+  transform: translateY(-1px);
 }
 
 /* ── Scrollbar hide ────────────────────────────────── */

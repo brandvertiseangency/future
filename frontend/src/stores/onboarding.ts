@@ -78,6 +78,8 @@ export interface OnboardingData {
   tagline: string
   city: string
   website: string
+  phone: string
+  address: string
   industryLabel: string
 
   // v2 Step 3 Personality
@@ -157,6 +159,8 @@ const defaultData: OnboardingData = {
   tagline: '',
   city: '',
   website: '',
+  phone: '',
+  address: '',
   industryLabel: '',
   vibeStyles: [],
   personalityKeywords: [],

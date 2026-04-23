@@ -1,15 +1,22 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Plus, Image, Sparkles, Calendar } from 'lucide-react'
+import { Send, Sparkles, Calendar, ArrowUpRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getFirebaseAuth } from '@/lib/firebase'
+import { cn } from '@/lib/utils'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   id: string
 }
+
+const QUICK_PROMPTS = [
+  { label: 'Post ideas for this week', icon: '💡' },
+  { label: 'Write a caption for Instagram', icon: '✍️' },
+  { label: 'Plan next month\'s content', icon: '📅' },
+]
 
 async function getToken(): Promise<string | null> {
   try {
@@ -27,40 +34,39 @@ export function BrandChat({ brand }: { brand: any }) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 
-  // Auto-resize textarea
   useEffect(() => {
     if (!textareaRef.current) return
     textareaRef.current.style.height = 'auto'
-    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 140) + 'px'
+    textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px'
   }, [input])
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
+  // Pick up prefill from ideas grid
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const prefill = sessionStorage.getItem('bv_chat_prefill')
+    if (prefill) { setInput(prefill); sessionStorage.removeItem('bv_chat_prefill') }
+  }, [])
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return
-
-    // Calendar intent → redirect
     if (/calendar|content plan|schedule|next month|posts for/i.test(input)) {
       router.push('/calendar/generate?brief=' + encodeURIComponent(input))
       return
     }
-
     const userMsg: Message = { role: 'user', content: input, id: Date.now().toString() }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
-
     try {
       const token = await getToken()
       const res = await fetch(`${API_BASE}/api/chat/brand`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({
-          messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })),
-        }),
+        body: JSON.stringify({ messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) }),
       })
       const data = await res.json()
       setMessages(prev => [...prev, {
@@ -69,97 +75,61 @@ export function BrandChat({ brand }: { brand: any }) {
         id: Date.now().toString(),
       }])
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: "Couldn't connect. Please try again.",
-        id: Date.now().toString(),
-      }])
-    } finally {
-      setLoading(false)
-    }
+      setMessages(prev => [...prev, { role: 'assistant', content: "Couldn't connect. Please try again.", id: Date.now().toString() }])
+    } finally { setLoading(false) }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
-  const sendPrompt = (prompt: string) => {
-    setInput(prompt)
-    setTimeout(() => textareaRef.current?.focus(), 50)
-  }
-
   const brandName = brand?.name ?? 'your brand'
 
   return (
-    <div
-      className="card-silver"
-      style={{ borderRadius: 16, overflow: 'hidden', marginBottom: 16 }}
-    >
-      {/* Tabs row */}
-      <div style={{
-        display: 'flex', gap: 2, padding: '10px 12px 0',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-      }}>
-        {[
-          { id: 'chat',     label: 'Brand AI',          icon: Sparkles },
-          { id: 'calendar', label: 'Generate Calendar', icon: Calendar },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => id === 'calendar' ? router.push('/calendar/generate') : undefined}
-            style={{
-              padding: '6px 12px',
-              fontSize: 11, fontWeight: 500,
-              color: id === 'chat' ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.3)',
-              background: id === 'chat' ? 'rgba(255,255,255,0.06)' : 'transparent',
-              border: 'none', borderRadius: '8px 8px 0 0',
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 5,
-              letterSpacing: '0.01em',
-              transition: 'color 0.15s',
-            }}
-          >
-            <Icon size={11} strokeWidth={1.5} />
-            {label}
-          </button>
-        ))}
+    <div className="bento-hero" style={{ padding: 1 }}>
+    <div className="bento-hero-inner" style={{ background: '#0a0a0a' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center">
+            <Sparkles size={12} className="text-white/70" />
+          </div>
+          <span className="text-[13px] font-semibold text-white/85">Brand AI</span>
+          <span className="flex items-center gap-1.5 text-[10.5px] text-white/35 ml-0.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 animate-pulse-glow" />
+            Ready
+          </span>
+        </div>
+        <button
+          onClick={() => router.push('/calendar/generate')}
+          className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
+        >
+          <Calendar size={11} />
+          Generate calendar
+          <ArrowUpRight size={10} />
+        </button>
       </div>
 
       {/* Messages */}
       {messages.length > 0 && (
-        <div style={{
-          maxHeight: 340, overflowY: 'auto',
-          padding: '16px 16px 8px',
-          display: 'flex', flexDirection: 'column', gap: 10,
-        }}>
+        <div className="max-h-72 overflow-y-auto px-4 py-4 flex flex-col gap-3 scrollbar-hide">
           {messages.map(msg => (
-            <div key={msg.id} style={{
-              display: 'flex',
-              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-            }}>
-              <div style={{
-                maxWidth: '82%',
-                padding: '9px 13px',
-                borderRadius: msg.role === 'user' ? '13px 13px 4px 13px' : '13px 13px 13px 4px',
-                background: msg.role === 'user'
-                  ? 'linear-gradient(135deg, #ffffff 0%, #d8d8d8 100%)'
-                  : 'rgba(255,255,255,0.05)',
-                border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.07)',
-                color: msg.role === 'user' ? '#000' : 'rgba(255,255,255,0.75)',
-                fontSize: 13, lineHeight: 1.55,
-                whiteSpace: 'pre-wrap',
-              }}>
+            <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+              <div className={cn(
+                'max-w-[84%] px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap',
+                msg.role === 'user'
+                  ? 'rounded-[14px_14px_4px_14px] text-black font-medium'
+                  : 'rounded-[14px_14px_14px_4px] text-white/70 border border-white/[0.07] bg-white/[0.04]'
+              )}
+              style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #ffffff 0%, #d8d8d8 100%)' } : undefined}
+              >
                 {msg.content}
               </div>
             </div>
           ))}
-
           {loading && (
-            <div style={{ display: 'flex', padding: '4px 4px' }}>
-              <div
-                className="dot-loader"
-                style={{ display: 'flex', gap: 4, alignItems: 'center', padding: '8px 12px', background: 'rgba(255,255,255,0.04)', borderRadius: 10 }}
-              >
+            <div className="flex">
+              <div className="dot-loader flex gap-1 items-center px-3.5 py-2.5 bg-white/[0.04] rounded-[14px_14px_14px_4px] border border-white/[0.07]">
                 <span /><span /><span />
               </div>
             </div>
@@ -168,8 +138,25 @@ export function BrandChat({ brand }: { brand: any }) {
         </div>
       )}
 
-      {/* Input */}
-      <div style={{ padding: '14px 16px 6px' }}>
+      {/* Quick prompts — show only when no messages */}
+      {messages.length === 0 && (
+        <div className="flex gap-2 px-4 pt-4 pb-2 flex-wrap">
+          {QUICK_PROMPTS.map(({ label, icon }) => (
+            <button
+              key={label}
+              onClick={() => { setInput(label); setTimeout(() => textareaRef.current?.focus(), 50) }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.09] bg-white/[0.04]
+                         text-[11.5px] text-white/50 hover:text-white/80 hover:border-white/[0.18] hover:bg-white/[0.07] transition-all"
+            >
+              <span className="text-[13px]">{icon}</span>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Input area */}
+      <div className="px-4 pt-4 pb-2 border-t border-white/[0.04] mt-1">
         <textarea
           ref={textareaRef}
           value={input}
@@ -177,81 +164,32 @@ export function BrandChat({ brand }: { brand: any }) {
           onKeyDown={handleKeyDown}
           placeholder={
             messages.length === 0
-              ? `Ask anything about ${brandName} — post ideas, captions, strategy, competitor analysis...`
+              ? `Ask anything about ${brandName}...`
               : 'Continue the conversation...'
           }
           rows={1}
-          style={{
-            width: '100%', background: 'transparent', border: 'none', outline: 'none',
-            color: 'rgba(255,255,255,0.8)', fontSize: 14, resize: 'none',
-            fontFamily: 'inherit', lineHeight: 1.55, minHeight: 44,
-          }}
+          className="w-full bg-transparent border-none outline-none text-white/75 text-[14px] resize-none font-sans leading-relaxed placeholder:text-white/22"
+          style={{ minHeight: 40 }}
         />
       </div>
 
-      {/* Action row */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '4px 12px 14px',
-      }}>
-        <div style={{ display: 'flex', gap: 5 }}>
-          {([
-            { icon: Plus,     title: 'Add context' },
-            { icon: Image,    title: 'Upload image' },
-            { icon: Sparkles, title: 'Suggestions' },
-          ] as const).map(({ icon: Icon, title }) => (
-            <button
-              key={title}
-              title={title}
-              style={{
-                width: 30, height: 30, borderRadius: 8,
-                border: '1px solid rgba(255,255,255,0.08)',
-                background: 'none',
-                color: 'rgba(255,255,255,0.3)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'border-color 0.15s, color 0.15s',
-              }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.2)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.08)'; (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.3)' }}
-            >
-              <Icon size={13} strokeWidth={1.5} />
-            </button>
-          ))}
-        </div>
-
-        {/* Send button */}
+      {/* Footer bar */}
+      <div className="flex items-center justify-between px-3.5 pb-3.5">
+        <p className="text-[10.5px] text-white/18">↵ Enter to send · Shift+Enter for newline</p>
         <button
           onClick={sendMessage}
           disabled={!input.trim() || loading}
-          className={input.trim() ? 'btn-silver' : ''}
-          style={{
-            width: 32, height: 32, borderRadius: 9,
-            background: input.trim() ? undefined : 'rgba(255,255,255,0.06)',
-            border: 'none',
-            cursor: input.trim() ? 'pointer' : 'default',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'background 0.15s',
-          }}
+          className={cn(
+            'w-8 h-8 rounded-xl flex items-center justify-center transition-all',
+            input.trim()
+              ? 'bg-white text-black hover:opacity-90'
+              : 'bg-white/[0.05] text-white/20 cursor-default'
+          )}
         >
-          <Send size={13} strokeWidth={2} color={input.trim() ? '#000' : 'rgba(255,255,255,0.25)'} />
+          <Send size={13} strokeWidth={2} />
         </button>
       </div>
-
-      {/* Platform connect bar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 14px',
-        background: 'rgba(255,255,255,0.015)',
-        borderTop: '1px solid rgba(255,255,255,0.04)',
-        fontSize: 11, color: 'rgba(255,255,255,0.25)',
-      }}>
-        <div style={{ display: 'flex', gap: 4 }}>
-          {['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.10)', 'rgba(255,255,255,0.08)'].map((bg, i) => (
-            <div key={i} style={{ width: 16, height: 16, borderRadius: 4, background: bg, border: '1px solid rgba(255,255,255,0.1)' }} />
-          ))}
-        </div>
-        <span>Connect your platforms to extend Brand AI</span>
-      </div>
+    </div>
     </div>
   )
 }

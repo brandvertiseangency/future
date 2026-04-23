@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { GlowingEffect } from '@/components/ui/glowing-effect'
+import { useState } from 'react'
 
 // Inline SVG icons — animated on hover (Chamaac-style approach)
 function IconCalendar({ hovered }: { hovered: boolean }) {
@@ -60,6 +60,7 @@ const ACTIONS = [
     desc: 'Plan a full month of posts',
     href: '/calendar/generate',
     span: 'col-span-2',
+    hero: true,
   },
   {
     icon: 'sparkles' as const,
@@ -67,6 +68,7 @@ const ACTIONS = [
     desc: 'Create a single post now',
     href: '/generate',
     span: 'col-span-1',
+    hero: false,
   },
   {
     icon: 'images' as const,
@@ -74,6 +76,7 @@ const ACTIONS = [
     desc: 'Browse all creatives',
     href: '/outputs',
     span: 'col-span-1',
+    hero: false,
   },
   {
     icon: 'upload' as const,
@@ -81,10 +84,9 @@ const ACTIONS = [
     desc: 'Logos & products',
     href: '/assets',
     span: 'col-span-2',
+    hero: false,
   },
 ]
-
-import { useState } from 'react'
 
 function ActionCard({
   icon,
@@ -92,40 +94,82 @@ function ActionCard({
   desc,
   href,
   span,
+  hero,
 }: {
   icon: keyof typeof ICON_MAP
   label: string
   desc: string
   href: string
   span: string
+  hero: boolean
 }) {
   const router = useRouter()
   const [hovered, setHovered] = useState(false)
   const IconComp = ICON_MAP[icon]
 
+  if (hero) {
+    return (
+      <div className={`bento-hero ${span}`} style={{ padding: 1 }}>
+        <div className="bento-hero-inner">
+          <button
+            onClick={() => router.push(href)}
+            onMouseEnter={() => setHovered(true)}
+            onMouseLeave={() => setHovered(false)}
+            className="relative w-full h-full rounded-[13px] p-3.5 flex flex-col gap-2 text-left cursor-pointer"
+            style={{
+              background: hovered ? '#121212' : '#0d0d0d',
+              border: 'none',
+              transition: 'background 0.2s',
+            }}
+          >
+            {/* Subtle radial glow behind icon */}
+            <div style={{
+              position: 'absolute', inset: 0, borderRadius: 13,
+              background: hovered
+                ? 'radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,255,255,0.04) 0%, transparent 70%)'
+                : 'none',
+              transition: 'background 0.3s',
+              pointerEvents: 'none',
+            }} />
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: hovered ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.07)',
+              border: `1px solid ${hovered ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.12)'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              transition: 'background 0.2s, border-color 0.2s',
+            }}>
+              <IconComp hovered={hovered} />
+            </div>
+            <div>
+              <p style={{
+                fontSize: 12.5, fontWeight: 600, margin: 0, lineHeight: 1.3,
+                color: hovered ? '#ffffff' : 'rgba(255,255,255,0.85)',
+                transition: 'color 0.2s',
+              }}>
+                {label}
+              </p>
+              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.32)', margin: '2px 0 0', lineHeight: 1.3 }}>
+                {desc}
+              </p>
+            </div>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div
-      className={`relative rounded-xl p-px ${span}`}
-      style={{
-        background: hovered ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)',
-        transition: 'background 0.2s',
-      }}
+      className={`bento-card ${span}`}
+      style={{ padding: 0 }}
     >
-      <GlowingEffect
-        spread={28}
-        glow={true}
-        disabled={false}
-        proximity={55}
-        inactiveZone={0.05}
-        borderWidth={1}
-      />
       <button
         onClick={() => router.push(href)}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
-        className="relative w-full h-full rounded-[11px] p-3.5 flex flex-col gap-2 text-left cursor-pointer"
+        className="relative w-full h-full rounded-[13px] p-3.5 flex flex-col gap-2 text-left cursor-pointer"
         style={{
-          background: hovered ? '#111' : '#0a0a0a',
+          background: 'transparent',
           border: 'none',
           transition: 'background 0.2s',
         }}
@@ -158,7 +202,7 @@ function ActionCard({
 
 export function QuickActions() {
   return (
-    <div className="card-silver" style={{ borderRadius: 14, padding: '16px 18px' }}>
+    <div className="bento-card" style={{ borderRadius: 14, padding: '16px 18px' }}>
       <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.22)', marginBottom: 12 }}>
         Quick Actions
       </p>

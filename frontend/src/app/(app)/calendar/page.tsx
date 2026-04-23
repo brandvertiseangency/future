@@ -24,25 +24,28 @@ interface PostSlot {
 }
 
 const PLATFORM_COLORS: Record<string, string> = {
-  instagram: '#f43f5e', linkedin: '#3b82f6', twitter: '#94a3b8',
-  facebook: '#2563eb', tiktok: '#10b981',
+  instagram: '#e1306c', linkedin: '#0077b5', twitter: '#94a3b8',
+  facebook: '#1877f2', tiktok: '#ff0050',
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  draft: 'bg-[var(--bg-subtle)] text-[var(--text-3)] border-[var(--border-base)]',
-  scheduled: 'bg-[var(--ai-glow)] text-[var(--ai-color)] border-[var(--ai-border)]',
-  published: 'bg-emerald-500/15 text-emerald-500 border-emerald-500/25',
-  failed: 'bg-rose-500/15 text-rose-400 border-rose-500/25',
+  draft:     'bg-white/[0.06] text-white/40 border-white/[0.10]',
+  scheduled: 'bg-white/[0.08] text-white/60 border-white/[0.14]',
+  published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25',
+  failed:    'bg-rose-500/15 text-rose-400 border-rose-500/25',
 }
 
-const fetcher = <T,>(url: string): Promise<T> => apiCall(url) as Promise<T>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const fetcher = (url: string): Promise<any> => apiCall(url)
 
 function PostPill({ post, onClick }: { post: PostSlot; onClick: () => void }) {
   const color = PLATFORM_COLORS[post.platform.toLowerCase()] ?? '#6366f1'
   return (
-    <button onClick={onClick}
-      className="w-full text-left px-2 py-0.5 rounded-md text-[10px] font-medium border truncate cursor-pointer transition-opacity hover:opacity-80"
-      style={{ backgroundColor: `${color}18`, borderColor: `${color}30`, color }}>
+    <button
+      onClick={onClick}
+      className="w-full text-left px-2 py-0.5 rounded-md text-[10px] font-medium border truncate hover:opacity-80 transition-opacity"
+      style={{ backgroundColor: `${color}18`, borderColor: `${color}30`, color }}
+    >
       {post.title || post.platform}
     </button>
   )
@@ -55,69 +58,77 @@ function PostDrawer({ post, onClose, onDeleted }: { post: PostSlot; onClose: () 
 
   const save = async () => {
     setSaving(true)
-    try {
-      await apiCall(`/api/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ caption }) })
-      onClose()
-    } finally { setSaving(false) }
+    try { await apiCall(`/api/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ caption }) }); onClose() }
+    finally { setSaving(false) }
   }
-
   const del = async () => {
     setDeleting(true)
-    try {
-      await apiCall(`/api/posts/${post.id}`, { method: 'DELETE' })
-      onDeleted()
-      onClose()
-    } finally { setDeleting(false) }
+    try { await apiCall(`/api/posts/${post.id}`, { method: 'DELETE' }); onDeleted(); onClose() }
+    finally { setDeleting(false) }
   }
+
+  const platformColor = PLATFORM_COLORS[post.platform.toLowerCase()] ?? '#6366f1'
 
   return (
     <motion.div
       initial={{ x: 480, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: 480, opacity: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className="fixed right-0 top-0 h-full w-[480px] bg-[var(--bg-raised)] border-l border-[var(--border-dim)] z-50 flex flex-col shadow-2xl">
-      <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--border-dim)]">
+      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      className="fixed right-0 top-0 h-full w-[440px] bg-[#070707] border-l border-white/[0.08] z-50 flex flex-col shadow-2xl"
+    >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
         <div>
-          <h3 className="text-[var(--text-1)] font-semibold text-base">{post.title || post.platform}</h3>
-          <span className={cn('text-xs px-2 py-0.5 rounded-full border mt-1 inline-block capitalize', STATUS_STYLES[post.status])}>
+          <h3 className="text-white font-semibold text-[15px] tracking-[-0.01em]">{post.title || post.platform}</h3>
+          <span className={cn('text-[10px] px-2 py-0.5 rounded-md border mt-1 inline-block capitalize font-medium', STATUS_STYLES[post.status])}>
             {post.status}
           </span>
         </div>
-        <button onClick={onClose}
-          className="w-8 h-8 rounded-lg bg-[var(--bg-subtle)] border border-[var(--border-base)] flex items-center justify-center hover:bg-[var(--bg-muted)] transition-colors">
-          <X size={16} className="text-[var(--text-2)]" />
+        <button
+          onClick={onClose}
+          className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+        >
+          <X size={14} className="text-white/50" />
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
+
+      <div className="flex-1 overflow-y-auto p-5 space-y-5 scrollbar-hide">
         {post.image_url
-          ? <img src={post.image_url} alt="" className="w-full aspect-video rounded-xl object-cover border border-[var(--border-base)]" />
-          : <div className="aspect-video rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-base)] flex items-center justify-center">
-              <p className="text-[var(--text-4)] text-sm">No image yet</p>
+          ? <img src={post.image_url} alt="" className="w-full aspect-video rounded-xl object-cover border border-white/[0.08]" />
+          : <div className="aspect-video rounded-xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-center">
+              <p className="text-white/20 text-sm">No image yet</p>
             </div>
         }
         <div>
-          <p className="text-[var(--text-3)] text-xs uppercase tracking-wider mb-2">Platform</p>
-          <span className="px-3 py-1 rounded-full text-xs border capitalize font-medium"
-            style={{ backgroundColor: `${PLATFORM_COLORS[post.platform.toLowerCase()] ?? '#6366f1'}18`, borderColor: `${PLATFORM_COLORS[post.platform.toLowerCase()] ?? '#6366f1'}30`, color: PLATFORM_COLORS[post.platform.toLowerCase()] ?? '#6366f1' }}>
+          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-2">Platform</p>
+          <span className="px-3 py-1 rounded-full text-[11px] border capitalize font-medium"
+            style={{ backgroundColor: `${platformColor}18`, borderColor: `${platformColor}30`, color: platformColor }}>
             {post.platform}
           </span>
         </div>
         <div>
-          <p className="text-[var(--text-3)] text-xs uppercase tracking-wider mb-2">Caption</p>
-          <textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={4}
-            className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
-                       text-[var(--text-1)] text-sm resize-none focus:outline-none focus:border-[var(--ai-border)]/50 transition-colors" />
+          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-2">Caption</p>
+          <textarea
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            rows={4}
+            className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3
+                       text-white/75 text-[13px] resize-none focus:outline-none focus:border-white/[0.20] transition-colors"
+          />
         </div>
         <div>
-          <p className="text-[var(--text-3)] text-xs uppercase tracking-wider mb-2">Scheduled for</p>
-          <p className="text-[var(--text-2)] text-sm">{post.scheduled_at ? format(new Date(post.scheduled_at), 'PPpp') : '—'}</p>
+          <p className="text-white/25 text-[10px] uppercase tracking-wider mb-2">Scheduled for</p>
+          <p className="text-white/50 text-[13px]">{post.scheduled_at ? format(new Date(post.scheduled_at), 'PPpp') : '—'}</p>
         </div>
       </div>
-      <div className="px-6 py-5 border-t border-[var(--border-dim)] space-y-2">
-        <AIButton onClick={save} disabled={saving} className="w-full py-3 rounded-xl text-sm font-semibold">
-          {saving ? <Loader2 size={16} className="animate-spin" /> : 'Save Changes'}
+
+      <div className="px-5 py-4 border-t border-white/[0.07] space-y-2">
+        <AIButton onClick={save} disabled={saving} className="w-full py-2.5 rounded-xl text-[13px] font-semibold">
+          {saving ? <Loader2 size={14} className="animate-spin" /> : 'Save Changes'}
         </AIButton>
-        <button onClick={del} disabled={deleting}
-          className="w-full py-2 text-rose-400 text-sm hover:text-rose-300 transition-colors disabled:opacity-50">
+        <button
+          onClick={del}
+          disabled={deleting}
+          className="w-full py-2 text-rose-400/70 text-[12px] hover:text-rose-400 transition-colors disabled:opacity-50"
+        >
           {deleting ? 'Deleting…' : 'Delete post'}
         </button>
       </div>
@@ -132,7 +143,7 @@ export default function CalendarPage() {
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth() + 1
   const swrKey = `/api/posts/scheduled?year=${year}&month=${month}`
-  const { data } = useSWR(swrKey, fetcher<{ posts: PostSlot[] }>, { dedupingInterval: 20000 })
+  const { data } = useSWR(swrKey, fetcher, { dedupingInterval: 20000 })
   const posts = data?.posts ?? []
 
   const monthStart = startOfMonth(currentDate)
@@ -140,64 +151,82 @@ export default function CalendarPage() {
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
   const startPad = (getDay(monthStart) + 6) % 7
 
-  const postsForDay = (day: Date) => posts.filter((p) => p.scheduled_at && isSameDay(new Date(p.scheduled_at), day))
+  const postsForDay = (day: Date) => posts.filter((p: PostSlot) => p.scheduled_at && isSameDay(new Date(p.scheduled_at), day))
 
   return (
-    <div className="p-8 h-[calc(100vh-64px)] flex flex-col">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <button onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            className="w-8 h-8 rounded-lg bg-[var(--card-bg)] border border-[var(--border-base)] flex items-center justify-center hover:bg-[var(--bg-subtle)] transition-colors">
-            <ChevronLeft size={16} className="text-[var(--text-2)]" />
+    <div className="px-6 py-6 h-[calc(100vh-56px)] flex flex-col gap-5">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+            className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+          >
+            <ChevronLeft size={14} className="text-white/50" />
           </button>
-          <h2 className="text-[var(--text-1)] font-semibold text-lg min-w-[160px] text-center">
+          <h2 className="text-white font-semibold text-[16px] tracking-[-0.02em] min-w-[150px] text-center">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
-          <button onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            className="w-8 h-8 rounded-lg bg-[var(--card-bg)] border border-[var(--border-base)] flex items-center justify-center hover:bg-[var(--bg-subtle)] transition-colors">
-            <ChevronRight size={16} className="text-[var(--text-2)]" />
+          <button
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] flex items-center justify-center hover:bg-white/[0.08] transition-colors"
+          >
+            <ChevronRight size={14} className="text-white/50" />
           </button>
         </div>
         <Link href="/generate">
-          <AIButton className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold">
-            <Sparkles size={14} className="text-[var(--ai-color)]" />
+          <AIButton className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12.5px] font-semibold">
+            <Sparkles size={13} />
             Schedule Post
           </AIButton>
         </Link>
       </div>
 
-      <div className="flex-1 flex flex-col border border-[var(--border-base)] rounded-2xl overflow-hidden bg-[var(--card-bg)]">
-        <div className="grid grid-cols-7 border-b border-[var(--border-dim)]">
+      {/* Calendar grid */}
+      <div className="flex-1 flex flex-col rounded-2xl border border-white/[0.07] bg-[#080808] overflow-hidden min-h-0">
+        {/* Day headers */}
+        <div className="grid grid-cols-7 border-b border-white/[0.06]">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-            <div key={d} className="py-3 text-center text-[var(--text-3)] text-xs uppercase tracking-wider font-medium">{d}</div>
+            <div key={d} className="py-2.5 text-center text-white/25 text-[10px] uppercase tracking-widest font-semibold">
+              {d}
+            </div>
           ))}
         </div>
+        {/* Cells */}
         <div className="flex-1 grid grid-cols-7 auto-rows-fr">
           {Array.from({ length: startPad }).map((_, i) => (
-            <div key={`pad-${i}`} className="border-r border-b border-[var(--border-dim)] opacity-30" />
+            <div key={`pad-${i}`} className="border-r border-b border-white/[0.05]" />
           ))}
           {days.map((day) => {
             const dayPosts = postsForDay(day)
             const today = isToday(day)
             return (
-              <motion.div key={day.toISOString()}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-                transition={{ delay: day.getDate() * 0.01 }}
-                className={cn('border-r border-b border-[var(--border-dim)] p-2 group min-h-[90px] relative',
-                  today && 'bg-[var(--ai-glow)]', 'hover:bg-[var(--bg-subtle)] transition-colors')}>
-                <span className={cn('inline-flex w-6 h-6 rounded-full items-center justify-center text-xs font-medium mb-1',
-                  today ? 'bg-[var(--ai-color)] text-white' : 'text-[var(--text-3)]')}>
+              <motion.div
+                key={day.toISOString()}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: day.getDate() * 0.008 }}
+                className={cn(
+                  'border-r border-b border-white/[0.05] p-2 group min-h-[80px] relative transition-colors',
+                  today ? 'bg-white/[0.04]' : 'hover:bg-white/[0.025]'
+                )}
+              >
+                <span className={cn(
+                  'inline-flex w-5 h-5 rounded-full items-center justify-center text-[11px] font-medium mb-1.5',
+                  today ? 'bg-white text-black font-bold' : 'text-white/30'
+                )}>
                   {format(day, 'd')}
                 </span>
                 <div className="space-y-0.5">
-                  {dayPosts.map((post) => (
+                  {dayPosts.map((post: PostSlot) => (
                     <PostPill key={post.id} post={post} onClick={() => setSelectedPost(post)} />
                   ))}
                 </div>
                 <Link href="/generate"
                   className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity
-                             w-5 h-5 rounded-md bg-[var(--bg-muted)] flex items-center justify-center hover:bg-[var(--border-loud)]">
-                  <Plus size={10} className="text-[var(--text-2)]" />
+                             w-5 h-5 rounded-md bg-white/[0.06] flex items-center justify-center hover:bg-white/[0.12]"
+                >
+                  <Plus size={9} className="text-white/50" />
                 </Link>
               </motion.div>
             )
@@ -208,8 +237,11 @@ export default function CalendarPage() {
       <AnimatePresence>
         {selectedPost && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-40" onClick={() => setSelectedPost(null)} />
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              onClick={() => setSelectedPost(null)}
+            />
             <PostDrawer post={selectedPost} onClose={() => setSelectedPost(null)} onDeleted={() => mutate(swrKey)} />
           </>
         )}

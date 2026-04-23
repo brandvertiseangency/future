@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useDropzone } from 'react-dropzone'
 import useSWR from 'swr'
@@ -71,8 +71,8 @@ function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number 
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="group rounded-xl border border-[var(--card-border)] bg-[var(--card-bg)]
-                 overflow-hidden hover:border-[var(--card-hover-border)] transition-all hover:scale-[1.01]"
+      className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a]
+                 overflow-hidden hover:border-white/[0.18] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.5)]"
     >
       <div className="aspect-square relative bg-[var(--bg-subtle)] flex items-center justify-center">
         {card.imageUrl ? (
@@ -165,11 +165,13 @@ function OutputCardComponent({ card, delay }: { card: OutputCard; delay: number 
   )
 }
 
-function SkeletonCard() {  return (    <div className="rounded-xl border border-[var(--card-border)] overflow-hidden">
-      <div className="aspect-square bg-[var(--bg-subtle)] animate-pulse" />
-      <div className="p-3 space-y-2 border-t border-[var(--border-dim)]">
-        <div className="h-3 rounded bg-[var(--bg-muted)] w-3/4" />
-        <div className="h-2 rounded bg-[var(--bg-subtle)] w-1/2" />
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl border border-white/[0.07] overflow-hidden bg-[#0a0a0a]">
+      <div className="aspect-square bg-white/[0.04] animate-pulse" />
+      <div className="p-3 space-y-2 border-t border-white/[0.05]">
+        <div className="h-2.5 rounded-lg bg-white/[0.05] w-3/4 animate-pulse" />
+        <div className="h-2 rounded-lg bg-white/[0.03] w-1/2 animate-pulse" />
       </div>
     </div>
   )
@@ -250,7 +252,6 @@ function ProductSelector() {
 export default function GeneratePage() {
   const { form, outputs, isGenerating, setForm, setOutputs, setGenerating, setJobId } = useGenerationStore()
   const [styleOpen, setStyleOpen] = useState(false)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // Real credit balance
   const { data: creditsData } = useSWR(
@@ -284,50 +285,70 @@ export default function GeneratePage() {
     }
     setGenerating(true)
     setOutputs([])
-    const toastId = toast.loading('Starting generation…')
+    const toastId = toast.loading(`Generating ${form.platforms.length} post${form.platforms.length > 1 ? 's' : ''}…`)
 
-    // Build product context to inject into prompt
+    // Build product context to inject into brief
     const allProducts = useOnboardingStore.getState().data.products || []
     const selectedProduct = form.selectedProductId
       ? allProducts.find((p) => p.id === form.selectedProductId)
       : null
 
-    try {
-      const res = await apiCall<{ jobId: string }>('/api/post/generate', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...form,
-          productContext: selectedProduct
-            ? {
-                name: selectedProduct.name,
-                description: selectedProduct.description,
-                price: selectedProduct.price,
-                category: selectedProduct.category,
-                tags: selectedProduct.tags,
-                visualDescription: selectedProduct.visualDescription,
-                imageUrl: selectedProduct.images[0] || null,
-              }
-            : null,
-        }),
-      })
-      setJobId(res.jobId)
-      pollingRef.current = setInterval(async () => {
-        try {
-          const status = await apiCall<{ status: string; outputs?: OutputCard[] }>(`/api/post/status/${res.jobId}`)
-          if (status.outputs?.length) setOutputs(status.outputs)
-          if (status.status === 'complete' || status.status === 'error') {
-            clearInterval(pollingRef.current!)
-            setGenerating(false)
-            toast.dismiss(toastId)
-            if (status.status === 'error') toast.error('Generation failed — please try again')
-            else toast.success(`${status.outputs?.length ?? 1} post${(status.outputs?.length ?? 1) !== 1 ? 's' : ''} ready!`)
-          }
-        } catch { clearInterval(pollingRef.current!); setGenerating(false); toast.dismiss(toastId) }
-      }, 2000)
-    } catch {
-      toast.dismiss(toastId)
+    const productBrief = selectedProduct
+      ? `${form.brief}\n\nProduct: ${selectedProduct.name}${selectedProduct.description ? ` — ${selectedProduct.description}` : ''}${selectedProduct.price ? ` (${selectedProduct.price})` : ''}${selectedProduct.visualDescription ? `\nVisual: ${selectedProduct.visualDescription}` : ''}`
+      : form.brief
+
+    // Call /api/generate-content once per platform (brand DNA enriched endpoint)
+    const results: OutputCard[] = []
+    let successCount = 0
+
+    for (const platform of form.platforms) {
+      try {
+        type GenerateContentResponse = {
+          post: { id: string; platform: string; content_type: string; caption: string; hashtags: string[]; image_url?: string }
+          imageUrl?: string
+          creditsRemaining: number
+        }
+        const res = await apiCall<GenerateContentResponse>('/api/generate-content', {
+          method: 'POST',
+          body: JSON.stringify({
+            platform,
+            contentType: form.contentType,
+            brief: productBrief,
+            mood: form.mood || undefined,
+            theme: form.fontStyle || undefined,
+          }),
+        })
+        results.push({
+          id: res.post.id || `${platform}-${Date.now()}`,
+          imageUrl: res.imageUrl || res.post.image_url,
+          platform: res.post.platform,
+          contentType: res.post.content_type,
+          caption: res.post.caption,
+          hashtags: Array.isArray(res.post.hashtags) ? res.post.hashtags : [],
+          status: 'new',
+        })
+        successCount++
+        // Show cards as they arrive
+        setOutputs([...results])
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        if (msg.includes('insufficient_credits')) {
+          toast.dismiss(toastId)
+          toast.error('Not enough credits to continue generation.')
+          break
+        }
+        toast.error(`Failed for ${platform} — skipping`)
+      }
+    }
+
+    toast.dismiss(toastId)
+    setGenerating(false)
+    setJobId(null)
+
+    if (successCount > 0) {
+      toast.success(`${successCount} post${successCount !== 1 ? 's' : ''} ready!`)
+    } else {
       toast.error('Generation failed — please try again')
-      setGenerating(false)
     }
   }
 
@@ -336,28 +357,28 @@ export default function GeneratePage() {
 
   return (
     <WidgetErrorBoundary>
-    <div className="h-[calc(100vh-64px)] flex">
+    <div className="h-[calc(100vh-56px)] flex">
       {/* LEFT — Form */}
-      <div className="w-[40%] border-r border-[var(--border-dim)] overflow-y-auto flex flex-col">
+      <div className="w-[400px] min-w-[360px] border-r border-white/[0.07] overflow-y-auto flex flex-col scrollbar-hide bg-[#060606]">
         <div className="p-6 space-y-6 flex-1">
           <div>
-            <h2 className="text-[var(--text-1)] font-semibold text-xl">Generate Content</h2>
-            <p className="text-[var(--text-3)] text-sm mt-0.5">AI will use your brand DNA automatically</p>
+            <h2 className="text-white font-semibold text-[18px] tracking-[-0.02em]">Generate Content</h2>
+            <p className="text-white/35 text-[12.5px] mt-0.5">AI will use your brand DNA automatically</p>
           </div>
 
           {/* Content type */}
           <div>
-            <p className="text-[var(--text-3)] text-xs uppercase tracking-wider font-medium mb-2">Content Type</p>
-            <div className="flex gap-1 p-1 rounded-xl bg-[var(--bg-subtle)] border border-[var(--border-base)]">
+            <p className="text-white/25 text-[10px] uppercase tracking-[0.14em] font-semibold mb-2">Content Type</p>
+            <div className="flex gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/[0.07]">
               {CONTENT_TYPES.map((type) => (
                 <button
                   key={type}
                   onClick={() => setForm({ contentType: type })}
                   className={cn(
-                    'flex-1 py-2 rounded-lg text-xs font-medium transition-all capitalize',
+                    'flex-1 py-1.5 rounded-lg text-[11.5px] font-medium transition-all capitalize',
                     form.contentType === type
-                      ? 'bg-[var(--bg-overlay)] border border-[var(--border-loud)] text-[var(--text-1)] shadow-sm'
-                      : 'text-[var(--text-3)] hover:text-[var(--text-2)]'
+                      ? 'bg-white/[0.10] border border-white/[0.18] text-white shadow-sm'
+                      : 'text-white/30 hover:text-white/55'
                   )}
                 >
                   {type}
@@ -368,8 +389,8 @@ export default function GeneratePage() {
 
           {/* Platform */}
           <div>
-            <p className="text-[var(--text-3)] text-xs uppercase tracking-wider font-medium mb-2">Target Platform</p>
-            <div className="grid grid-cols-4 gap-2">
+            <p className="text-white/25 text-[10px] uppercase tracking-[0.14em] font-semibold mb-2">Target Platform</p>
+            <div className="grid grid-cols-4 gap-1.5">
               {PLATFORMS.map((p) => {
                 const selected = form.platforms.includes(p.id)
                 return (
@@ -377,12 +398,12 @@ export default function GeneratePage() {
                     key={p.id}
                     onClick={() => togglePlatform(p.id)}
                     className={cn(
-                      'h-12 rounded-xl border text-xs font-medium transition-all',
+                      'h-10 rounded-xl border text-[11px] font-medium transition-all',
                       selected
-                        ? 'text-[var(--text-1)] bg-[var(--bg-subtle)]'
-                        : 'border-[var(--border-base)] bg-[var(--card-bg)] text-[var(--text-3)] hover:border-[var(--border-loud)] hover:text-[var(--text-2)]'
+                        ? 'text-white bg-white/[0.07]'
+                        : 'border-white/[0.08] bg-transparent text-white/30 hover:border-white/[0.18] hover:text-white/60'
                     )}
-                    style={selected ? { borderColor: p.color, boxShadow: `0 0 0 1px ${p.color}40` } : {}}
+                    style={selected ? { borderColor: `${p.color}60`, boxShadow: `0 0 0 1px ${p.color}30` } : {}}
                   >
                     {p.label}
                   </button>
@@ -393,26 +414,26 @@ export default function GeneratePage() {
 
           {/* Brief */}
           <div>
-            <p className="text-[var(--text-3)] text-xs uppercase tracking-wider font-medium mb-2">What is this post about?</p>
+            <p className="text-white/25 text-[10px] uppercase tracking-[0.14em] font-semibold mb-2">What is this post about?</p>
             <div className="relative">
               <textarea
                 value={form.brief}
                 onChange={(e) => setForm({ brief: e.target.value.slice(0, 200) })}
                 rows={5}
                 placeholder="e.g. Launching our new feature — show the team celebrating..."
-                className="w-full bg-[var(--card-bg)] border border-[var(--border-base)] rounded-xl px-4 py-3
-                           text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)] resize-none
-                           focus:outline-none focus:border-[var(--ai-border)]/50 transition-all"
+                className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-3
+                           text-white/75 text-[13px] placeholder:text-white/18 resize-none
+                           focus:outline-none focus:border-white/[0.20] transition-all"
               />
-              <span className="absolute bottom-3 right-3 text-[var(--text-4)] text-xs">{briefLength}/200</span>
+              <span className="absolute bottom-3 right-3 text-white/18 text-[10px]">{briefLength}/200</span>
             </div>
-            <div className="flex gap-1.5 mt-2">
+            <div className="flex gap-1.5 mt-2 flex-wrap">
               {QUICK_PROMPTS.map((p) => (
                 <button
                   key={p}
                   onClick={() => setForm({ brief: form.brief ? `${form.brief} ${p}` : p })}
-                  className="px-3 py-1 rounded-full text-[11px] bg-[var(--bg-subtle)] border border-[var(--border-base)]
-                             text-[var(--text-3)] hover:text-[var(--text-2)] hover:border-[var(--border-loud)] transition-all"
+                  className="px-2.5 py-1 rounded-full text-[10.5px] bg-white/[0.03] border border-white/[0.08]
+                             text-white/30 hover:text-white/55 hover:border-white/[0.16] transition-all"
                 >
                   {p}
                 </button>
@@ -511,36 +532,35 @@ export default function GeneratePage() {
         </div>
 
         {/* Generate button */}
-        <div className="p-6 border-t border-[var(--border-dim)]">
+        <div className="p-5 border-t border-white/[0.07]">
           <AIButton
             onClick={generate}
             disabled={isGenerating}
-            className="w-full h-14 rounded-xl text-base font-semibold"
+            className="w-full h-12 rounded-xl text-[14px] font-semibold"
           >
             {isGenerating ? (
               <>
-                <Loader2 size={18} className="animate-spin mr-2" />
+                <Loader2 size={16} className="animate-spin mr-2" />
                 Generating...
               </>
             ) : (
               <>
-                <Sparkles size={16} className="mr-2 text-[var(--ai-color)]" />
+                <Sparkles size={15} className="mr-2" />
                 Generate Content
               </>
             )}
           </AIButton>
-          <p className="text-[var(--text-4)] text-xs text-center mt-2">
-            This will use ~{costEstimate} credits
+          <p className="text-white/18 text-[10.5px] text-center mt-2">
+            ~{costEstimate} credits
             {credits !== null && (
-              <span className={cn('ml-1', credits < costEstimate ? 'text-rose-400' : 'text-[var(--text-4)]')}>
-                ({credits} remaining
-                {credits < costEstimate && ' — not enough!'})
+              <span className={cn('ml-1', credits < costEstimate ? 'text-rose-400' : 'text-white/18')}>
+                ({credits} remaining{credits < costEstimate && ' — not enough!'})
               </span>
             )}
           </p>
           {credits !== null && credits < 50 && (
-            <p className="text-[10px] text-orange-400 text-center mt-1 flex items-center justify-center gap-1">
-              <AlertCircle size={10} />Running low on credits —{' '}
+            <p className="text-[10px] text-orange-400/80 text-center mt-1 flex items-center justify-center gap-1">
+              <AlertCircle size={10} />Running low —{' '}
               <a href="/settings#billing" className="underline hover:text-orange-300">buy more</a>
             </p>
           )}
@@ -548,17 +568,17 @@ export default function GeneratePage() {
       </div>
 
       {/* RIGHT — Output */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 bg-[#040404] scrollbar-hide">
         {!isGenerating && outputs.length === 0 && (
           <div className="h-full flex flex-col items-center justify-center relative">
-            <DotPattern className="absolute inset-0 text-[var(--text-4)] opacity-30" width={20} height={20} />
-            <div className="relative z-10 text-center space-y-3">
-              <div className="w-16 h-16 rounded-2xl bg-[var(--bg-subtle)] border border-[var(--border-base)]
+            <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={20} height={20} />
+            <div className="relative z-10 text-center space-y-2">
+              <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08]
                               flex items-center justify-center mx-auto mb-4">
-                <Sparkles size={28} className="text-[var(--ai-color)]" />
+                <Sparkles size={24} className="text-white/30" />
               </div>
-              <p className="text-[var(--text-2)] font-medium">Your generated content will appear here</p>
-              <p className="text-[var(--text-3)] text-sm">Fill out the form and click Generate</p>
+              <p className="text-white/40 font-medium text-[14px]">Your generated content will appear here</p>
+              <p className="text-white/20 text-[12px]">Fill out the form and click Generate</p>
             </div>
           </div>
         )}

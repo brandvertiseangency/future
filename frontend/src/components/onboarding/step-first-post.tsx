@@ -220,6 +220,12 @@ export function StepFirstPost() {
           autoSchedule: onboardingData.autoSchedule,
           extractedStyleProfile: onboardingData.extractedStyleProfile,
           referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
+          // Brand identity fields
+          tagline: onboardingData.tagline || '',
+          website: onboardingData.website || '',
+          phone: (onboardingData as unknown as { phone: string }).phone || '',
+          address: (onboardingData as unknown as { address: string }).address || onboardingData.city || '',
+          logoUrl: onboardingData.logoUrl || '',
         }),
       })
     } catch { /* non-blocking */ }

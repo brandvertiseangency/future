@@ -56,6 +56,8 @@ router.post('/complete', authMiddleware, async (req, res) => {
       brandName, description, industry, industryLabel, tone, styles,
       audienceAgeMin, audienceAgeMax, audienceGender, audienceLocation,
       audienceInterests, platforms, goals,
+      // brand info fields
+      tagline, website, phone, address, logoUrl,
       // v2 fields
       colorPrimary, colorSecondary, colorAccent, fontMood,
       priceSegment, industrySubtype, uspKeywords, industryAnswers,
@@ -81,8 +83,9 @@ router.post('/complete', authMiddleware, async (req, res) => {
          audience_interests, platforms, goals, is_default,
          color_primary, color_secondary, color_accent, font_mood,
          industry_subtype, price_segment, posting_frequency, content_mix,
-         platform_priority, onboarding_version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,TRUE,$14,$15,$16,$17,$18,$19,$20,$21,$22,2)
+         platform_priority, onboarding_version,
+         tagline, website, phone, address, logo_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,TRUE,$14,$15,$16,$17,$18,$19,$20,$21,$22,2,$23,$24,$25,$26,$27)
        ON CONFLICT (user_id) WHERE is_default = TRUE
        DO UPDATE SET
          name = EXCLUDED.name, description = EXCLUDED.description, industry = EXCLUDED.industry,
@@ -96,6 +99,9 @@ router.post('/complete', authMiddleware, async (req, res) => {
          industry_subtype = EXCLUDED.industry_subtype, price_segment = EXCLUDED.price_segment,
          posting_frequency = EXCLUDED.posting_frequency, content_mix = EXCLUDED.content_mix,
          platform_priority = EXCLUDED.platform_priority, onboarding_version = 2,
+         tagline = EXCLUDED.tagline, website = EXCLUDED.website,
+         phone = EXCLUDED.phone, address = EXCLUDED.address,
+         logo_url = COALESCE(EXCLUDED.logo_url, brands.logo_url),
          updated_at = NOW()
        RETURNING *`,
       [
@@ -107,6 +113,7 @@ router.post('/complete', authMiddleware, async (req, res) => {
         industrySubtype || null, priceSegment || null, weeklyPostCount || 4,
         contentMix ? JSON.stringify(contentMix) : null,
         platforms || [],
+        tagline || null, website || null, phone || null, address || null, logoUrl || null,
       ]
     );
     const brand = brandRows[0];

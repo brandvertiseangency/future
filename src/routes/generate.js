@@ -10,6 +10,7 @@ const creditCheck = require("../middleware/creditCheck");
 const schemas = require("../validators/schemas");
 
 const { db, initialized } = require("../config/firebase");
+const { query } = require("../config/postgres");
 const { getCalendar } = require("../services/calendarService");
 const { buildPrompt } = require("../services/promptService");
 const { generateImage, generateAndSaveImage } = require("../services/imageService");
@@ -17,6 +18,36 @@ const { queueCalendarGeneration, getQueueStatus } = require("../queues/generatio
 const creditService = require("../services/creditService");
 const { saveSession, loadSession, updateSessionPost } = require("../utils/sessionStore");
 const logger = require("../utils/logger");
+
+/**
+ * Enrich a brand object with visual DNA + industry config from Postgres.
+ */
+async function enrichBrandWithStyleProfile(brand) {
+  if (!brand || !brand.id) return brand;
+  try {
+    const [styleRes, configRes] = await Promise.all([
+      query(`SELECT * FROM brand_style_profiles WHERE brand_id = $1 LIMIT 1`, [brand.id]),
+      query(`SELECT * FROM brand_industry_configs WHERE brand_id = $1 LIMIT 1`, [brand.id]),
+    ]);
+    const style = styleRes.rows[0] || {};
+    const config = configRes.rows[0] || {};
+    return {
+      ...brand,
+      visualDNA: (style.dominant_aesthetic || style.mood_keywords?.length || style.extracted_colors?.length) ? {
+        colorPalette: style.extracted_colors || [],
+        aestheticStyle: style.dominant_aesthetic || null,
+        moodKeywords: style.mood_keywords || [],
+        designElements: style.layout_style ? [style.layout_style] : [],
+        contentStyle: style.photography_style || null,
+      } : brand.visualDNA || null,
+      usp: config.usp_keywords || brand.usp || [],
+      industryConfig: config.industry_answers || null,
+    };
+  } catch (err) {
+    logger.warn("Could not enrich brand from style profiles", { error: err.message });
+    return brand;
+  }
+}
 
 // ─────────────────────────────────────────────
 // POST /generate — Queue-based async generation
@@ -44,7 +75,7 @@ router.post(
         });
       }
 
-      // Fetch brand data
+      // Fetch brand data and enrich with style profiles
       let brand = {};
       let assets = [];
       if (initialized) {
@@ -57,6 +88,9 @@ router.post(
           .get();
         assets = assetsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
       }
+
+      // Pull visual DNA + industry config from Postgres style profiles
+      brand = await enrichBrandWithStyleProfile(brand);
 
       // Queue all posts for generation
       const pendingPosts = calendar.posts.filter(
