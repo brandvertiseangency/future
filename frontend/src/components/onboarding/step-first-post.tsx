@@ -1,13 +1,144 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Sparkles, Loader2 } from 'lucide-react'
+import { Calendar, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import useSWR from 'swr'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
+
+const GENERATION_STEPS = [
+  { label: 'Analysing your Brand DNA…',        duration: 2200 },
+  { label: 'Mapping your content calendar…',   duration: 2600 },
+  { label: 'Writing post ideas & captions…',   duration: 3000 },
+  { label: 'Optimising for your platforms…',   duration: 2400 },
+  { label: 'Finalising your content plan…',    duration: 1800 },
+]
+
+function GeneratingOverlay({
+  postCount,
+  error,
+  onRetry,
+  onSkip,
+}: {
+  postCount: number
+  error: string
+  onRetry: () => void
+  onSkip: () => void
+}) {
+  const [activeStep, setActiveStep] = useState(0)
+  const [completedSteps, setCompletedSteps] = useState<number[]>([])
+  const [dots, setDots] = useState('.')
+
+  useEffect(() => {
+    // Animate dots
+    const dotsInterval = setInterval(() => setDots(d => d.length >= 3 ? '.' : d + '.'), 500)
+    return () => clearInterval(dotsInterval)
+  }, [])
+
+  useEffect(() => {
+    let elapsed = 0
+    const timers: ReturnType<typeof setTimeout>[] = []
+    GENERATION_STEPS.forEach((step, i) => {
+      timers.push(setTimeout(() => {
+        setActiveStep(i)
+        if (i > 0) setCompletedSteps(c => [...c, i - 1])
+      }, elapsed))
+      elapsed += step.duration
+    })
+    // Mark last step done shortly before real completion
+    timers.push(setTimeout(() => {
+      setCompletedSteps(c => [...c, GENERATION_STEPS.length - 1])
+    }, elapsed))
+    return () => timers.forEach(clearTimeout)
+  }, [])
+
+  const progress = Math.round(
+    ((completedSteps.length / GENERATION_STEPS.length) * 100)
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
+      <div className="w-full max-w-md mx-4 rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-8 space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
+            <Sparkles size={24} className="text-white/70 animate-pulse" />
+          </div>
+          <h3 className="text-white font-bold text-xl tracking-tight">Building your plan{dots}</h3>
+          <p className="text-white/35 text-sm">Creating {postCount} AI-powered posts for your brand</p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="space-y-2">
+          <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+            <div
+              className="h-full rounded-full bg-white/60 transition-all duration-700 ease-out"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <p className="text-right text-[11px] text-white/25 font-mono tabular-nums">{progress}%</p>
+        </div>
+
+        {/* Steps */}
+        <div className="space-y-3">
+          {GENERATION_STEPS.map((step, i) => {
+            const isDone = completedSteps.includes(i)
+            const isActive = activeStep === i && !isDone
+            return (
+              <div key={i} className={cn(
+                'flex items-center gap-3 transition-all duration-300',
+                isDone ? 'opacity-100' : isActive ? 'opacity-100' : 'opacity-25'
+              )}>
+                <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                  {isDone
+                    ? <CheckCircle2 size={16} className="text-emerald-400" />
+                    : isActive
+                    ? <Loader2 size={16} className="text-white/60 animate-spin" />
+                    : <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                  }
+                </div>
+                <span className={cn(
+                  'text-sm',
+                  isDone ? 'text-white/50 line-through' : isActive ? 'text-white/90' : 'text-white/30'
+                )}>
+                  {step.label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+
+        <p className="text-center text-[11px] text-white/20">
+          This usually takes 10–15 seconds
+        </p>
+
+        {/* Error state */}
+        {error && (
+          <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 space-y-3">
+            <p className="text-rose-400 text-sm">{error}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={onRetry}
+                className="flex-1 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/70 hover:text-white text-sm font-medium transition-all"
+              >
+                Try again
+              </button>
+              <button
+                onClick={onSkip}
+                className="flex-1 py-2 rounded-lg text-white/30 hover:text-white/60 text-sm transition-all"
+              >
+                Skip → Dashboard
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 const MIX_KEYS = ['promotional', 'educational', 'testimonial', 'bts', 'festive'] as const
 const MIX_LABELS: Record<string, string> = {
@@ -100,15 +231,23 @@ export function StepFirstPost() {
     setError('')
     // Complete onboarding in parallel (non-blocking)
     completeOnboarding()
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 60_000) // 60s timeout
     try {
       const res = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
         method: 'POST',
         body: JSON.stringify({ month, postCount, mixPreferences: mix }),
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
       reset()
       router.push(`/calendar/review?planId=${res.planId}`)
     } catch (e: any) {
-      setError(e?.message ?? 'Failed to generate plan. Please try again.')
+      clearTimeout(timeout)
+      const msg = e?.name === 'AbortError'
+        ? 'Generation timed out. The AI is busy — please try again.'
+        : (e?.message ?? 'Failed to generate plan. Please try again.')
+      setError(msg)
       setGenerating(false)
     }
   }
@@ -120,7 +259,16 @@ export function StepFirstPost() {
   }
 
   return (
-    <div className="space-y-8">
+    <>
+      {generating && (
+        <GeneratingOverlay
+          postCount={postCount}
+          error={error}
+          onRetry={() => { setError(''); setGenerating(false); setTimeout(handleGenerate, 50) }}
+          onSkip={handleSkip}
+        />
+      )}
+      <div className="space-y-8">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2.5 mb-3">
@@ -224,5 +372,6 @@ export function StepFirstPost() {
         </button>
       </div>
     </div>
+    </>
   )
 }

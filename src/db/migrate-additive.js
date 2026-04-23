@@ -106,6 +106,69 @@ ALTER TABLE assets ADD COLUMN IF NOT EXISTS file_size  BIGINT;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS mime_type  TEXT;
 ALTER TABLE assets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
+-- ── Brand intelligence v2 columns on brands ─────────────────────────
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS color_primary       TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS color_secondary     TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS color_accent        TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS font_mood           TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS visual_style        TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS industry_subtype    TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS price_segment       TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS posting_frequency   INTEGER DEFAULT 4;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS content_mix         JSONB DEFAULT '{"promotional":30,"educational":25,"testimonial":20,"bts":15,"festive":10}';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS platform_priority   TEXT[] DEFAULT '{}';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS onboarding_version  INTEGER DEFAULT 1;
+
+-- ── Brand style profiles (Gemini Vision extracted) ────────────────────
+CREATE TABLE IF NOT EXISTS brand_style_profiles (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id              UUID REFERENCES brands(id) ON DELETE CASCADE,
+  extracted_colors      TEXT[]    DEFAULT '{}',
+  font_mood_detected    TEXT,
+  layout_style          TEXT,
+  photography_style     TEXT,
+  mood_keywords         TEXT[]    DEFAULT '{}',
+  composition_style     TEXT,
+  text_density          TEXT,
+  dominant_aesthetic    TEXT,
+  reference_image_urls  TEXT[]    DEFAULT '{}',
+  raw_vision_response   JSONB,
+  analysed_at           TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(brand_id)
+);
+
+-- ── Industry-specific config ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS brand_industry_configs (
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  brand_id            UUID REFERENCES brands(id) ON DELETE CASCADE,
+  industry            TEXT NOT NULL,
+  subtype             TEXT,
+  price_segment       TEXT,
+  audience_lifestyle  TEXT[]  DEFAULT '{}',
+  usp_keywords        TEXT[]  DEFAULT '{}',
+  special_flags       JSONB   DEFAULT '{}',
+  industry_answers    JSONB   DEFAULT '{}',
+  created_at          TIMESTAMPTZ DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(brand_id)
+);
+
+-- ── Content calendar preferences ──────────────────────────────────────
+CREATE TABLE IF NOT EXISTS content_calendar_preferences (
+  brand_id                UUID PRIMARY KEY REFERENCES brands(id) ON DELETE CASCADE,
+  weekly_post_count       INTEGER DEFAULT 4,
+  content_type_mix        JSONB DEFAULT '{"promotional":30,"educational":25,"testimonial":20,"bts":15,"festive":10}',
+  auto_schedule           BOOLEAN DEFAULT FALSE,
+  preferred_posting_times TEXT[]  DEFAULT '{"09:00","12:00","18:00","20:00"}',
+  active_platforms        TEXT[]  DEFAULT '{}',
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ── Indexes ───────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_style_profiles_brand  ON brand_style_profiles(brand_id);
+CREATE INDEX IF NOT EXISTS idx_industry_configs_brand ON brand_industry_configs(brand_id);
+CREATE INDEX IF NOT EXISTS idx_calendar_prefs_brand  ON content_calendar_preferences(brand_id);
+
 -- ── Indexes ───────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_brands_user_id        ON brands(user_id);
 CREATE INDEX IF NOT EXISTS idx_brands_is_default     ON brands(user_id, is_default);
