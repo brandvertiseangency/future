@@ -48,9 +48,21 @@ router.get('/stats', authMiddleware, async (req, res) => {
   try {
     const pool = getPool();
     const userId = await getUserId(req.user.uid);
-    if (!userId || !pool) return res.json({ total: 0 });
-    const { rows } = await pool.query('SELECT COUNT(*) AS total FROM posts WHERE user_id=$1', [userId]);
-    res.json({ total: parseInt(rows[0].total) });
+    if (!userId || !pool) return res.json({ total: 0, draft: 0, scheduled: 0, published: 0, approved: 0 });
+    const { rows } = await pool.query(
+      `SELECT status, COUNT(*) AS count FROM posts WHERE user_id=$1 GROUP BY status`,
+      [userId]
+    );
+    const counts = {};
+    let total = 0;
+    for (const r of rows) { counts[r.status] = parseInt(r.count); total += parseInt(r.count); }
+    res.json({
+      total,
+      draft: counts.draft || 0,
+      scheduled: counts.scheduled || 0,
+      published: counts.published || 0,
+      approved: counts.approved || 0,
+    });
   } catch (err) {
     logger.error('Posts stats failed', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch post stats.' });
@@ -122,6 +134,39 @@ router.get('/scheduled', authMiddleware, async (req, res) => {
   }
 });
 
+/** PATCH /api/posts/:id — partial update (caption, status, approval_status, scheduled_at) */
+router.patch('/:id', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+    const userId = await getUserId(req.user.uid);
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const allowed = ['caption', 'status', 'approval_status', 'scheduled_at'];
+    const sets = [];
+    const vals = [];
+    for (const key of allowed) {
+      if (req.body[key] !== undefined) {
+        sets.push(`${key}=$${vals.length + 1}`);
+        vals.push(req.body[key]);
+      }
+    }
+    if (sets.length === 0) return res.status(400).json({ error: 'No valid fields to update.' });
+    sets.push('updated_at=NOW()');
+    vals.push(req.params.id, userId);
+
+    const { rows } = await pool.query(
+      `UPDATE posts SET ${sets.join(',')} WHERE id=$${vals.length - 1} AND user_id=$${vals.length} RETURNING *`,
+      vals
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    res.json({ post: rows[0] });
+  } catch (err) {
+    logger.error('Patch post failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to update post.' });
+  }
+});
+
 /** PUT /api/posts/:id */
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
@@ -177,8 +222,7 @@ router.delete('/:id', authMiddleware, async (req, res) => {
 });
 
 /** GET /api/posts/:id — get post with versions */
-router.get('/:id', authMiddleware, async (req, res) => {
-  try {
+router.get('/:id', authMiddleware, async (req, res) => {  try {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
     const userId = await getUserId(req.user.uid);

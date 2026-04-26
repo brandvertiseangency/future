@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS calendar_slots (
   content_type     TEXT NOT NULL CHECK (content_type IN ('post','reel','carousel','story')),
   content_category TEXT,
   post_idea        TEXT,
+  creative_brief   TEXT,
   caption_draft    TEXT,
   platform         TEXT NOT NULL,
   status           TEXT DEFAULT 'pending'
@@ -32,6 +33,10 @@ CREATE TABLE IF NOT EXISTS calendar_slots (
   sort_order       INTEGER DEFAULT 0,
   created_at       TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Additive: extend existing installs
+ALTER TABLE calendar_slots
+  ADD COLUMN IF NOT EXISTS creative_brief TEXT;
 
 CREATE TABLE IF NOT EXISTS post_versions (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),

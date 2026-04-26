@@ -17,6 +17,7 @@ interface Slot {
   content_type: 'post' | 'reel' | 'carousel' | 'story'
   content_category: string
   post_idea: string
+  creative_brief?: string
   platform: string
   status: string
 }
@@ -33,10 +34,11 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
   selected: boolean
   onToggle: () => void
   onDelete: () => void
-  onEdit: (idea: string) => void
+  onEdit: (value: { post_idea?: string; creative_brief?: string }) => void
 }) {
   const [editing, setEditing] = useState(false)
   const [idea, setIdea] = useState(slot.post_idea)
+  const [creativeBrief, setCreativeBrief] = useState(slot.creative_brief || '')
   const styles = TYPE_STYLES[slot.content_type] ?? TYPE_STYLES.post
   const date = new Date(slot.slot_date)
   const day = date.toLocaleDateString('en-US', { weekday: 'short' })
@@ -79,22 +81,43 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
       {/* Idea */}
       {editing ? (
-        <textarea
-          autoFocus
-          value={idea}
-          onChange={e => setIdea(e.target.value)}
-          onBlur={() => { onEdit(idea); setEditing(false) }}
-          style={{
-            width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 12,
-            resize: 'none', outline: 'none', fontFamily: 'inherit',
-          }}
-          rows={3}
-        />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea
+            autoFocus
+            value={idea}
+            onChange={e => setIdea(e.target.value)}
+            onBlur={() => { onEdit({ post_idea: idea, creative_brief: creativeBrief }); setEditing(false) }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 12,
+              resize: 'none', outline: 'none', fontFamily: 'inherit',
+            }}
+            rows={3}
+          />
+          <textarea
+            value={creativeBrief}
+            onChange={e => setCreativeBrief(e.target.value)}
+            onBlur={() => { onEdit({ post_idea: idea, creative_brief: creativeBrief }); setEditing(false) }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              resize: 'none', outline: 'none', fontFamily: 'inherit',
+            }}
+            rows={3}
+            placeholder="Creative brief (composition, lighting, product placement...)"
+          />
+        </div>
       ) : (
-        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4, marginBottom: 8, paddingRight: 24 }}>
-          {idea}
-        </p>
+        <div style={{ marginBottom: 8, paddingRight: 24 }}>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4, marginBottom: slot.creative_brief ? 6 : 0 }}>
+            {idea}
+          </p>
+          {slot.creative_brief && (
+            <p style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+              {slot.creative_brief}
+            </p>
+          )}
+        </div>
       )}
 
       {/* Platform + category */}
@@ -139,7 +162,7 @@ function CalendarReviewInner() {
   const allSlots: Slot[] = planData?.slots ?? []
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
-  const [edits, setEdits] = useState<Record<string, string>>({})
+  const [edits, setEdits] = useState<Record<string, { post_idea?: string; creative_brief?: string }>>({})
   const [approving, setApproving] = useState(false)
 
   const slots = allSlots.filter(s => !deletedIds.has(s.id))
@@ -170,15 +193,11 @@ function CalendarReviewInner() {
     setApproving(true)
     try {
       const slotIds = selected.size > 0 ? Array.from(selected) : slots.map(s => s.id)
-      // Convert edits from { slotId: ideaString } to { slotId: { post_idea } }
-      const slotEditsFormatted = Object.fromEntries(
-        Object.entries(edits).map(([id, idea]) => [id, { post_idea: idea }])
-      )
       const token = await getToken()
       const res = await fetch(`${API_BASE}/api/calendar/plans/${planId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ selectedSlotIds: slotIds, slotEdits: slotEditsFormatted }),
+        body: JSON.stringify({ selectedSlotIds: slotIds, slotEdits: edits }),
       })
       if (!res.ok) throw new Error(await res.text())
       const { jobId } = await res.json()
@@ -278,7 +297,7 @@ function CalendarReviewInner() {
                   selected={selected.size === 0 || selected.has(slot.id)}
                   onToggle={() => toggleOne(slot.id)}
                   onDelete={() => setDeletedIds(prev => new Set([...prev, slot.id]))}
-                  onEdit={idea => setEdits(prev => ({ ...prev, [slot.id]: idea }))}
+                  onEdit={(value) => setEdits(prev => ({ ...prev, [slot.id]: { ...(prev[slot.id] || {}), ...value } }))}
                 />
               ))}
             </div>

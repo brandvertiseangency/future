@@ -35,7 +35,8 @@ const SvgBriefcase = makeIcon(Briefcase)
 const NAV_WORKSPACE: { href: string; label: string; icon: SvgIconComponent }[] = [
   { href: '/dashboard',        label: 'Home',         icon: SvgDashboard },
   { href: '/calendar',         label: 'Calendar',     icon: SvgCalendar  },
-  { href: '/calendar/review',  label: 'Content Plan', icon: SvgSparkles  },
+  // Review requires a planId; send users to the generator entry instead.
+  { href: '/calendar/generate',label: 'Content Plan', icon: SvgSparkles  },
   { href: '/generate',         label: 'Generate',     icon: SvgImages    },
 ]
 const NAV_CONTENT: { href: string; label: string; icon: SvgIconComponent }[] = [
@@ -97,12 +98,19 @@ export function Sidebar() {
   const { signOut } = useAuth()
   const { isUnlocked } = useAgentsStore()
 
-  const { data: creditsData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number }>(url), { revalidateOnFocus: false })
+  const { data: creditsData } = useSWR(
+    '/api/credits/balance',
+    (url: string) => apiCall<{ balance: number; plan?: string; trial_days_left?: number }>(url),
+    { revalidateOnFocus: false }
+  )
   const credits = creditsData?.balance ?? 0
-  const maxCredits = 500
+  const plan = creditsData?.plan ?? 'trial'
+  const planLabel = plan === 'trial' ? 'Trial' : plan.charAt(0).toUpperCase() + plan.slice(1)
+  const maxCredits = plan === 'pro' ? 5000 : plan === 'agency' ? 15000 : 500
   const pct = Math.min((credits / maxCredits) * 100, 100)
   const initials = currentBrand?.name?.slice(0, 2).toUpperCase() ?? 'BV'
   const brandName = currentBrand?.name ?? 'My Brand'
+  const lowCredits = credits <= 50
 
   return (
     <aside
@@ -179,15 +187,19 @@ export function Sidebar() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-medium text-white/80 truncate leading-tight">{brandName}</p>
-            <p className="text-[10px] text-white/25 leading-tight mt-0.5">Free plan</p>
+            <p className="text-[10px] text-white/25 leading-tight mt-0.5">{planLabel} plan</p>
           </div>
           <ChevronRight size={11} className="text-white/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
         {/* Credits bar */}
-        <div className="px-1">
+        <button className="px-1 text-left" onClick={() => router.push('/settings#billing')}>
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10.5px] text-white/30">{credits} <span className="text-white/15">/ {maxCredits} credits</span></span>
+            <span className="text-[10.5px] text-white/30">
+              {credits}
+              <span className="text-white/15"> / {maxCredits} credits</span>
+              {lowCredits && <span className="ml-2 text-[10px] font-semibold text-orange-300/80">LOW</span>}
+            </span>
             <span className="text-[10px] font-medium text-white/20">{Math.round(pct)}%</span>
           </div>
           <div className="h-[2px] rounded-full overflow-hidden bg-white/[0.05]">
@@ -196,7 +208,7 @@ export function Sidebar() {
               style={{ width: `${pct}%`, background: 'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.75) 100%)' }}
             />
           </div>
-        </div>
+        </button>
 
         {/* Upgrade + Sign out */}
         <div className="flex items-center gap-1.5">

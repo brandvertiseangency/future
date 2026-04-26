@@ -27,13 +27,15 @@ export default function DashboardPage() {
   const router = useRouter()
   const { data: brandData } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
   const { data: userData } = useSWR('/api/users/me', fetcher, { revalidateOnFocus: false })
-  const { data: postsData } = useSWR('/api/posts?limit=3&status=approved', fetcher, { revalidateOnFocus: false })
   const { data: creditsData } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
+  const { data: statsData } = useSWR('/api/posts/stats', fetcher, { revalidateOnFocus: false })
+  const { data: scheduledData } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
 
   const brand = (brandData as any)?.brand ?? brandData
   const onboardingComplete = (userData as any)?.user?.onboarding_complete ?? true
-  const recentPosts = (postsData as any)?.posts ?? []
   const credits = (creditsData as any)?.balance ?? 0
+  const totalPosts = (statsData as any)?.total ?? 0
+  const scheduledPosts = ((scheduledData as any)?.posts ?? []).length
 
   const firstName = user?.displayName?.split(' ')[0] ?? 'there'
   const brandName = brand?.name ?? 'My Brand'
@@ -62,6 +64,31 @@ export default function DashboardPage() {
         </Link>
       )}
 
+      {/* Missing brand state */}
+      {!brand && onboardingComplete && (
+        <div className="rounded-2xl border border-white/[0.10] bg-white/[0.02] p-5">
+          <p className="text-[12px] font-semibold text-white/70 tracking-[-0.01em]">Finish Brand Setup</p>
+          <p className="text-[12px] text-white/35 mt-1 leading-relaxed">
+            Your account is ready, but we couldn’t find a default brand profile yet. Complete onboarding so your calendar and generations use the right Brand DNA.
+          </p>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={() => router.push('/onboarding')}
+              className="px-4 py-2 rounded-xl text-[12px] font-semibold text-black"
+              style={{ background: 'linear-gradient(135deg,#ffffff 0%,#d0d0d0 100%)' }}
+            >
+              Complete onboarding
+            </button>
+            <button
+              onClick={() => router.push('/settings')}
+              className="px-4 py-2 rounded-xl text-[12px] font-medium border border-white/[0.10] text-white/45 hover:text-white/70 hover:border-white/[0.18] transition-all"
+            >
+              Settings
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Hero greeting */}
       <div className="pt-1 pb-2">
         <div className="flex items-center gap-1.5 text-[10px] text-white/20 uppercase tracking-[0.12em] mb-3">
@@ -82,9 +109,9 @@ export default function DashboardPage() {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Posts generated', value: recentPosts.length > 0 ? '12+' : '0', icon: ImageIcon, href: '/outputs' },
+          { label: 'Posts generated', value: totalPosts > 0 ? totalPosts.toString() : '0', icon: ImageIcon, href: '/outputs' },
           { label: 'Credits remaining', value: credits.toString(), icon: Sparkles, href: '/pricing' },
-          { label: 'Scheduled posts', value: '0', icon: CalendarDays, href: '/calendar' },
+          { label: 'Scheduled this week', value: scheduledPosts.toString(), icon: CalendarDays, href: '/calendar' },
         ].map(({ label, value, icon: Icon, href }) => (
           <button
             key={label}

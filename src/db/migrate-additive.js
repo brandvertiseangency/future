@@ -118,6 +118,43 @@ ALTER TABLE brands ADD COLUMN IF NOT EXISTS posting_frequency   INTEGER DEFAULT 
 ALTER TABLE brands ADD COLUMN IF NOT EXISTS content_mix         JSONB DEFAULT '{"promotional":30,"educational":25,"testimonial":20,"bts":15,"festive":10}';
 ALTER TABLE brands ADD COLUMN IF NOT EXISTS platform_priority   TEXT[] DEFAULT '{}';
 ALTER TABLE brands ADD COLUMN IF NOT EXISTS onboarding_version  INTEGER DEFAULT 1;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS usp_keywords        TEXT[] DEFAULT '{}';
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS tagline             TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS website             TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS phone               TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS address             TEXT;
+ALTER TABLE brands ADD COLUMN IF NOT EXISTS logo_url            TEXT;
+
+-- ── Posts: add missing columns ───────────────────────────────────────
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS approval_status  TEXT DEFAULT 'pending';
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS approved_at      TIMESTAMPTZ;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS version_number   INTEGER DEFAULT 1;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS product_id       UUID;
+
+-- Widen status CHECK to include 'approved'
+ALTER TABLE posts DROP CONSTRAINT IF EXISTS posts_status_check;
+ALTER TABLE posts ADD CONSTRAINT posts_status_check
+  CHECK (status IN ('draft','scheduled','published','failed','approved'));
+
+-- ── Brand products ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS brand_products (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id              UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  brand_id             UUID REFERENCES brands(id) ON DELETE SET NULL,
+  name                 TEXT NOT NULL,
+  description          TEXT,
+  price                TEXT,
+  category             TEXT,
+  tags                 TEXT[] DEFAULT '{}',
+  images               TEXT[] DEFAULT '{}',
+  visual_description   TEXT,
+  use_in               TEXT[] DEFAULT '{calendar,image_generation}',
+  is_primary           BOOLEAN DEFAULT FALSE,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_brand_products_user   ON brand_products(user_id);
+CREATE INDEX IF NOT EXISTS idx_brand_products_brand  ON brand_products(brand_id);
 
 -- ── Brand style profiles (Gemini Vision extracted) ────────────────────
 CREATE TABLE IF NOT EXISTS brand_style_profiles (

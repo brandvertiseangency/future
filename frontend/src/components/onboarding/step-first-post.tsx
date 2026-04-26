@@ -231,15 +231,31 @@ export function StepFirstPost() {
     } catch { /* non-blocking */ }
   }
 
+  const syncProducts = async () => {
+    try {
+      const products = onboardingData.products || []
+      if (!Array.isArray(products) || products.length === 0) return
+      await apiCall('/api/brand-products/sync-from-onboarding', {
+        method: 'POST',
+        body: JSON.stringify({ products }),
+      })
+    } catch {
+      // Non-blocking — user can still proceed, but products may not influence first calendar
+    }
+  }
+
   const handleGenerate = async () => {
     if (!canGenerate) return
     setGenerating(true)
     setError('')
-    // Complete onboarding in parallel (non-blocking)
-    completeOnboarding()
+
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 60_000) // 60s timeout
     try {
+      // Ensure onboarding data + products are persisted before generating plan
+      await completeOnboarding()
+      await syncProducts()
+
       const res = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
         method: 'POST',
         body: JSON.stringify({ month, postCount, mixPreferences: mix }),
@@ -260,6 +276,7 @@ export function StepFirstPost() {
 
   const handleSkip = async () => {
     await completeOnboarding()
+    await syncProducts()
     reset()
     router.push('/dashboard')
   }

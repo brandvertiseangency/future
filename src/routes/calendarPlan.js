@@ -15,6 +15,58 @@ const { buildSystemPrompt, buildUserPrompt } = require('../lib/prompt-engine');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+async function hasColumn(pool, tableName, columnName) {
+  const { rows } = await pool.query(
+    `SELECT 1
+     FROM information_schema.columns
+     WHERE table_schema='public' AND table_name=$1 AND column_name=$2
+     LIMIT 1`,
+    [tableName, columnName]
+  );
+  return !!rows[0];
+}
+
+async function getBrandProducts(pool, userId, brandId) {
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, description, price, category, tags, images, visual_description, use_in, is_primary
+       FROM brand_products
+       WHERE user_id=$1 AND ($2::uuid IS NULL OR brand_id=$2 OR brand_id IS NULL)
+       ORDER BY is_primary DESC, created_at ASC
+       LIMIT 20`,
+      [userId, brandId || null]
+    );
+    return rows || [];
+  } catch {
+    // brand_products table might not exist in older installs
+    return [];
+  }
+}
+
+function pickPrimaryProduct(products, useInKey) {
+  const filtered = (products || []).filter((p) => {
+    const useIn = Array.isArray(p.use_in) ? p.use_in : [];
+    return useInKey ? useIn.includes(useInKey) : true;
+  });
+  return filtered.find((p) => p.is_primary) || filtered[0] || null;
+}
+
+function summarizeProducts(products, max = 5) {
+  const list = (products || []).slice(0, max);
+  if (!list.length) return '';
+  return list.map((p) => {
+    const bits = [
+      `- ${p.name}`,
+      p.category ? `category: ${p.category}` : '',
+      p.price ? `price/offer: ${p.price}` : '',
+      p.description ? `desc: ${p.description}` : '',
+      p.visual_description ? `visual: ${p.visual_description}` : '',
+      Array.isArray(p.tags) && p.tags.length ? `tags: ${p.tags.join(', ')}` : '',
+    ].filter(Boolean).join(' | ');
+    return bits;
+  }).join('\n');
+}
+
 const getUserWithBrand = async (uid) => {
   const pool = getPool();
   if (!pool) return null;
@@ -100,7 +152,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
     return res.status(402).json({ error: 'insufficient_credits', creditsRequired, creditsAvailable: user.credits });
   }
 
-  const [year, monthNum] = month.split('-').map(Number);
+  const [year] = month.split('-').map(Number);
 
   try {
     // 1. Build AI prompt to generate slot ideas
@@ -133,6 +185,50 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
     const platforms = brand.platforms.length ? brand.platforms : ['instagram'];
     const toneLabel = brand.tone <= 25 ? 'Casual' : brand.tone <= 50 ? 'Conversational' : brand.tone <= 74 ? 'Balanced' : 'Professional';
 
+    // Pull products to influence calendar plan (optional)
+    const products = await getBrandProducts(pool, user.id, user.brand_id);
+    const calendarProducts = (products || []).filter((p) => (Array.isArray(p.use_in) ? p.use_in : []).includes('calendar'));
+    const primaryCalendarProduct = pickPrimaryProduct(calendarProducts, 'calendar');
+    const productsSummary = summarizeProducts(calendarProducts, 6);
+
+    // Prefer the canonical prompt engine's system context to avoid drift.
+    let systemPrompt = '';
+    try {
+      systemPrompt = buildSystemPrompt({
+        name: brand.name,
+        industry: brand.industry,
+        description: brand.description,
+        tone: brand.tone,
+        styles: brand.styles,
+        goals: brand.goals,
+        audienceAgeMin: brand.audienceAgeMin,
+        audienceAgeMax: brand.audienceAgeMax,
+        audienceGender: brand.audienceGender,
+        audienceInterests: brand.audienceInterests,
+        audienceLocation: '',
+        platforms,
+        brandColors: [user.color_primary, user.color_secondary, user.color_accent].filter(Boolean),
+        fontMood: user.font_mood || user.font_mood_detected,
+        visualDNA: (user.dominant_aesthetic || user.mood_keywords?.length || user.extracted_colors?.length) ? {
+          colorPalette: user.extracted_colors || [],
+          aestheticStyle: user.dominant_aesthetic || null,
+          moodKeywords: user.mood_keywords || [],
+          designElements: user.layout_style ? [user.layout_style] : [],
+          contentStyle: user.photography_style || null,
+        } : null,
+        industryConfig: user.industry_answers || null,
+        usp: user.usp_keywords || [],
+        calendarPrefs: user.pref_weekly_posts ? {
+          postsPerWeek: user.pref_weekly_posts,
+          contentMix: user.pref_content_mix || {},
+          primaryPlatforms: platforms,
+        } : null,
+      });
+    } catch {
+      // Fallback to lightweight context below.
+      systemPrompt = '';
+    }
+
     const brandContext = [
       `Brand: ${brand.name}`,
       `Industry: ${brand.industry}${brand.industrySubtype ? ` (${brand.industrySubtype})` : ''}`,
@@ -154,30 +250,52 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       brand.industryAnswers && brand.industryAnswers !== '{}' ? `Industry-specific context: ${brand.industryAnswers}` : '',
     ].filter(Boolean).join('\n');
 
-    const aiPrompt = `You are a senior social media strategist. Generate a ${postCount}-post content calendar for the following brand.
+    const userPrompt = `You are a senior social media strategist and creative director.
+Generate a ${postCount}-post monthly content plan for the following brand. The plan must be specific, on-brand, and non-generic.
 
 ${brandContext}
-Content Categories: ${categories.join(', ')}
 
-Return a JSON object: { "posts": [ ...array of ${postCount} objects... ] }
-Each object must have:
+${productsSummary ? `PRODUCT_LIBRARY (real offerings — use when relevant):\n${productsSummary}\n` : ''}
+${primaryCalendarProduct ? `PRIMARY_PRODUCT_TO_FEATURE: ${primaryCalendarProduct.name}\n` : ''}
+
+CONTENT_CATEGORIES_SEQUENCE:
+${categories.join(', ')}
+
+Return ONLY valid JSON (no markdown) in this exact shape:
+{ "posts": [ ...${postCount} items... ] }
+
+Each item MUST have:
 {
   "category": "promotional|educational|testimonial|bts|festive",
   "content_type": "post|reel|carousel|story",
-  "platform": "${platforms[0]}",
-  "post_idea": "One-sentence creative concept",
-  "caption_draft": "Full caption with emojis and hashtags ready to post"
+  "platform": "${platforms.join('|')}",
+  "post_idea": "ONE sentence concept (not generic)",
+  "creative_brief": "4-6 bullet lines. Must include: Goal, Key message, Visual concept, Composition, Lighting, Product placement (or 'N/A')",
+  "caption_draft": "Caption only (no hashtags). Must follow: Hook → Value → CTA. Match tone. 2-6 lines with line breaks."
 }
 
 Rules:
 - Match content_type to category: educational→carousel, bts→reel, others→post or mix
-- Captions must feel natural, on-brand, and directly reflect the brand's tone, mission, and USP
-- Each post should be distinct and build campaign cohesion
-- Distribute platforms across ${platforms.join(', ')} evenly if multiple
-- Use the brand's vocabulary and avoid flagged words if provided
-- Return ONLY valid JSON, no markdown`;
+- Captions must be human, specific, and use the brand's vocabulary. Avoid generic marketing clichés.
+- Every post must be distinct. No repeating the same idea with different words.
+- Build cohesion across the month (themes that evolve), but keep each post standalone.
+- Distribute platforms across ${platforms.join(', ')} evenly if multiple.
+- creative_brief must be actionable for an image generator (clear composition + lighting + subject).
+${productsSummary ? `- When category is promotional or testimonial, try to feature a real product/service from PRODUCT_LIBRARY in the idea and creative_brief (product placement must be explicit).\n` : ''}
 
-    const raw = await callAI(aiPrompt, { maxTokens: 4096, timeoutMs: AI_TIMEOUT_MS });
+Anti-patterns to avoid:
+- “Elevate your brand”, “unlock potential”, “game-changer”, “we’re excited”, vague superlatives without proof
+- Generic prompts like “professional social media image” without describing the scene
+- Captions that start with the brand name
+
+Return ONLY JSON.`;
+
+    const raw = await callAI(
+      systemPrompt
+        ? { system: systemPrompt, user: userPrompt }
+        : userPrompt,
+      { maxTokens: 4096, timeoutMs: AI_TIMEOUT_MS }
+    );
     let slots;
     try {
       // Strip markdown fences Gemini sometimes wraps around JSON
@@ -197,6 +315,7 @@ Rules:
     const dates = buildPostDates(month, slots.length);
 
     // 3. Persist content_plan + calendar_slots
+    const canStoreCreativeBrief = await hasColumn(pool, 'calendar_slots', 'creative_brief');
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -212,10 +331,45 @@ Rules:
         const s = slots[i];
         const d = dates[i];
         const contentType = s.content_type || CONTENT_TYPE_MAP[s.category] || 'post';
-        const { rows: slotRows } = await client.query(
-          `INSERT INTO calendar_slots (plan_id, brand_id, slot_date, day_of_week, content_type, content_category, post_idea, caption_draft, platform, sort_order)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-          [plan.id, user.brand_id, d.date, d.dayOfWeek, contentType, s.category || 'promotional', s.post_idea, s.caption_draft || '', s.platform || platforms[0], i]
+        const platform = s.platform || platforms[i % platforms.length] || platforms[0];
+        const postIdea = (s.post_idea || '').toString().trim();
+        const captionDraft = (s.caption_draft || '').toString().trim();
+        const creativeBrief = (s.creative_brief || '').toString().trim();
+
+        const { rows: slotRows } = await (canStoreCreativeBrief
+          ? client.query(
+              `INSERT INTO calendar_slots (plan_id, brand_id, slot_date, day_of_week, content_type, content_category, post_idea, creative_brief, caption_draft, platform, sort_order)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+              [
+                plan.id,
+                user.brand_id,
+                d.date,
+                d.dayOfWeek,
+                contentType,
+                s.category || 'promotional',
+                postIdea,
+                creativeBrief || null,
+                captionDraft,
+                platform,
+                i,
+              ]
+            )
+          : client.query(
+              `INSERT INTO calendar_slots (plan_id, brand_id, slot_date, day_of_week, content_type, content_category, post_idea, caption_draft, platform, sort_order)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+              [
+                plan.id,
+                user.brand_id,
+                d.date,
+                d.dayOfWeek,
+                contentType,
+                s.category || 'promotional',
+                postIdea,
+                captionDraft,
+                platform,
+                i,
+              ]
+            )
         );
         insertedSlots.push(slotRows[0]);
       }
@@ -295,11 +449,41 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
 
     // Apply any edits to slots
     for (const [slotId, edits] of Object.entries(slotEdits)) {
-      if (edits.post_idea !== undefined || edits.caption_draft !== undefined) {
-        await client.query(
-          `UPDATE calendar_slots SET post_idea=COALESCE($1, post_idea), caption_draft=COALESCE($2, caption_draft) WHERE id=$3 AND plan_id=$4`,
-          [edits.post_idea || null, edits.caption_draft || null, slotId, plan.id]
-        );
+      const canEditCreativeBrief = await hasColumn(pool, 'calendar_slots', 'creative_brief');
+      if (
+        edits.post_idea !== undefined ||
+        edits.caption_draft !== undefined ||
+        edits.creative_brief !== undefined
+      ) {
+        if (canEditCreativeBrief) {
+          await client.query(
+            `UPDATE calendar_slots
+             SET post_idea=COALESCE($1, post_idea),
+                 caption_draft=COALESCE($2, caption_draft),
+                 creative_brief=COALESCE($3, creative_brief)
+             WHERE id=$4 AND plan_id=$5`,
+            [
+              edits.post_idea || null,
+              edits.caption_draft || null,
+              edits.creative_brief || null,
+              slotId,
+              plan.id,
+            ]
+          );
+        } else {
+          await client.query(
+            `UPDATE calendar_slots
+             SET post_idea=COALESCE($1, post_idea),
+                 caption_draft=COALESCE($2, caption_draft)
+             WHERE id=$3 AND plan_id=$4`,
+            [
+              edits.post_idea || null,
+              edits.caption_draft || null,
+              slotId,
+              plan.id,
+            ]
+          );
+        }
       }
     }
 
@@ -412,10 +596,19 @@ async function runGenerationJob(jobId, slotIds, pool) {
 
     // Get brand data
     const { rows: brandRows } = await pool.query(
-      `SELECT b.*, u.id AS user_id, u.credits
+      `SELECT b.*, u.id AS user_id, u.credits,
+              bsp.extracted_colors, bsp.font_mood_detected, bsp.layout_style,
+              bsp.photography_style, bsp.mood_keywords, bsp.composition_style,
+              bsp.text_density, bsp.dominant_aesthetic, bsp.reference_image_urls,
+              bic.usp_keywords AS industry_usp, bic.industry_answers,
+              ccp.weekly_post_count, ccp.content_type_mix, ccp.active_platforms
        FROM brands b
        JOIN users u ON u.id = b.user_id
-       WHERE b.id = $1 LIMIT 1`,
+       LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+       LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+       LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
+       WHERE b.id = $1
+       LIMIT 1`,
       [job.brand_id]
     );
     const brand = brandRows[0];
@@ -423,6 +616,36 @@ async function runGenerationJob(jobId, slotIds, pool) {
       await pool.query(`UPDATE generation_jobs SET status='failed' WHERE id=$1`, [jobId]);
       return;
     }
+
+    // Products (optional) for image/caption generation
+    const products = await getBrandProducts(pool, brand.user_id, brand.id);
+    const imageProducts = (products || []).filter((p) => (Array.isArray(p.use_in) ? p.use_in : []).includes('image_generation'));
+    const primaryImageProduct = pickPrimaryProduct(imageProducts, 'image_generation');
+
+    const brandColors = [brand.color_primary, brand.color_secondary, brand.color_accent].filter(Boolean);
+    const brandVisualNotes = [
+      brandColors.length ? `Brand colors: ${brandColors.join(', ')}` : '',
+      brand.font_mood ? `Typography mood: ${brand.font_mood}` : '',
+      brand.font_mood_detected ? `Detected font mood: ${brand.font_mood_detected}` : '',
+      brand.dominant_aesthetic ? `Aesthetic: ${brand.dominant_aesthetic}` : '',
+      brand.mood_keywords?.length ? `Mood keywords: ${brand.mood_keywords.join(', ')}` : '',
+      brand.photography_style ? `Photography style: ${brand.photography_style}` : '',
+      brand.layout_style ? `Layout style: ${brand.layout_style}` : '',
+      brand.extracted_colors?.length ? `Detected palette: ${brand.extracted_colors.join(', ')}` : '',
+    ].filter(Boolean);
+
+    const productContextBlock = (() => {
+      if (!primaryImageProduct) return '';
+      const bits = [
+        `Primary product: ${primaryImageProduct.name}`,
+        primaryImageProduct.category ? `Category: ${primaryImageProduct.category}` : '',
+        primaryImageProduct.price ? `Price/offer: ${primaryImageProduct.price}` : '',
+        primaryImageProduct.description ? `Description: ${primaryImageProduct.description}` : '',
+        primaryImageProduct.visual_description ? `Visual reference: ${primaryImageProduct.visual_description}` : '',
+        Array.isArray(primaryImageProduct.tags) && primaryImageProduct.tags.length ? `Tags: ${primaryImageProduct.tags.join(', ')}` : '',
+      ].filter(Boolean);
+      return bits.length ? `PRODUCT_CONTEXT:\n${bits.join('\n')}` : '';
+    })();
 
     // Build system prompt once for this brand
     let sysPrompt;
@@ -433,9 +656,11 @@ async function runGenerationJob(jobId, slotIds, pool) {
         audienceAgeMin: brand.audience_age_min, audienceAgeMax: brand.audience_age_max,
         audienceGender: brand.audience_gender, audienceInterests: brand.audience_interests || [],
         audienceLocation: '', platforms: brand.platforms || [],
-        brandColors: [brand.color_primary, brand.color_secondary, brand.color_accent].filter(Boolean),
+        brandColors,
         fontMood: brand.font_mood || brand.font_mood_detected,
-        usp: brand.usp_keywords && brand.usp_keywords.length ? brand.usp_keywords.join(', ') : '',
+        usp: (brand.industry_usp && brand.industry_usp.length)
+          ? brand.industry_usp.join(', ')
+          : (brand.usp_keywords && brand.usp_keywords.length ? brand.usp_keywords.join(', ') : ''),
         mission: '',
         wordsToUse: [], wordsToAvoid: [],
         persona: '',
@@ -468,7 +693,19 @@ async function runGenerationJob(jobId, slotIds, pool) {
           userPrompt = `Create a ${slot.content_type} for ${slot.platform} about: ${slot.post_idea}. Return JSON: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
         }
 
-        const raw = await callAI(sysPrompt + '\n\n' + userPrompt);
+        const creativeBrief = (slot.creative_brief || '').toString().trim();
+        const productPlacementRule = primaryImageProduct
+          ? `\n\nPRODUCT PLACEMENT RULE:\nIf the slot is promotional/testimonial or naturally fits, include "${primaryImageProduct.name}" in the imagePrompt with explicit placement (foreground/background, scale, angle).`
+          : '';
+
+        const expandedUserPrompt = [
+          userPrompt,
+          creativeBrief ? `\n\nSLOT_CREATIVE_BRIEF (must follow):\n${creativeBrief}` : '',
+          productContextBlock ? `\n\n${productContextBlock}` : '',
+          productPlacementRule,
+        ].filter(Boolean).join('');
+
+        const raw = await callAI(sysPrompt + '\n\n' + expandedUserPrompt, { maxTokens: 1400, timeoutMs: AI_TIMEOUT_MS });
 
         let caption = '', hashtags = [], imagePrompt = '';
         try {
@@ -482,9 +719,26 @@ async function runGenerationJob(jobId, slotIds, pool) {
           caption = slot.post_idea;
         }
 
-        // Generate image
-        const fullImagePrompt = `${imagePrompt}. Brand: ${brand.name}. Style: professional social media ${slot.content_type} for ${slot.platform}. High quality, no text overlays.`;
-        const imageUrl = await generateImage(fullImagePrompt);
+        // Generate image (art-directed using Brand DNA + slot creative brief)
+        const aspectRatio =
+          slot.content_type === 'reel' || slot.content_type === 'story'
+            ? '9:16'
+            : (slot.content_type === 'carousel' ? '4:5' : '1:1');
+
+        const artDirection = [
+          `FORMAT: ${slot.platform} ${slot.content_type}. Aspect ratio ${aspectRatio}.`,
+          brandVisualNotes.length ? `BRAND_VISUAL_IDENTITY:\n${brandVisualNotes.join('\n')}` : '',
+          productContextBlock ? productContextBlock : '',
+          creativeBrief ? `SLOT_CREATIVE_BRIEF:\n${creativeBrief}` : '',
+          'COMPOSITION_RULES: specify subject, environment, camera angle, lens feel, depth-of-field, and focal point.',
+          'LIGHTING_RULES: specify lighting (golden hour / softbox / moody low-key / bright airy) and shadows.',
+          'QUALITY: premium, high-end, photorealistic, detailed textures.',
+          'RESTRICTIONS: no text overlays, no logos, no watermarks.',
+          'AVOID: flat stock photo look, generic \"professional social media\" phrasing.',
+        ].filter(Boolean).join('\n\n');
+
+        const fullImagePrompt = `${imagePrompt}\n\n${artDirection}`;
+        const imageUrl = await generateImage(fullImagePrompt, { aspectRatio });
 
         const client = await pool.connect();
         try {
@@ -509,7 +763,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
             `INSERT INTO posts (user_id, brand_id, platform, content_type, caption, hashtags, status, is_ai_generated, generation_prompt, image_url, slot_id, generation_job_id, approval_status, version_number)
              VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8,$9,$10,'pending',1) RETURNING *`,
             [brand.user_id, brand.id, slot.platform, slot.content_type, caption, hashtags,
-             JSON.stringify({ brief: slot.post_idea, imagePrompt }), imageUrl,
+             JSON.stringify({ brief: slot.post_idea, creativeBrief, imagePrompt }), imageUrl,
              slot.id, jobId]
           );
           const post = postRows[0];

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Search, ImageIcon, Upload, Filter, Download, Trash2, Sparkles, Loader2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Search, ImageIcon, Upload, Download, Trash2, Sparkles, Loader2, Package, Plus, Tag, DollarSign, X } from 'lucide-react'
 import useSWR, { mutate } from 'swr'
 import Link from 'next/link'
 import { BlurFade } from '@/components/ui/blur-fade'
@@ -10,8 +10,7 @@ import { DotPattern } from '@/components/ui/dot-pattern'
 import { AIButton } from '@/components/ui/ai-button'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
-
-const FILTERS = ['All', 'Instagram', 'LinkedIn', 'Twitter', 'Carousel', 'Story', 'Logo', 'Reference']
+import { toast } from 'sonner'
 
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: '#f43f5e', linkedin: '#3b82f6', twitter: '#94a3b8',
@@ -27,18 +26,199 @@ interface Asset {
   created_at: string
 }
 
+interface Product {
+  id: string
+  name: string
+  description?: string
+  price?: string
+  category?: string
+  tags?: string[]
+  images: string[]
+  visual_description?: string
+  is_primary: boolean
+  created_at: string
+}
+
 const fetcher = <T,>(url: string): Promise<T> => apiCall(url) as Promise<T>
 
+// ─── Add Product Modal ────────────────────────────────────────────────────────
+function AddProductModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({ name: '', description: '', price: '', category: '', visual_description: '' })
+  const [saving, setSaving] = useState(false)
+
+  const handleSave = async () => {
+    if (!form.name.trim()) { toast.error('Product name is required'); return }
+    setSaving(true)
+    try {
+      await apiCall('/api/brand-products', { method: 'POST', body: JSON.stringify(form) })
+      toast.success('Product added!')
+      onSaved()
+      onClose()
+    } catch { toast.error('Failed to add product') }
+    finally { setSaving(false) }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.96, opacity: 0, y: 12 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.96, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="w-full max-w-md rounded-2xl border border-white/[0.10] bg-[#0a0a0a] p-6 space-y-4"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="text-white font-semibold text-base">Add Product / Service</h3>
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors">
+            <X size={13} />
+          </button>
+        </div>
+        {[
+          { key: 'name', label: 'Name *', placeholder: 'e.g. Signature Serum' },
+          { key: 'description', label: 'Description', placeholder: 'Short product description' },
+          { key: 'price', label: 'Price', placeholder: 'e.g. ₹2,499' },
+          { key: 'category', label: 'Category', placeholder: 'e.g. Skincare' },
+          { key: 'visual_description', label: 'Visual Description (for AI)', placeholder: 'e.g. sleek gold bottle on marble surface' },
+        ].map(({ key, label, placeholder }) => (
+          <div key={key}>
+            <label className="block text-[10px] text-white/30 uppercase tracking-[0.1em] mb-1">{label}</label>
+            <input
+              value={form[key as keyof typeof form]}
+              onChange={(e) => setForm(f => ({ ...f, [key]: e.target.value }))}
+              placeholder={placeholder}
+              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.22] transition-all"
+            />
+          </div>
+        ))}
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="w-full h-10 rounded-xl bg-white text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/90 transition-all disabled:opacity-60"
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+          {saving ? 'Saving…' : 'Add Product'}
+        </button>
+      </motion.div>
+    </motion.div>
+  )
+}
+
+// ─── Product Card ─────────────────────────────────────────────────────────────
+function ProductCard({ product, onDelete }: { product: Product; onDelete: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+    >
+      {/* Image */}
+      <div className="aspect-square bg-white/[0.03] relative overflow-hidden flex items-center justify-center">
+        {product.images?.[0] ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+        ) : (
+          <Package size={32} className="text-white/10" />
+        )}
+        {product.is_primary && (
+          <span className="absolute top-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-400">Primary</span>
+        )}
+        {/* Overlay actions */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+          <button
+            onClick={onDelete}
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-red-900/60 transition-all"
+          >
+            <Trash2 size={13} className="text-red-400" />
+          </button>
+        </div>
+      </div>
+      {/* Info */}
+      <div className="p-3 border-t border-white/[0.05]">
+        <p className="text-white/80 font-medium text-[13px] truncate">{product.name}</p>
+        {product.price && (
+          <p className="text-white/35 text-[11px] flex items-center gap-1 mt-0.5">
+            <DollarSign size={9} />{product.price}
+          </p>
+        )}
+        {product.category && (
+          <p className="text-white/25 text-[10px] flex items-center gap-1 mt-1">
+            <Tag size={9} />{product.category}
+          </p>
+        )}
+        {product.description && (
+          <p className="text-white/30 text-[10.5px] mt-1 line-clamp-2 leading-relaxed">{product.description}</p>
+        )}
+        {product.visual_description && (
+          <p className="text-white/20 text-[9.5px] italic mt-1 line-clamp-1">AI: {product.visual_description}</p>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── Asset Card ───────────────────────────────────────────────────────────────
+function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) {
+  const platformColor = PLATFORM_COLORS[asset.platform?.toLowerCase() ?? '']
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+    >
+      <div className="aspect-square bg-white/[0.03] relative overflow-hidden flex items-center justify-center">
+        {asset.url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={asset.url} alt={asset.label ?? ''} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+        ) : (
+          <ImageIcon size={28} className="text-white/10" />
+        )}
+        {asset.platform && (
+          <span className="absolute top-2 left-2 text-[9px] font-semibold capitalize px-2 py-0.5 rounded-md" style={{ background: `${platformColor}20`, color: platformColor, border: `1px solid ${platformColor}35` }}>
+            {asset.platform}
+          </span>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2 gap-1.5">
+          <a href={asset.url} download target="_blank" rel="noreferrer"
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-white/10 transition-all">
+            <Download size={13} className="text-white/60" />
+          </a>
+          <button onClick={onDelete}
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-red-900/60 transition-all">
+            <Trash2 size={13} className="text-red-400" />
+          </button>
+        </div>
+      </div>
+      <div className="px-3 py-2.5 border-t border-white/[0.05]">
+        <p className="text-white/40 text-[10px]">{asset.label ?? asset.type ?? 'Asset'}</p>
+        <p className="text-white/20 text-[9px] mt-0.5">{new Date(asset.created_at).toLocaleDateString()}</p>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function AssetsPage() {
+  const [tab, setTab] = useState<'assets' | 'products'>('assets')
   const [query, setQuery] = useState('')
-  const [activeFilter, setActiveFilter] = useState('All')
   const [uploading, setUploading] = useState(false)
+  const [showAddProduct, setShowAddProduct] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const swrKey = `/api/assets?filter=${activeFilter !== 'All' ? activeFilter.toLowerCase() : ''}&q=${query}`
-  const { data, isLoading } = useSWR(swrKey, fetcher<{ assets: Asset[] }>, { dedupingInterval: 20000 })
+  const assetsKey = `/api/assets?q=${query}`
+  const productsKey = '/api/brand-products'
 
-  const assets = data?.assets ?? []
+  const { data: assetsData, isLoading: assetsLoading } = useSWR(assetsKey, fetcher<{ assets: Asset[] }>, { dedupingInterval: 20000 })
+  const { data: productsData, isLoading: productsLoading, mutate: mutateProducts } = useSWR(productsKey, fetcher<{ products: Product[] }>, { dedupingInterval: 20000 })
+
+  const assets = assetsData?.assets ?? []
+  const products = productsData?.products ?? []
 
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return
@@ -46,76 +226,97 @@ export default function AssetsPage() {
     try {
       const form = new FormData()
       Array.from(files).forEach((f) => form.append('files', f))
-      await fetch('/api/assets/upload', {
-        method: 'POST',
-        body: form,
-        credentials: 'include',
-      })
-      mutate(swrKey)
-    } finally {
-      setUploading(false)
-    }
+      await fetch('/api/assets/upload', { method: 'POST', body: form, credentials: 'include' })
+      mutate(assetsKey)
+      toast.success('Uploaded!')
+    } catch { toast.error('Upload failed') }
+    finally { setUploading(false) }
   }
 
-  async function handleDelete(id: string) {
+  async function handleDeleteAsset(id: string) {
+    if (!confirm('Delete this asset?')) return
     await apiCall(`/api/assets/${id}`, { method: 'DELETE' })
-    mutate(swrKey)
+    mutate(assetsKey)
   }
+
+  async function handleDeleteProduct(id: string) {
+    if (!confirm('Delete this product?')) return
+    await apiCall(`/api/brand-products/${id}`, { method: 'DELETE' })
+    mutateProducts()
+  }
+
+  const isLoading = tab === 'assets' ? assetsLoading : productsLoading
 
   return (
-    <div className="p-8 min-h-[calc(100vh-64px)]">
+    <div className="p-6 md:p-8 min-h-[calc(100vh-64px)] pb-24">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h2 className="text-[var(--text-1)] font-semibold text-2xl">Asset Library</h2>
-          <p className="text-[var(--text-3)] text-sm mt-1">All your generated and uploaded content</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-4)]" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-xl bg-[var(--card-bg)] border border-[var(--border-base)]
-                         text-[var(--text-1)] text-sm placeholder:text-[var(--text-4)]
-                         focus:outline-none focus:border-[var(--ai-border)] transition-colors w-[240px]"
-              placeholder="Search assets..."
-            />
+      <BlurFade delay={0}>
+        <div className="flex items-start justify-between mb-7">
+          <div>
+            <h1 className="text-white font-semibold text-2xl tracking-[-0.025em]">Asset Library</h1>
+            <p className="text-white/35 text-sm mt-1">Your generated content and brand products</p>
           </div>
+          <div className="flex items-center gap-2.5">
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="pl-9 pr-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.20] transition-colors w-[220px]"
+                placeholder="Search..."
+              />
+            </div>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl
-                       border border-[var(--border-base)] bg-[var(--card-bg)]
-                       text-[var(--text-2)] text-sm font-medium
-                       hover:bg-[var(--bg-subtle)] hover:border-[var(--border-loud)]
-                       transition-all disabled:opacity-60">
-            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={15} />}
-            Upload
-          </button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden"
-            onChange={(e) => handleUpload(e.target.files)} />
+            {tab === 'assets' ? (
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/60 text-sm font-medium hover:bg-white/[0.08] hover:border-white/[0.16] transition-all disabled:opacity-50"
+              >
+                {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                Upload
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAddProduct(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/60 text-sm font-medium hover:bg-white/[0.08] hover:border-white/[0.16] transition-all"
+              >
+                <Plus size={14} /> Add Product
+              </button>
+            )}
+            <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleUpload(e.target.files)} />
 
-          <Link href="/generate">
-            <AIButton className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium">
-              <Sparkles size={14} className="text-[var(--ai-color)]" />
-              Generate New
-            </AIButton>
-          </Link>
+            <Link href="/generate">
+              <AIButton className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium">
+                <Sparkles size={13} className="text-[var(--ai-color)]" />
+                Generate
+              </AIButton>
+            </Link>
+          </div>
         </div>
-      </div>
+      </BlurFade>
 
-      {/* Filters */}
-      <div className="flex items-center gap-2 mb-6">
-        <Filter size={14} className="text-[var(--text-4)]" />
-        {FILTERS.map((f) => (
-          <button key={f} onClick={() => setActiveFilter(f)}
-            className={cn('px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
-              activeFilter === f
-                ? 'bg-[var(--ai-glow)] border-[var(--ai-border)] text-[var(--ai-color)]'
-                : 'border-[var(--border-base)] text-[var(--text-3)] hover:text-[var(--text-2)] hover:border-[var(--border-loud)]')}>
-            {f}
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-white/[0.03] border border-white/[0.07] w-fit">
+        {([
+          { key: 'assets', label: 'Generated Assets', icon: ImageIcon, count: assets.length },
+          { key: 'products', label: 'Products & Services', icon: Package, count: products.length },
+        ] as const).map(({ key, label, icon: Icon, count }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={cn(
+              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              tab === key
+                ? 'bg-white/[0.10] border border-white/[0.15] text-white shadow-sm'
+                : 'text-white/35 hover:text-white/60'
+            )}
+          >
+            <Icon size={13} />
+            {label}
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', tab === key ? 'bg-white/10 text-white/70' : 'bg-white/[0.05] text-white/20')}>
+              {count}
+            </span>
           </button>
         ))}
       </div>
@@ -123,84 +324,81 @@ export default function AssetsPage() {
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center h-64">
-          <Loader2 size={28} className="animate-spin text-[var(--ai-color)]" />
+          <Loader2 size={24} className="animate-spin text-white/20" />
         </div>
       )}
 
-      {/* Empty State */}
-      {!isLoading && assets.length === 0 && (
-        <div className="relative rounded-2xl border border-[var(--border-base)] bg-[var(--card-bg)] overflow-hidden"
-             style={{ minHeight: 400 }}>
-          <DotPattern className="absolute inset-0 text-[var(--text-4)] opacity-40" width={24} height={24} />
-          <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
-            <div className="w-20 h-20 rounded-2xl bg-[var(--bg-subtle)] border border-[var(--border-base)]
-                            flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-blue-500/5" />
-              <ImageIcon size={32} className="text-[var(--text-4)] relative z-10" />
+      {/* Assets Tab */}
+      {!isLoading && tab === 'assets' && (
+        assets.length === 0 ? (
+          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden" style={{ minHeight: 400 }}>
+            <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
+            <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                <ImageIcon size={28} className="text-white/15" />
+              </div>
+              <div className="text-center">
+                <p className="text-[15px] font-semibold text-white/50">No assets yet</p>
+                <p className="text-[13px] text-white/25 mt-1">Generated content and uploaded files will appear here</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.10] text-white/50 text-sm hover:bg-white/[0.05] transition-all">
+                  <Upload size={13} />Upload
+                </button>
+                <Link href="/generate"><AIButton className="px-4 py-2 rounded-xl text-sm"><Sparkles size={13} className="mr-1.5" />Generate</AIButton></Link>
+              </div>
             </div>
-            <div className="text-center">
-              <p className="text-[15px] font-semibold text-[var(--text-1)]">No assets yet</p>
-              <p className="text-[13px] text-[var(--text-3)] mt-1 max-w-xs">
-                Generated content and uploaded files will appear here
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href="/generate">
-                <AIButton className="px-5 py-2.5 rounded-xl text-sm font-medium">
-                  <Sparkles size={14} className="mr-2 text-[var(--ai-color)]" />
-                  Generate First Post
-                </AIButton>
-              </Link>
-              <button onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-                           border border-[var(--border-base)] text-[var(--text-2)] text-sm font-medium
-                           hover:bg-[var(--bg-subtle)] hover:border-[var(--border-loud)] transition-all">
-                <Upload size={14} />
-                Upload Assets
+          </div>
+        ) : (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            {assets.map((asset) => (
+              <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Products Tab */}
+      {!isLoading && tab === 'products' && (
+        products.length === 0 ? (
+          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden" style={{ minHeight: 400 }}>
+            <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
+            <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
+              <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+                <Package size={28} className="text-white/15" />
+              </div>
+              <div className="text-center">
+                <p className="text-[15px] font-semibold text-white/50">No products yet</p>
+                <p className="text-[13px] text-white/25 mt-1">Add your products and services for AI to feature in content</p>
+              </div>
+              <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-all">
+                <Plus size={14} />Add Product
               </button>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} onDelete={() => handleDeleteProduct(product.id)} />
+            ))}
+            {/* Add another */}
+            <button
+              onClick={() => setShowAddProduct(true)}
+              className="rounded-2xl border-2 border-dashed border-white/[0.08] flex flex-col items-center justify-center gap-2 aspect-square hover:border-white/[0.18] hover:bg-white/[0.02] transition-all group"
+            >
+              <Plus size={20} className="text-white/20 group-hover:text-white/40 transition-colors" />
+              <p className="text-white/20 text-xs group-hover:text-white/40 transition-colors">Add Product</p>
+            </button>
+          </div>
+        )
       )}
 
-      {/* Grid */}
-      {!isLoading && assets.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {assets.map((asset, i) => (
-            <BlurFade key={asset.id} delay={i * 0.04}>
-              <motion.div whileHover={{ scale: 1.02 }}
-                className="group relative aspect-square rounded-xl bg-[var(--card-bg)]
-                           border border-[var(--card-border)] overflow-hidden cursor-pointer
-                           hover:border-[var(--card-hover-border)] transition-all">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={asset.url} alt={asset.label ?? asset.type}
-                  className="w-full h-full object-cover" />
-                {asset.platform && (
-                  <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold text-white"
-                    style={{ backgroundColor: PLATFORM_COLORS[asset.platform.toLowerCase()] ?? '#6366f1' }}>
-                    {asset.platform}
-                  </span>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent
-                                opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                <div className="absolute bottom-2 left-2 right-2 opacity-0 group-hover:opacity-100
-                                transition-opacity duration-200 flex items-center gap-1.5">
-                  <a href={asset.url} download target="_blank" rel="noreferrer"
-                    className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm
-                               flex items-center justify-center hover:bg-white/20 transition-colors">
-                    <Download size={12} className="text-white" />
-                  </a>
-                  <button onClick={() => handleDelete(asset.id)}
-                    className="w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm
-                               flex items-center justify-center hover:bg-rose-500/40 transition-colors">
-                    <Trash2 size={12} className="text-white" />
-                  </button>
-                </div>
-              </motion.div>
-            </BlurFade>
-          ))}
-        </div>
-      )}
+      {/* Add Product Modal */}
+      <AnimatePresence>
+        {showAddProduct && (
+          <AddProductModal onClose={() => setShowAddProduct(false)} onSaved={() => mutateProducts()} />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

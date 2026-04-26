@@ -90,11 +90,11 @@ const buildSystemPrompt = (user) => {
 
 const { callAI, generateImage } = require('../lib/ai');
 
-const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }) =>
-  buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, {});
+const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }, brand) =>
+  buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, brand || {});
 
 const callAIWrapped = async (systemPrompt, userPrompt) => {
-  return callAI({ system: systemPrompt, user: userPrompt }, { maxTokens: 1024 });
+  return callAI({ system: systemPrompt, user: userPrompt }, { maxTokens: 1400 });
 };
 
 const parseAIResponse = (raw) => {
@@ -114,7 +114,7 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   const client = await pool.connect();
   try {
-    const { platform, contentType, brief, mood, theme, campaign } = req.body;
+    const { platform, contentType, brief, mood, theme, campaign, ratio } = req.body;
     if (!platform) return res.status(400).json({ error: 'platform is required' });
     if (!brief) return res.status(400).json({ error: 'brief is required' });
 
@@ -125,8 +125,19 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     const systemPrompt = buildSystemPrompt(user);
-    const userPrompt = buildUserPrompt({ platform, contentType, brief, mood, theme, campaign });
-    const raw = await callAIWrapped(systemPrompt, userPrompt);
+    const brand = {
+      name: user.brand_name, industry: user.industry, goals: user.goals || [],
+      tone: user.tone || 50, styles: user.styles || [],
+    };
+    const userPrompt = buildUserPrompt({ platform, contentType, brief, mood, theme, campaign }, brand);
+    let raw;
+    try {
+      raw = await callAIWrapped(systemPrompt, userPrompt);
+    } catch (aiErr) {
+      logger.error('AI call failed in generate-content', { error: aiErr.message });
+      if (aiErr.message === 'AI_TIMEOUT') return res.status(503).json({ error: 'Generation timed out. The AI is busy — please try again.' });
+      return res.status(503).json({ error: 'AI service unavailable. Please try again shortly.' });
+    }
     const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
 
     // Build a rich image prompt using brand visual DNA + AI-generated imagePrompt
@@ -136,21 +147,22 @@ router.post('/', authMiddleware, async (req, res) => {
     if (user.font_mood) visualDNAParts.push(`Typography mood: ${user.font_mood}`);
     if (user.dominant_aesthetic) visualDNAParts.push(`Aesthetic: ${user.dominant_aesthetic}`);
     if (user.photography_style) visualDNAParts.push(`Photography style: ${user.photography_style}`);
-    if (user.mood_keywords?.length) visualDNAParts.push(`Mood: ${(user.mood_keywords).join(', ')}`);
-    if (user.extracted_colors?.length) visualDNAParts.push(`Detected palette: ${(user.extracted_colors).join(', ')}`);
+    if (user.mood_keywords?.length) visualDNAParts.push(`Mood: ${user.mood_keywords.join(', ')}`);
+    if (user.extracted_colors?.length) visualDNAParts.push(`Detected palette: ${user.extracted_colors.join(', ')}`);
+
+    const baseImagePrompt = imagePrompt || `${brief} — ${contentType || 'post'} for ${user.brand_name || 'brand'} on ${platform}`;
 
     const enrichedImagePrompt = [
-      imagePrompt,
+      baseImagePrompt,
       visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
       `\nFormat: social media ${contentType || 'post'} for ${platform}.`,
       `Brand: ${user.brand_name || 'modern brand'}.`,
       'High quality, professional, photorealistic, no text overlays, no watermarks.',
     ].filter(Boolean).join(' ');
 
-    // Generate image
-    const imageUrl = await generateImage(enrichedImagePrompt, {
-      aspectRatio: contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1',
-    });
+    // Generate image — use ratio from request, fallback to content-type logic
+    const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
+    const imageUrl = await generateImage(enrichedImagePrompt, { aspectRatio });
 
     await client.query('BEGIN');
     await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);
