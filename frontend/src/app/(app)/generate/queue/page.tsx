@@ -33,7 +33,12 @@ function GenerationQueueInner() {
   const { data: jobData } = useSWR(
     jobId ? `/api/calendar/jobs/${jobId}` : null,
     (u: string) => apiCall<{ job: Job; slots: SlotDetail[] }>(u),
-    { refreshInterval: (data) => ((data as any)?.job?.status === 'running' || (data as any)?.job?.status === 'queued') ? 2500 : 0 }
+    {
+      // Reduce DB/network pressure on long-running pages.
+      refreshInterval: (data) => ((data as any)?.job?.status === 'running' || (data as any)?.job?.status === 'queued') ? 10000 : 0,
+      refreshWhenHidden: false,
+      revalidateOnFocus: true,
+    }
   )
 
   const job: Job | undefined = (jobData as any)?.job

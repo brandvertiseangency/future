@@ -49,7 +49,11 @@ export function GenQueue() {
   const { data } = useSWR(
     '/api/calendar/jobs/recent',
     (url: string) => apiCall<{ jobs: Job[] }>(url),
-    { refreshInterval: 4000, revalidateOnFocus: false }
+    {
+      refreshInterval: 15000,
+      refreshWhenHidden: false,
+      revalidateOnFocus: true,
+    }
   )
   const jobs: Job[] = (data as any)?.jobs ?? []
 

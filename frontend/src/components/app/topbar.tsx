@@ -53,7 +53,11 @@ export function Topbar() {
   const { data: notifData, mutate: mutateNotifs } = useSWR(
     '/api/notifications',
     fetcher<{ notifications: Notification[] }>,
-    { refreshInterval: 30000 }
+    {
+      refreshInterval: 120000,
+      refreshWhenHidden: false,
+      revalidateOnFocus: true,
+    }
   )
   const notifications = notifData?.notifications ?? []
   const unreadCount = notifications.filter((n) => !n.read).length
