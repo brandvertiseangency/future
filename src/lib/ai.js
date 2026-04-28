@@ -11,7 +11,8 @@ const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
 const NANO_BANANA_MODEL = 'gemini-2.0-flash-preview-image-generation';
-const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'nano-banana').toLowerCase();
+const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1';
+const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'chatgpt-image-2').toLowerCase();
 
 const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
   let timer;
@@ -106,13 +107,59 @@ const buildInlineImagePartFromUrl = async (url) => {
 };
 
 /**
+ * OpenAI image fallback generator.
+ * Returns data URL or null.
+ */
+const generateImageWithOpenAI = async (prompt, timeoutMs) => {
+  if (!process.env.OPENAI_API_KEY) return null;
+  try {
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: timeoutMs });
+    const response = await withTimeout(
+      openai.images.generate({
+        model: OPENAI_IMAGE_MODEL,
+        prompt,
+        size: '1024x1024',
+      }),
+      timeoutMs
+    );
+    const b64 = response?.data?.[0]?.b64_json;
+    return b64 ? `data:image/png;base64,${b64}` : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Generate an image (Nano Banana primary, Imagen fallback).
  * Returns base64 data URL or null.
  */
 const generateImage = async (imagePrompt, opts = {}) => {
-  if (!process.env.GOOGLE_AI_API_KEY) return null;
+  const hasGoogle = !!process.env.GOOGLE_AI_API_KEY;
+  const hasOpenAI = !!process.env.OPENAI_API_KEY;
+  if (!hasGoogle && !hasOpenAI) return null;
   const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [] } = opts;
   const logger = require('../utils/logger');
+  const openAiPrimary =
+    IMAGE_MODEL === 'chatgpt-image-2' ||
+    IMAGE_MODEL === 'openai' ||
+    IMAGE_MODEL === 'openai-image' ||
+    IMAGE_MODEL === 'gpt-image-1';
+
+  // OpenAI primary path (ChatGPT image model)
+  if (openAiPrimary) {
+    const openAiImage = await generateImageWithOpenAI(imagePrompt, timeoutMs);
+    if (openAiImage) return openAiImage;
+    if (!hasGoogle) {
+      logger.warn('OpenAI image generation failed and Google fallback unavailable');
+      return null;
+    }
+    logger.warn('OpenAI image generation failed, falling back to Google models');
+  }
+  if (!hasGoogle) {
+    return null;
+  }
+
   try {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
@@ -148,7 +195,7 @@ const generateImage = async (imagePrompt, opts = {}) => {
         return `data:${mimeType};base64,${imagePart.inlineData.data}`;
       }
       logger.warn('Nano Banana returned no image payload');
-      return null;
+      return (await generateImageWithOpenAI(imagePrompt, timeoutMs)) || null;
     }
 
     const response = await withTimeout(
@@ -160,7 +207,8 @@ const generateImage = async (imagePrompt, opts = {}) => {
       timeoutMs
     );
     const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-    return b64 ? `data:image/jpeg;base64,${b64}` : null;
+    if (b64) return `data:image/jpeg;base64,${b64}`;
+    return (await generateImageWithOpenAI(imagePrompt, timeoutMs)) || null;
   } catch (err) {
     logger.warn('Image generation failed', { model: IMAGE_MODEL, error: err.message });
     if (IMAGE_MODEL === 'nano-banana') {
@@ -177,12 +225,12 @@ const generateImage = async (imagePrompt, opts = {}) => {
           timeoutMs
         );
         const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-        return b64 ? `data:image/jpeg;base64,${b64}` : null;
+        if (b64) return `data:image/jpeg;base64,${b64}`;
       } catch (fallbackErr) {
         logger.warn('Imagen fallback also failed', { error: fallbackErr.message });
       }
     }
-    return null;
+    return (await generateImageWithOpenAI(imagePrompt, timeoutMs)) || null;
   }
 };
 
