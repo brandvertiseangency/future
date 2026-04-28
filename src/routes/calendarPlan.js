@@ -47,6 +47,38 @@ async function ensureGenerationDebugColumns(pool) {
   generationDebugColumnsReady = true;
 }
 
+async function reconcileStalledJob(pool, job) {
+  if (!job || job.status !== 'running' || !job.started_at) return job;
+  const startedAt = new Date(job.started_at).getTime();
+  const ageMs = Date.now() - startedAt;
+  const STALE_MS = 3 * 60 * 1000; // 3 minutes
+  const hasWorkRemaining = (job.completed_slots + job.failed_slots) < job.total_slots;
+  if (!hasWorkRemaining || ageMs < STALE_MS) return job;
+
+  const lastError = `Generation timed out after ${Math.round(ageMs / 1000)}s. Worker likely interrupted; please retry.`;
+  if (job.current_slot_id) {
+    await pool.query(
+      `UPDATE calendar_slots
+       SET status='failed',
+           error_message=COALESCE(error_message, $2)
+       WHERE id=$1 AND status='generating'`,
+      [job.current_slot_id, lastError]
+    );
+  }
+  await pool.query(
+    `UPDATE generation_jobs
+     SET status='failed',
+         failed_slots=GREATEST(failed_slots, total_slots - completed_slots),
+         completed_at=NOW(),
+         current_slot_id=NULL,
+         last_error=$2
+     WHERE id=$1`,
+    [job.id, lastError]
+  );
+  const { rows } = await pool.query(`SELECT * FROM generation_jobs WHERE id=$1`, [job.id]);
+  return rows[0] || job;
+}
+
 async function getBrandProducts(pool, userId, brandId) {
   try {
     const { rows } = await pool.query(
@@ -622,7 +654,11 @@ router.get('/jobs/recent', authMiddleware, async (req, res) => {
       `SELECT * FROM generation_jobs WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2`,
       [userId, limit]
     );
-    res.json({ jobs: rows });
+    const normalized = [];
+    for (const job of rows) {
+      normalized.push(await reconcileStalledJob(pool, job));
+    }
+    res.json({ jobs: normalized });
   } catch (err) {
     logger.error('recent jobs failed', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch recent jobs.' });
@@ -643,6 +679,7 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
       [req.params.jobId, userId]
     );
     if (!jobRows[0]) return res.status(404).json({ error: 'Job not found.' });
+    const job = await reconcileStalledJob(pool, jobRows[0]);
 
     const { rows: slots } = await pool.query(
       `SELECT cs.id, cs.post_idea, cs.content_type, cs.platform, cs.status, cs.error_message,
@@ -651,10 +688,10 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
        LEFT JOIN posts p ON p.slot_id = cs.id AND p.id = cs.post_id
        WHERE cs.plan_id = $1 AND cs.status IN ('approved','generating','generated','failed')
        ORDER BY cs.sort_order ASC, cs.slot_date ASC`,
-      [jobRows[0].plan_id]
+      [job.plan_id]
     );
 
-    res.json({ job: jobRows[0], slots });
+    res.json({ job, slots });
   } catch (err) {
     logger.error('get job failed', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch job.' });

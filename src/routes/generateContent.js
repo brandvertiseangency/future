@@ -109,7 +109,7 @@ const buildSystemPrompt = (user) => {
   return buildSystemPromptV2(brand);
 };
 
-const { callAI, generateImage } = require('../lib/ai');
+const { callAI, generateImageDetailed } = require('../lib/ai');
 
 const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }, brand) =>
   buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, brand || {});
@@ -184,9 +184,19 @@ router.post('/', authMiddleware, async (req, res) => {
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
     const referenceImageUrls = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
-    const rawImage = await generateImage(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
+    const imageResult = await generateImageDetailed(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
+    const rawImage = imageResult?.imageData || null;
     if (!rawImage) {
-      return res.status(503).json({ error: 'image_generation_failed', message: 'Image generation failed. Please retry.' });
+      logger.error('Image generation failed in generate-content', {
+        provider: imageResult?.provider || 'unknown',
+        reason: imageResult?.error || 'unknown',
+      });
+      return res.status(503).json({
+        error: 'image_generation_failed',
+        message: 'Image generation failed.',
+        reason: imageResult?.error || 'Unknown provider failure',
+        provider: imageResult?.provider || 'unknown',
+      });
     }
     const imageUrl = await persistGeneratedImageToStorage({
       imageData: rawImage,

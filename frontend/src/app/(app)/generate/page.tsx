@@ -327,12 +327,25 @@ export default function GeneratePage() {
         setOutputs([...results])
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
+        let parsed: { message?: string; reason?: string; provider?: string; error?: string } | null = null
+        try {
+          parsed = JSON.parse(msg)
+        } catch {
+          parsed = null
+        }
         if (msg.includes('insufficient_credits')) {
           toast.dismiss(toastId)
           toast.error('Not enough credits to continue generation.')
           break
         }
-        toast.error(`Failed for ${platform} — skipping`)
+        if (parsed?.error === 'image_generation_failed') {
+          const reason = parsed.reason ? ` (${parsed.reason})` : ''
+          toast.error(`Failed for ${platform}: image generation issue${reason}`)
+        } else if (parsed?.message) {
+          toast.error(`Failed for ${platform}: ${parsed.message}`)
+        } else {
+          toast.error(`Failed for ${platform} — skipping`)
+        }
       }
     }
 
