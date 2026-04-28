@@ -14,11 +14,16 @@ import { useBrandStore } from '@/stores/brand'
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/dashboard': { title: 'Dashboard',  sub: 'Overview' },
   '/calendar':  { title: 'Calendar',   sub: 'Content Schedule' },
+  '/calendar/generate': { title: 'Content Plan', sub: 'Generate' },
+  '/calendar/review': { title: 'Content Plan', sub: 'Review' },
   '/generate':  { title: 'Generate',   sub: 'Create Content' },
+  '/generate/queue': { title: 'Generation Queue', sub: 'Live Progress' },
   '/assets':    { title: 'Assets',     sub: 'Brand Files' },
   '/outputs':   { title: 'Outputs',    sub: 'Generated Content' },
+  '/brand': { title: 'Your Brand', sub: 'Identity' },
   '/settings':  { title: 'Settings',   sub: 'Preferences' },
   '/onboarding':{ title: 'Setup',      sub: 'Brand Configuration' },
+  '/agents': { title: 'Agents', sub: 'AI Workbench' },
 }
 
 interface Notification {
@@ -185,7 +190,6 @@ export function Topbar() {
                         <div key={n.id} onClick={() => !n.read && markRead(n.id)}
                           className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors',
                             !n.read ? 'bg-white/[0.025]' : '')}
-                          style={{ ':hover': { background: 'rgba(255,255,255,0.04)' } } as React.CSSProperties}
                           onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
                           onMouseLeave={e => (e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(255,255,255,0.025)')}
                         >

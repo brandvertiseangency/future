@@ -11,6 +11,7 @@ import { useBrandStore } from '@/stores/brand'
 import { useAgentsStore } from '@/stores/agents'
 import { buildWebsitePrompt } from '@/lib/prompt-engine'
 import { toast } from 'sonner'
+import { PageContainer } from '@/components/ui/page-primitives'
 
 const FEATURES = [
   {
@@ -87,7 +88,7 @@ export default function WebsiteBuilderPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+    <PageContainer className="max-w-5xl px-4 md:px-8">
       <AgentHero
         icon={Globe}
         iconColor="violet"
@@ -201,6 +202,6 @@ export default function WebsiteBuilderPage() {
           )}
         </motion.div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

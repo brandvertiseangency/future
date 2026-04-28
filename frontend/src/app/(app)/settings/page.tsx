@@ -11,6 +11,7 @@ import useSWR from 'swr'
 import { useAuth } from '@/lib/auth-context'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { PageHeader } from '@/components/ui/page-primitives'
 
 const SECTIONS = [
   { id: 'profile',       label: 'Profile',        icon: User },
@@ -402,8 +403,7 @@ export default function SettingsPage() {
           <Sparkles size={9} strokeWidth={1.5} />
           Account
         </div>
-        <h1 className="text-[32px] font-semibold tracking-[-0.035em] text-white leading-[1.1]">Settings</h1>
-        <p className="text-[13px] text-white/30 mt-1.5">Manage your account and preferences</p>
+        <PageHeader title="Settings" description="Manage your account and preferences" />
       </div>
 
       <div className="flex gap-5 items-start">

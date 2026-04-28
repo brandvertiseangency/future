@@ -6,6 +6,7 @@ import { Calendar, Sparkles, Loader2, ChevronLeft } from 'lucide-react'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
+import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 
@@ -126,7 +127,7 @@ function CalendarGenerateInner() {
   }
 
   return (
-    <div style={{ maxWidth: 600, margin: '0 auto', padding: '32px 24px 64px' }}>
+    <PageContainer className="max-w-3xl">
 
       {/* Header */}
       <button
@@ -136,7 +137,7 @@ function CalendarGenerateInner() {
         <ChevronLeft size={15} /> Back
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Calendar size={13} color="rgba(255,255,255,0.6)" />
         </div>
@@ -144,16 +145,13 @@ function CalendarGenerateInner() {
           Content Calendar
         </span>
       </div>
-      <h1 style={{ fontSize: 26, fontWeight: 400, color: '#fff', letterSpacing: '-0.03em', marginBottom: 6 }}>
-        Plan your content
-      </h1>
-      <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', marginBottom: 32, lineHeight: 1.5 }}>
-        AI will create a full month of post ideas using your Brand DNA.
-        You review and approve before anything is generated.
-      </p>
+      <PageHeader
+        title="Plan your content"
+        description="AI creates a full month of post ideas using your Brand DNA. You review and approve before generation."
+      />
 
       {/* Form card */}
-      <div className="card-silver" style={{ borderRadius: 16, padding: '24px' }}>
+      <SurfaceCard className="p-6">
 
         {/* Month */}
         <div style={{ marginBottom: 24 }}>
@@ -188,7 +186,7 @@ function CalendarGenerateInner() {
 
         {/* Content mix */}
         <ContentMixSliders mix={mix} onChange={(m) => setMix(m as typeof mix)} />
-      </div>
+      </SurfaceCard>
 
       {/* Credits summary */}
       <div style={{
@@ -230,7 +228,7 @@ function CalendarGenerateInner() {
       <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 8 }}>
         Credits charged only after you approve & confirm
       </p>
-    </div>
+    </PageContainer>
   )
 }
 

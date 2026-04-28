@@ -10,7 +10,7 @@ const TABS = [
 	{ href: '/dashboard', label: 'Home', icon: LayoutDashboard },
 	{ href: '/calendar', label: 'Calendar', icon: CalendarDays },
 	{ href: '/generate', label: 'Generate', icon: Sparkles, primary: true },
-	{ href: '/assets', label: 'Assets', icon: Images },
+	{ href: '/outputs', label: 'Outputs', icon: Images },
 	{ href: '/settings', label: 'Settings', icon: Settings2 },
 ]
 

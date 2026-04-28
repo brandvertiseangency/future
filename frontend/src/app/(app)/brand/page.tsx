@@ -12,6 +12,7 @@ import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { BlurFade } from '@/components/ui/blur-fade'
+import { PageHeader } from '@/components/ui/page-primitives'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BrandData {
@@ -154,10 +155,10 @@ export default function BrandDetailsPage() {
       {/* Header */}
       <BlurFade delay={0}>
         <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-white font-bold text-2xl tracking-tight">Your Brand</h1>
-            <p className="text-white/35 text-sm mt-1">Update your brand details — used across all AI-generated content</p>
-          </div>
+          <PageHeader
+            title="Your Brand"
+            description="Update your brand details used across all AI-generated content."
+          />
           <motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleSave}

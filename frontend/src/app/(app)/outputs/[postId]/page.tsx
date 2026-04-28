@@ -5,7 +5,8 @@ import { useRouter, useParams } from 'next/navigation'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
-import { ChevronLeft, RotateCcw, Download, Check, Clock, Loader2 } from 'lucide-react'
+import { ChevronLeft, RotateCcw, Download, Check, Loader2 } from 'lucide-react'
+import { PageContainer, SurfaceCard } from '@/components/ui/page-primitives'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
@@ -85,7 +86,7 @@ export default function OutputDetailPage() {
   const isApproved = post.approval_status === 'approved'
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 24px 80px' }}>
+    <PageContainer className="max-w-5xl">
 
       <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', marginBottom: 22, fontSize: 12 }}>
         <ChevronLeft size={14} /> Back to Outputs
@@ -157,16 +158,16 @@ export default function OutputDetailPage() {
           </div>
 
           {/* Caption */}
-          <div className="card-silver" style={{ borderRadius: 12, padding: '14px' }}>
+          <SurfaceCard className="p-[14px]">
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Caption</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
               {displayVersion?.caption ?? post.caption}
             </p>
-          </div>
+          </SurfaceCard>
 
           {/* Hashtags */}
           {(displayVersion?.hashtags ?? post.hashtags ?? []).length > 0 && (
-            <div className="card-silver" style={{ borderRadius: 12, padding: '12px 14px' }}>
+            <SurfaceCard className="p-[12px_14px]">
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Hashtags</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                 {(displayVersion?.hashtags ?? post.hashtags ?? []).map((tag: string) => (
@@ -175,11 +176,11 @@ export default function OutputDetailPage() {
                   </span>
                 ))}
               </div>
-            </div>
+            </SurfaceCard>
           )}
 
           {/* Regenerate */}
-          <div className="card-silver" style={{ borderRadius: 12, padding: '14px' }}>
+          <SurfaceCard className="p-[14px]">
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
               Regenerate with feedback
             </p>
@@ -210,7 +211,7 @@ export default function OutputDetailPage() {
                 : <><RotateCcw size={13} /> Regenerate</>
               }
             </button>
-          </div>
+          </SurfaceCard>
 
           {/* Approve / Download */}
           <div style={{ display: 'flex', gap: 8 }}>
@@ -245,6 +246,6 @@ export default function OutputDetailPage() {
           </div>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

@@ -12,6 +12,7 @@ import { useAgentsStore } from '@/stores/agents'
 import { buildPresentationPrompt } from '@/lib/prompt-engine'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { PageContainer } from '@/components/ui/page-primitives'
 
 const FEATURES = [
   {
@@ -117,7 +118,7 @@ export default function PresentationsPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-8 py-8">
+    <PageContainer className="max-w-5xl px-4 md:px-8">
       <AgentHero
         icon={Presentation}
         iconColor="amber"
@@ -266,6 +267,6 @@ export default function PresentationsPage() {
           )}
         </motion.div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

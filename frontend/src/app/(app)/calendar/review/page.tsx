@@ -6,6 +6,7 @@ import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { Edit2, Trash2, CheckCircle2, Loader2, ChevronLeft, Check } from 'lucide-react'
+import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
@@ -216,7 +217,7 @@ function CalendarReviewInner() {
   )
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '28px 24px 80px' }}>
+    <PageContainer className="max-w-6xl">
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -227,12 +228,10 @@ function CalendarReviewInner() {
           >
             <ChevronLeft size={14} /> Back
           </button>
-          <h1 style={{ fontSize: 22, fontWeight: 400, color: '#fff', letterSpacing: '-0.02em', margin: 0 }}>
-            Review your calendar
-          </h1>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: 4 }}>
-            {slots.length} posts planned · Edit or remove any before approving
-          </p>
+          <PageHeader
+            title="Review your calendar"
+            description={`${slots.length} posts planned. Edit or remove any item before approval.`}
+          />
         </div>
 
         {/* Approve CTA */}
@@ -261,7 +260,8 @@ function CalendarReviewInner() {
       </div>
 
       {/* Select all */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+      <SurfaceCard className="p-3 mb-4">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <button
           onClick={toggleAll}
           style={{
@@ -281,6 +281,7 @@ function CalendarReviewInner() {
           {selected.size === slots.length ? 'Deselect all' : 'Select all'}
         </button>
       </div>
+      </SurfaceCard>
 
       {/* Grid by date */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -304,7 +305,7 @@ function CalendarReviewInner() {
           </div>
         ))}
       </div>
-    </div>
+    </PageContainer>
   )
 }
 

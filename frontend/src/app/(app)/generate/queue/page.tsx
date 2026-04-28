@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { Loader2, CheckCircle2, AlertCircle, ChevronRight, Image as ImageIcon } from 'lucide-react'
+import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
 
 interface Job {
   id: string
@@ -50,21 +51,16 @@ function GenerationQueueInner() {
   const isDone = job.status === 'complete'
 
   return (
-    <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 24px 80px' }}>
+    <PageContainer className="max-w-4xl">
 
       {/* Header */}
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 400, color: '#fff', letterSpacing: '-0.025em', marginBottom: 6 }}>
-          {isDone ? 'Generation complete' : isActive ? 'Generating creatives...' : 'Generation paused'}
-        </h1>
-        <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
-          {job.completed_slots} of {job.total_slots} posts generated
-          {job.failed_slots > 0 && ` · ${job.failed_slots} failed`}
-        </p>
-      </div>
+      <PageHeader
+        title={isDone ? 'Generation complete' : isActive ? 'Generating creatives...' : 'Generation paused'}
+        description={`${job.completed_slots} of ${job.total_slots} posts generated${job.failed_slots > 0 ? ` · ${job.failed_slots} failed` : ''}`}
+      />
 
       {/* Progress bar */}
-      <div className="card-silver" style={{ borderRadius: 14, padding: '20px 22px', marginBottom: 20 }}>
+      <SurfaceCard className="p-5 mb-5">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {isActive && <Loader2 size={14} color="rgba(255,255,255,0.6)" style={{ animation: 'spin 1s linear infinite' }} />}
@@ -96,7 +92,7 @@ function GenerationQueueInner() {
             View all outputs <ChevronRight size={14} />
           </button>
         )}
-      </div>
+      </SurfaceCard>
 
       {/* Slots list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -138,7 +134,7 @@ function GenerationQueueInner() {
           </div>
         ))}
       </div>
-    </div>
+    </PageContainer>
   )
 }
 

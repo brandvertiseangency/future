@@ -11,6 +11,7 @@ import { IdeasGrid } from '@/components/dashboard/ideas-grid'
 import { GenQueue } from '@/components/dashboard/gen-queue'
 import { QuickActions } from '@/components/dashboard/quick-actions'
 import { RecentOutputs } from '@/components/dashboard/recent-outputs'
+import { PageHeader } from '@/components/ui/page-primitives'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const fetcher = (url: string) => apiCall<any>(url)
@@ -95,15 +96,12 @@ export default function DashboardPage() {
           <Layers size={9} strokeWidth={1.5} />
           {brandName}
         </div>
-        <h1 className="text-[34px] font-semibold tracking-[-0.035em] text-white leading-[1.1] mb-2">
-          {greeting},{' '}
-          <span className="silver-text-anim italic font-normal">{firstName}</span>
-        </h1>
-        <p className="text-[13.5px] text-white/35 leading-relaxed">
-          {onboardingComplete
+        <PageHeader
+          title={<>{greeting}, <span className="silver-text-anim italic font-normal">{firstName}</span></>}
+          description={onboardingComplete
             ? 'Your brand AI is ready. What would you like to create today?'
             : 'Finish setting up your brand to unlock the full experience.'}
-        </p>
+        />
       </div>
 
       {/* Stats row */}

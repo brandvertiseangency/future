@@ -8,6 +8,7 @@ import Link from 'next/link'
 import { BlurFade } from '@/components/ui/blur-fade'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { AIButton } from '@/components/ui/ai-button'
+import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -248,15 +249,12 @@ export default function AssetsPage() {
   const isLoading = tab === 'assets' ? assetsLoading : productsLoading
 
   return (
-    <div className="p-6 md:p-8 min-h-[calc(100vh-64px)] pb-24">
+    <PageContainer className="min-h-[calc(100vh-64px)]">
       {/* Header */}
       <BlurFade delay={0}>
         <div className="flex items-start justify-between mb-7">
-          <div>
-            <h1 className="text-white font-semibold text-2xl tracking-[-0.025em]">Asset Library</h1>
-            <p className="text-white/35 text-sm mt-1">Your generated content and brand products</p>
-          </div>
-          <div className="flex items-center gap-2.5">
+          <PageHeader title="Asset Library" description="Your generated content and brand products" />
+          <div className="flex items-center gap-2.5 -mt-1">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
               <input
@@ -331,7 +329,7 @@ export default function AssetsPage() {
       {/* Assets Tab */}
       {!isLoading && tab === 'assets' && (
         assets.length === 0 ? (
-          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden" style={{ minHeight: 400 }}>
+          <SurfaceCard className="relative overflow-hidden" >
             <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
             <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
               <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
@@ -348,7 +346,7 @@ export default function AssetsPage() {
                 <Link href="/generate"><AIButton className="px-4 py-2 rounded-xl text-sm"><Sparkles size={13} className="mr-1.5" />Generate</AIButton></Link>
               </div>
             </div>
-          </div>
+          </SurfaceCard>
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
             {assets.map((asset) => (
@@ -361,7 +359,7 @@ export default function AssetsPage() {
       {/* Products Tab */}
       {!isLoading && tab === 'products' && (
         products.length === 0 ? (
-          <div className="relative rounded-2xl border border-white/[0.07] bg-white/[0.02] overflow-hidden" style={{ minHeight: 400 }}>
+          <SurfaceCard className="relative overflow-hidden">
             <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
             <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
               <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
@@ -375,7 +373,7 @@ export default function AssetsPage() {
                 <Plus size={14} />Add Product
               </button>
             </div>
-          </div>
+          </SurfaceCard>
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
             {products.map((product) => (
@@ -399,6 +397,6 @@ export default function AssetsPage() {
           <AddProductModal onClose={() => setShowAddProduct(false)} onSaved={() => mutateProducts()} />
         )}
       </AnimatePresence>
-    </div>
+    </PageContainer>
   )
 }

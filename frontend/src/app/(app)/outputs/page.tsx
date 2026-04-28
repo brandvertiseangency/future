@@ -8,6 +8,7 @@ import { ImageIcon, Sparkles, Download, Pencil, Trash2, CalendarDays, Check, X, 
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
+import { PageContainer, PageHeader, EmptyState } from '@/components/ui/page-primitives'
 
 interface Post {
   id: string
@@ -43,11 +44,8 @@ export default function OutputsPage() {
   const posts: Post[] = data?.posts ?? []
 
   return (
-    <div className="max-w-[1100px] mx-auto px-6 py-8 pb-20">
-      <div className="mb-7">
-        <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-white mb-1">Outputs</h1>
-        <p className="text-[13px] text-white/35">{posts.length} creatives generated</p>
-      </div>
+    <PageContainer className="max-w-[1100px] pb-20">
+      <PageHeader title="Outputs" description={`${posts.length} creatives generated`} />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 mb-7">
@@ -69,20 +67,19 @@ export default function OutputsPage() {
       </div>
 
       {posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-24 rounded-2xl border border-white/[0.07] bg-white/[0.02]">
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center mb-4">
-            <ImageIcon size={20} className="text-white/20" />
-          </div>
-          <p className="text-[14px] font-medium text-white/40 mb-1">No outputs yet</p>
-          <p className="text-[12px] text-white/20 mb-5">Generate your first content to see it here</p>
-          <button
-            onClick={() => router.push('/generate')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold text-black transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg,#ffffff 0%,#d0d0d0 100%)' }}
-          >
-            <Sparkles size={12} /> Generate Content
-          </button>
-        </div>
+        <EmptyState
+          title="No outputs yet"
+          subtitle="Generate your first content to see it here"
+          action={
+            <button
+              onClick={() => router.push('/generate')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-[12px] font-semibold text-black transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg,#ffffff 0%,#d0d0d0 100%)' }}
+            >
+              <Sparkles size={12} /> Generate Content
+            </button>
+          }
+        />
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
           {posts.map((post, i) => (
@@ -92,7 +89,7 @@ export default function OutputsPage() {
           ))}
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }
 
