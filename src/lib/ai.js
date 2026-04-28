@@ -125,7 +125,9 @@ const generateImageWithOpenAI = async (prompt, timeoutMs) => {
     );
     const b64 = response?.data?.[0]?.b64_json;
     return b64 ? `data:image/png;base64,${b64}` : null;
-  } catch {
+  } catch (err) {
+    const logger = require('../utils/logger');
+    logger.warn('OpenAI image generation failed', { error: err?.message || 'unknown_error' });
     return null;
   }
 };
