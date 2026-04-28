@@ -84,7 +84,13 @@ const getUserWithBrand = async (uid) => {
             bsp.layout_style, bsp.font_mood_detected,
             ccp.weekly_post_count AS pref_weekly_posts, ccp.content_type_mix AS pref_content_mix
      FROM users u
-     LEFT JOIN brands b ON b.user_id = u.id AND b.is_default = TRUE
+     LEFT JOIN LATERAL (
+       SELECT b1.*
+       FROM brands b1
+       WHERE b1.user_id = u.id
+       ORDER BY b1.is_default DESC, b1.created_at ASC
+       LIMIT 1
+     ) b ON TRUE
      LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
      LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
      LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
@@ -181,14 +187,23 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
 
-  const { month, postCount = 16, mixPreferences = {} } = req.body;
+  const { month, postCount, mixPreferences = {} } = req.body;
   if (!month) return res.status(400).json({ error: 'month is required (YYYY-MM)' });
 
   const user = await getUserWithBrand(req.user.uid);
   if (!user) return res.status(404).json({ error: 'User not found.' });
   if (!user.brand_id) return res.status(400).json({ error: 'No brand found. Complete onboarding first.' });
 
-  const creditsRequired = postCount * 2;
+  const resolvedPostCount =
+    Number.isFinite(Number(postCount)) && Number(postCount) > 0
+      ? Number(postCount)
+      : Math.max(4, (Number(user.pref_weekly_posts) || 4) * 4);
+  const resolvedMixPreferences =
+    mixPreferences && Object.keys(mixPreferences).length
+      ? mixPreferences
+      : (user.pref_content_mix || { promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 });
+
+  const creditsRequired = resolvedPostCount * 2;
   if ((user.credits || 0) < creditsRequired) {
     return res.status(402).json({ error: 'insufficient_credits', creditsRequired, creditsAvailable: user.credits });
   }
@@ -197,7 +212,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
 
   try {
     // 1. Build AI prompt to generate slot ideas
-    const categories = expandMix(mixPreferences, postCount);
+    const categories = expandMix(resolvedMixPreferences, resolvedPostCount);
     const brand = {
       name: user.brand_name || 'Brand',
       industry: user.industry || 'general',
@@ -206,7 +221,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       tone: user.tone || 50,
       styles: user.styles || [],
       goals: user.goals || [],
-      platforms: user.platforms || ['instagram'],
+      platforms: (user.active_platforms && user.active_platforms.length) ? user.active_platforms : (user.platforms || ['instagram']),
       audienceAgeMin: user.audience_age_min || 18,
       audienceAgeMax: user.audience_age_max || 65,
       audienceGender: user.audience_gender || 'mixed',
@@ -292,7 +307,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
     ].filter(Boolean).join('\n');
 
     const userPrompt = `You are a senior social media strategist and creative director.
-Generate a ${postCount}-post monthly content plan for the following brand. The plan must be specific, on-brand, and non-generic.
+Generate a ${resolvedPostCount}-post monthly content plan for the following brand. The plan must be specific, on-brand, and non-generic.
 
 ${brandContext}
 
@@ -303,7 +318,7 @@ CONTENT_CATEGORIES_SEQUENCE:
 ${categories.join(', ')}
 
 Return ONLY valid JSON (no markdown) in this exact shape:
-{ "posts": [ ...${postCount} items... ] }
+{ "posts": [ ...${resolvedPostCount} items... ] }
 
 Each item MUST have:
 {
@@ -351,7 +366,7 @@ Return ONLY JSON.`;
     }
 
     if (!slots.length) return res.status(500).json({ error: 'AI returned no slots.' });
-    slots = slots.slice(0, postCount);
+    slots = slots.slice(0, resolvedPostCount);
 
     // 2. Assign dates
     const dates = buildPostDates(month, slots.length);

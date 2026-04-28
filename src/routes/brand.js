@@ -85,43 +85,140 @@ router.patch("/me", authMiddleware, async (req, res) => {
     const pool = getPool();
     if (!pool) return res.status(503).json({ error: "Database unavailable." });
 
-    const allowed = [
+    const brandAllowed = [
       "name", "description", "tagline", "website", "phone", "address", "logo_url",
       "industry", "tone", "styles", "goals", "platforms",
       "color_primary", "color_secondary", "color_accent", "font_mood",
       "audience_age_min", "audience_age_max", "audience_gender",
       "audience_location", "audience_interests",
-      "industry_subtype", "price_segment", "usp_keywords",
+      "industry_subtype", "price_segment",
     ];
 
     const updates = {};
-    for (const key of allowed) {
-      if (req.body[key] !== undefined) updates[key] = req.body[key];
+    for (const key of brandAllowed) {
+      if (req.body[key] !== undefined) {
+        updates[key] = req.body[key];
+      }
     }
 
-    if (Object.keys(updates).length === 0) {
+    const industryConfigPatch = {};
+    if (req.body.industry !== undefined) industryConfigPatch.industry = req.body.industry;
+    if (req.body.industry_subtype !== undefined) industryConfigPatch.subtype = req.body.industry_subtype;
+    if (req.body.price_segment !== undefined) industryConfigPatch.price_segment = req.body.price_segment;
+    if (req.body.usp_keywords !== undefined) industryConfigPatch.usp_keywords = req.body.usp_keywords;
+    if (req.body.industry_answers !== undefined) industryConfigPatch.industry_answers = req.body.industry_answers;
+
+    const calendarPrefPatch = {};
+    if (req.body.weekly_post_count !== undefined) calendarPrefPatch.weekly_post_count = req.body.weekly_post_count;
+    if (req.body.content_type_mix !== undefined) calendarPrefPatch.content_type_mix = req.body.content_type_mix;
+    if (req.body.auto_schedule !== undefined) calendarPrefPatch.auto_schedule = req.body.auto_schedule;
+    if (req.body.active_platforms !== undefined) calendarPrefPatch.active_platforms = req.body.active_platforms;
+
+    if (
+      Object.keys(updates).length === 0 &&
+      Object.keys(industryConfigPatch).length === 0 &&
+      Object.keys(calendarPrefPatch).length === 0
+    ) {
       return res.status(400).json({ error: "No updatable fields provided." });
     }
 
-    const setClauses = Object.keys(updates).map((k, i) => `${k} = $${i + 1}`);
-    const values = Object.values(updates);
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
 
-    const { rows } = await pool.query(
-      `UPDATE brands SET ${setClauses.join(", ")}, updated_at = NOW()
-       WHERE id = (
-         SELECT b2.id
-         FROM brands b2
-         JOIN users u2 ON u2.id = b2.user_id
-         WHERE u2.firebase_uid = $${values.length + 1}
-         ORDER BY b2.is_default DESC, b2.created_at ASC
-         LIMIT 1
-       )
-       RETURNING *`,
-      [...values, req.user.uid]
-    );
+      const { rows: brandTargetRows } = await client.query(
+        `SELECT b.id
+         FROM brands b
+         JOIN users u ON u.id = b.user_id
+         WHERE u.firebase_uid = $1
+         ORDER BY b.is_default DESC, b.created_at ASC
+         LIMIT 1`,
+        [req.user.uid]
+      );
+      const brandId = brandTargetRows[0]?.id;
+      if (!brandId) {
+        await client.query("ROLLBACK");
+        return res.status(404).json({ error: "Brand not found." });
+      }
 
-    if (!rows[0]) return res.status(404).json({ error: "Brand not found." });
-    res.json({ brand: rows[0] });
+      if (Object.keys(updates).length > 0) {
+        const setClauses = Object.keys(updates).map((k, i) => `${k} = $${i + 1}`);
+        const values = Object.values(updates);
+        await client.query(
+          `UPDATE brands
+           SET ${setClauses.join(", ")}, updated_at = NOW()
+           WHERE id = $${values.length + 1}`,
+          [...values, brandId]
+        );
+      }
+
+      if (Object.keys(industryConfigPatch).length > 0) {
+        await client.query(
+          `INSERT INTO brand_industry_configs
+             (brand_id, industry, subtype, price_segment, usp_keywords, industry_answers)
+           VALUES ($1,$2,$3,$4,$5,$6)
+           ON CONFLICT (brand_id) DO UPDATE SET
+             industry = COALESCE(EXCLUDED.industry, brand_industry_configs.industry),
+             subtype = COALESCE(EXCLUDED.subtype, brand_industry_configs.subtype),
+             price_segment = COALESCE(EXCLUDED.price_segment, brand_industry_configs.price_segment),
+             usp_keywords = COALESCE(EXCLUDED.usp_keywords, brand_industry_configs.usp_keywords),
+             industry_answers = COALESCE(EXCLUDED.industry_answers, brand_industry_configs.industry_answers),
+             updated_at = NOW()`,
+          [
+            brandId,
+            industryConfigPatch.industry ?? null,
+            industryConfigPatch.subtype ?? null,
+            industryConfigPatch.price_segment ?? null,
+            industryConfigPatch.usp_keywords ?? null,
+            industryConfigPatch.industry_answers ?? null,
+          ]
+        );
+      }
+
+      if (Object.keys(calendarPrefPatch).length > 0) {
+        await client.query(
+          `INSERT INTO content_calendar_preferences
+             (brand_id, weekly_post_count, content_type_mix, auto_schedule, active_platforms)
+           VALUES ($1,$2,$3,$4,$5)
+           ON CONFLICT (brand_id) DO UPDATE SET
+             weekly_post_count = COALESCE(EXCLUDED.weekly_post_count, content_calendar_preferences.weekly_post_count),
+             content_type_mix = COALESCE(EXCLUDED.content_type_mix, content_calendar_preferences.content_type_mix),
+             auto_schedule = COALESCE(EXCLUDED.auto_schedule, content_calendar_preferences.auto_schedule),
+             active_platforms = COALESCE(EXCLUDED.active_platforms, content_calendar_preferences.active_platforms),
+             updated_at = NOW()`,
+          [
+            brandId,
+            calendarPrefPatch.weekly_post_count ?? null,
+            calendarPrefPatch.content_type_mix ?? null,
+            calendarPrefPatch.auto_schedule ?? null,
+            calendarPrefPatch.active_platforms ?? null,
+          ]
+        );
+      }
+
+      const { rows } = await client.query(
+        `SELECT b.*,
+                bsp.extracted_colors, bsp.photography_style, bsp.dominant_aesthetic,
+                bsp.mood_keywords, bsp.layout_style, bsp.font_mood_detected,
+                bic.usp_keywords AS industry_usp, bic.industry_answers,
+                ccp.weekly_post_count, ccp.content_type_mix, ccp.active_platforms, ccp.auto_schedule
+         FROM brands b
+         LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+         LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+         LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
+         WHERE b.id = $1
+         LIMIT 1`,
+        [brandId]
+      );
+
+      await client.query("COMMIT");
+      res.json({ brand: rows[0] });
+    } catch (innerErr) {
+      await client.query("ROLLBACK").catch(() => {});
+      throw innerErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     logger.error("PATCH brand/me failed", { error: err.message });
     res.status(500).json({ error: "Failed to update brand.", details: err.message });

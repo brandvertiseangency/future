@@ -37,7 +37,19 @@ interface BrandData {
   goals: string[]
   platforms: string[]
   usp_keywords: string[]
+  industry_usp?: string[]
+  industry_answers?: Record<string, unknown>
   price_segment: string
+  weekly_post_count?: number
+  content_type_mix?: {
+    promotional?: number
+    educational?: number
+    testimonial?: number
+    bts?: number
+    festive?: number
+  }
+  active_platforms?: string[]
+  auto_schedule?: boolean
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -86,10 +98,27 @@ export default function BrandDetailsPage() {
   const [dirty, setDirty] = useState(false)
   const logoInputRef = useRef<HTMLInputElement>(null)
 
+  const normalizeBrand = (brand: BrandData): Partial<BrandData> => ({
+    ...brand,
+    usp_keywords: Array.isArray(brand.usp_keywords) && brand.usp_keywords.length
+      ? brand.usp_keywords
+      : (Array.isArray(brand.industry_usp) ? brand.industry_usp : []),
+    content_type_mix: brand.content_type_mix || {
+      promotional: 30,
+      educational: 25,
+      testimonial: 20,
+      bts: 15,
+      festive: 10,
+    },
+    active_platforms: Array.isArray(brand.active_platforms) ? brand.active_platforms : (brand.platforms || []),
+    weekly_post_count: brand.weekly_post_count ?? 4,
+    auto_schedule: typeof brand.auto_schedule === 'boolean' ? brand.auto_schedule : false,
+  })
+
   useEffect(() => {
     const resolved = brandRes?.brand || currentRes?.brand
     if (resolved) {
-      setForm(resolved)
+      setForm(normalizeBrand(resolved))
       setDirty(false)
     }
   }, [brandRes, currentRes])
@@ -134,6 +163,11 @@ export default function BrandDetailsPage() {
           platforms: form.platforms,
           usp_keywords: form.usp_keywords,
           price_segment: form.price_segment,
+          weekly_post_count: form.weekly_post_count,
+          content_type_mix: form.content_type_mix,
+          active_platforms: form.active_platforms,
+          auto_schedule: form.auto_schedule,
+          industry_answers: form.industry_answers,
         }),
       })
       await mutate('/api/brand/me')
@@ -432,6 +466,82 @@ export default function BrandDetailsPage() {
             />
             <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
           </FieldRow>
+          <FieldRow label="Business Goals">
+            <input
+              className={inputBase}
+              value={(form.goals ?? []).join(', ')}
+              onChange={(e) => update({ goals: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+              placeholder="e.g. brand awareness, leads, website traffic"
+            />
+            <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
+          </FieldRow>
+          <FieldRow label="Primary Platforms">
+            <input
+              className={inputBase}
+              value={(form.platforms ?? []).join(', ')}
+              onChange={(e) => update({ platforms: e.target.value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) })}
+              placeholder="e.g. instagram, facebook, linkedin"
+            />
+            <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
+          </FieldRow>
+        </SectionCard>
+      </BlurFade>
+
+      <BlurFade delay={0.24}>
+        <SectionCard title="Content Calendar Preferences" icon={Target}>
+          <div className="grid grid-cols-2 gap-3">
+            <FieldRow label="Weekly Post Count">
+              <input
+                type="number"
+                min={1}
+                max={30}
+                className={inputBase}
+                value={form.weekly_post_count ?? 4}
+                onChange={(e) => update({ weekly_post_count: Number(e.target.value || 4) })}
+              />
+            </FieldRow>
+            <FieldRow label="Auto Schedule">
+              <select
+                className={inputBase}
+                value={form.auto_schedule ? 'yes' : 'no'}
+                onChange={(e) => update({ auto_schedule: e.target.value === 'yes' })}
+              >
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </FieldRow>
+          </div>
+
+          <FieldRow label="Active Platforms for Calendar">
+            <input
+              className={inputBase}
+              value={(form.active_platforms ?? []).join(', ')}
+              onChange={(e) => update({ active_platforms: e.target.value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) })}
+              placeholder="e.g. instagram, youtube, linkedin"
+            />
+          </FieldRow>
+
+          <div className="grid grid-cols-5 gap-2">
+            {(['promotional', 'educational', 'testimonial', 'bts', 'festive'] as const).map((k) => (
+              <FieldRow key={k} label={k}>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className={inputBase}
+                  value={form.content_type_mix?.[k] ?? 0}
+                  onChange={(e) =>
+                    update({
+                      content_type_mix: {
+                        ...(form.content_type_mix || {}),
+                        [k]: Number(e.target.value || 0),
+                      },
+                    })
+                  }
+                />
+              </FieldRow>
+            ))}
+          </div>
         </SectionCard>
       </BlurFade>
 
