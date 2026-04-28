@@ -52,7 +52,18 @@ async function uploadBuffer(buffer, gcsPath, mimeType = "image/jpeg") {
     metadata: { contentType: mimeType, cacheControl: "public, max-age=31536000" },
     resumable: false,
   });
-  await file.makePublic();
+
+  // Buckets with Uniform Bucket-Level Access (UBLA) reject object-level ACL calls.
+  // In that mode, access is controlled via bucket IAM, so we skip makePublic.
+  try {
+    await file.makePublic();
+  } catch (err) {
+    if (String(err.message || '').toLowerCase().includes('uniform bucket-level access')) {
+      logger.info("Skipped object ACL for UBLA bucket", { gcsPath });
+    } else {
+      throw err;
+    }
+  }
 
   const publicUrl = `https://storage.googleapis.com/${bucket.name}/${gcsPath}`;
   logger.info("File uploaded to GCS", { gcsPath, publicUrl });
@@ -77,7 +88,15 @@ async function uploadFile(localPath, gcsPath, mimeType) {
     destination: gcsPath,
     metadata: { contentType: mimeType, cacheControl: "public, max-age=31536000" },
   });
-  await bucket.file(gcsPath).makePublic();
+  try {
+    await bucket.file(gcsPath).makePublic();
+  } catch (err) {
+    if (String(err.message || '').toLowerCase().includes('uniform bucket-level access')) {
+      logger.info("Skipped object ACL for UBLA bucket", { gcsPath });
+    } else {
+      throw err;
+    }
+  }
 
   const publicUrl = `https://storage.googleapis.com/${bucket.name}/${gcsPath}`;
   logger.info("File uploaded to GCS", { localPath, publicUrl });
