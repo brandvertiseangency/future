@@ -527,6 +527,35 @@ router.get('/plans/:planId', authMiddleware, async (req, res) => {
   }
 });
 
+router.get('/plans/latest', authMiddleware, async (req, res) => {
+  const pool = getPool();
+  if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+  try {
+    const { rows: userRows } = await pool.query('SELECT id FROM users WHERE firebase_uid=$1', [req.user.uid]);
+    const userId = userRows[0]?.id;
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const { rows: planRows } = await pool.query(
+      `SELECT * FROM content_plans
+       WHERE user_id=$1
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    const plan = planRows[0] || null;
+    if (!plan) return res.json({ plan: null, slots: [] });
+
+    const { rows: slots } = await pool.query(
+      'SELECT * FROM calendar_slots WHERE plan_id=$1 ORDER BY sort_order ASC, slot_date ASC',
+      [plan.id]
+    );
+    res.json({ plan, slots });
+  } catch (err) {
+    logger.error('get latest plan failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch latest plan.' });
+  }
+});
+
 // ─── POST /api/calendar/plans/:planId/approve ─────────────────────────────────
 
 router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {

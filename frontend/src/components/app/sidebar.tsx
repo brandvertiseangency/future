@@ -3,7 +3,22 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { LogOut, ChevronRight, Zap, Lock, LayoutDashboard, CalendarDays, Sparkles, Images, FolderOpen, Globe, Layers, PresentationIcon, Settings, Briefcase } from 'lucide-react'
+import {
+  IconLogout2,
+  IconChevronRight,
+  IconBolt,
+  IconLock,
+  IconLayoutDashboard,
+  IconCalendarEvent,
+  IconSparkles,
+  IconPhoto,
+  IconFolder,
+  IconWorld,
+  IconLayersIntersect,
+  IconPresentation,
+  IconSettings,
+  IconBriefcase,
+} from '@tabler/icons-react'
 import { useBrandStore } from '@/stores/brand'
 import { useAuth } from '@/lib/auth-context'
 import { useAgentsStore } from '@/stores/agents'
@@ -20,16 +35,16 @@ function makeIcon(Icon: React.ComponentType<{ size?: number; strokeWidth?: numbe
   }
 }
 
-const SvgDashboard = makeIcon(LayoutDashboard)
-const SvgCalendar  = makeIcon(CalendarDays)
-const SvgSparkles  = makeIcon(Sparkles)
-const SvgImages    = makeIcon(Images)
-const SvgFolder    = makeIcon(FolderOpen)
-const SvgGlobe     = makeIcon(Globe)
-const SvgLayers    = makeIcon(Layers)
-const SvgPresentation = makeIcon(PresentationIcon)
-const SvgSettings  = makeIcon(Settings)
-const SvgBriefcase = makeIcon(Briefcase)
+const SvgDashboard = makeIcon(IconLayoutDashboard)
+const SvgCalendar  = makeIcon(IconCalendarEvent)
+const SvgSparkles  = makeIcon(IconSparkles)
+const SvgImages    = makeIcon(IconPhoto)
+const SvgFolder    = makeIcon(IconFolder)
+const SvgGlobe     = makeIcon(IconWorld)
+const SvgLayers    = makeIcon(IconLayersIntersect)
+const SvgPresentation = makeIcon(IconPresentation)
+const SvgSettings  = makeIcon(IconSettings)
+const SvgBriefcase = makeIcon(IconBriefcase)
 
 // ── Nav structure ─────────────────────────────────────────────────────────────
 const NAV_WORKSPACE: { href: string; label: string; icon: SvgIconComponent }[] = [
@@ -70,7 +85,7 @@ function NavItem({
       <span className={cn('flex-1 leading-none tracking-[-0.01em]', locked && 'opacity-50')}>{label}</span>
       {locked && (
         <span className="flex items-center gap-0.5 text-[9px] font-semibold text-white/25 bg-white/[0.04] border border-white/[0.08] px-1.5 py-0.5 rounded-md">
-          <Lock size={7} />PRO
+          <IconLock size={7} />PRO
         </span>
       )}
     </Link>
@@ -116,12 +131,12 @@ export function Sidebar() {
     <aside
       className="fixed left-0 top-0 h-screen w-[220px] z-40 flex flex-col"
       style={{
-        background: '#050505',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
+        background: 'linear-gradient(180deg, rgba(21,27,36,0.96) 0%, rgba(14,18,25,0.98) 100%)',
+        borderRight: '1px solid rgba(255,255,255,0.10)',
       }}
     >
       {/* Logo */}
-      <div className="flex items-center px-5 h-14 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="flex items-center px-5 h-14 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <Image
           src="/Brandvertise-Light-Logo.webp"
           alt="Brandvertise"
@@ -173,7 +188,7 @@ export function Sidebar() {
       </div>
 
       {/* Bottom */}
-      <div className="px-2.5 pb-3 pt-2 flex-shrink-0 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+      <div className="px-2.5 pb-3 pt-2 flex-shrink-0 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
         {/* Brand pill */}
         <div
           className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all duration-150 hover:bg-white/[0.04] group"
@@ -189,7 +204,7 @@ export function Sidebar() {
             <p className="text-[12px] font-medium text-white/80 truncate leading-tight">{brandName}</p>
             <p className="text-[10px] text-white/25 leading-tight mt-0.5">{planLabel} plan</p>
           </div>
-          <ChevronRight size={11} className="text-white/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <IconChevronRight size={11} className="text-white/20 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
 
         {/* Credits bar */}
@@ -217,7 +232,7 @@ export function Sidebar() {
             className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[11px] font-semibold text-black transition-all hover:opacity-90 hover:-translate-y-px"
             style={{ background: 'linear-gradient(135deg, #ffffff 0%, #c8c8c8 100%)' }}
           >
-            <Zap size={10} />
+            <IconBolt size={10} />
             Upgrade
           </button>
           <button
@@ -225,7 +240,7 @@ export function Sidebar() {
             title="Sign out"
             className="flex items-center justify-center w-7 h-7 rounded-lg text-white/25 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 border border-white/[0.06] hover:border-red-500/20"
           >
-            <LogOut size={12} />
+            <IconLogout2 size={12} />
           </button>
         </div>
       </div>

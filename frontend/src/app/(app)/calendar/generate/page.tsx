@@ -88,6 +88,7 @@ function CalendarGenerateInner() {
 
   const { data: brandData } = useSWR('/api/brands/current', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
   const { data: creditsData } = useSWR('/api/credits/balance', (u: string) => apiCall<{ balance: number }>(u), { revalidateOnFocus: false })
+  const { data: latestPlanData } = useSWR('/api/calendar/plans/latest', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
 
   const brand = brandData?.brand ?? brandData
   const credits = creditsData?.balance ?? 0
@@ -104,6 +105,7 @@ function CalendarGenerateInner() {
   const hasCredits = credits >= creditsNeeded
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0)
   const canGenerate = hasCredits && mixTotal === 100 && !generating
+  const latestPlanId = latestPlanData?.plan?.id
 
   const handleGenerate = async () => {
     if (!canGenerate) return
@@ -203,6 +205,20 @@ function CalendarGenerateInner() {
 
       {error && (
         <p style={{ marginTop: 10, fontSize: 12, color: 'rgba(244,100,100,0.8)' }}>{error}</p>
+      )}
+
+      {latestPlanId && (
+        <button
+          onClick={() => router.push(`/calendar/review?planId=${latestPlanId}`)}
+          style={{
+            marginTop: 12, width: '100%', padding: '11px',
+            borderRadius: 10, border: '1px solid rgba(255,255,255,0.14)',
+            background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.7)',
+            fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+          }}
+        >
+          Open latest generated plan for review
+        </button>
       )}
 
       {/* CTA */}

@@ -311,6 +311,7 @@ export default function GeneratePage() {
             brief: productBrief,
             mood: form.mood || undefined,
             theme: form.fontStyle || undefined,
+            selectedProductId: selectedProductId || undefined,
             ratio,
           }),
         })

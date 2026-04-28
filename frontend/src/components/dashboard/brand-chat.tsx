@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Send, Sparkles, Calendar, ArrowUpRight } from 'lucide-react'
+import { IconSend, IconSparkles, IconCalendarEvent, IconArrowUpRight } from '@tabler/icons-react'
 import { useRouter } from 'next/navigation'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { cn } from '@/lib/utils'
@@ -92,7 +92,7 @@ export function BrandChat({ brand }: { brand: any }) {
       <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center">
-            <Sparkles size={12} className="text-white/70" />
+            <IconSparkles size={12} className="text-white/70" />
           </div>
           <span className="text-[13px] font-semibold text-white/85">Brand AI</span>
           <span className="flex items-center gap-1.5 text-[10.5px] text-white/35 ml-0.5">
@@ -104,9 +104,9 @@ export function BrandChat({ brand }: { brand: any }) {
           onClick={() => router.push('/calendar/generate')}
           className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
         >
-          <Calendar size={11} />
+          <IconCalendarEvent size={11} />
           Generate calendar
-          <ArrowUpRight size={10} />
+          <IconArrowUpRight size={10} />
         </button>
       </div>
 
@@ -186,7 +186,7 @@ export function BrandChat({ brand }: { brand: any }) {
               : 'bg-white/[0.05] text-white/20 cursor-default'
           )}
         >
-          <Send size={13} strokeWidth={2} />
+          <IconSend size={13} strokeWidth={2} />
         </button>
       </div>
     </div>

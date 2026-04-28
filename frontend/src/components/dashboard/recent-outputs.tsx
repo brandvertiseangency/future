@@ -2,7 +2,7 @@
 
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
-import { ImageIcon, ArrowRight } from 'lucide-react'
+import { IconPhoto, IconArrowRight } from '@tabler/icons-react'
 import { apiCall } from '@/lib/api'
 
 interface Post { id: string; caption: string; image_url?: string; platform: string; created_at: string }
@@ -27,14 +27,14 @@ export function RecentOutputs() {
             onClick={() => router.push('/outputs')}
             className="flex items-center gap-1 text-[11px] text-white/25 hover:text-white/50 transition-colors"
           >
-            View all <ArrowRight size={10} />
+            View all <IconArrowRight size={10} />
           </button>
         )}
       </div>
 
       {posts.length === 0 ? (
         <div className="bento-card rounded-2xl p-8 text-center">
-          <ImageIcon size={20} className="text-white/10 mx-auto mb-3" />
+          <IconPhoto size={20} className="text-white/10 mx-auto mb-3" />
           <p className="text-[13px] text-white/25 mb-1">No outputs yet</p>
           <p className="text-[11px] text-white/15">Generate your first content to see it here</p>
         </div>
@@ -55,7 +55,7 @@ export function RecentOutputs() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <ImageIcon size={14} className="text-white/15" />
+                  <IconPhoto size={14} className="text-white/15" />
                 </div>
               )}
             </div>

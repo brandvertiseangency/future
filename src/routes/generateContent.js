@@ -60,6 +60,22 @@ const getPrimaryProductReferenceImages = async (pool, userId, brandId) => {
   }
 };
 
+const getProductById = async (pool, userId, brandId, productId) => {
+  if (!productId) return null;
+  try {
+    const { rows } = await pool.query(
+      `SELECT id, name, description, price, category, tags, images, visual_description
+       FROM brand_products
+       WHERE id=$1 AND user_id=$2 AND ($3::uuid IS NULL OR brand_id=$3 OR brand_id IS NULL)
+       LIMIT 1`,
+      [productId, userId, brandId || null]
+    );
+    return rows[0] || null;
+  } catch {
+    return null;
+  }
+};
+
 const { buildSystemPrompt: buildSystemPromptV2, buildUserPrompt: buildUserPromptV2, getToneTemperature } = require('../lib/prompt-engine');
 
 const toneDescriptor = (tone) => {
@@ -123,7 +139,11 @@ const parseAIResponse = (raw) => {
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found');
     const parsed = JSON.parse(jsonMatch[0]);
-    return { caption: parsed.caption || '', hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [], imagePrompt: parsed.imagePrompt || '' };
+    return {
+      caption: parsed.caption || parsed.caption_draft || parsed.copy || parsed.text || '',
+      hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
+      imagePrompt: parsed.imagePrompt || parsed.image_prompt || parsed.visualPrompt || '',
+    };
   } catch {
     return { caption: raw.slice(0, 500), hashtags: [], imagePrompt: '' };
   }
@@ -135,7 +155,7 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   const client = await pool.connect();
   try {
-    const { platform, contentType, brief, mood, theme, campaign, ratio } = req.body;
+    const { platform, contentType, brief, mood, theme, campaign, ratio, selectedProductId } = req.body;
     if (!platform) return res.status(400).json({ error: 'platform is required' });
     if (!brief) return res.status(400).json({ error: 'brief is required' });
 
@@ -159,7 +179,10 @@ router.post('/', authMiddleware, async (req, res) => {
       if (aiErr.message === 'AI_TIMEOUT') return res.status(503).json({ error: 'Generation timed out. The AI is busy — please try again.' });
       return res.status(503).json({ error: 'AI service unavailable. Please try again shortly.' });
     }
-    const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
+    const parsed = parseAIResponse(raw);
+    const caption = String(parsed.caption || '').trim() || String(brief || '').trim() || 'New post idea';
+    const hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
+    const imagePrompt = parsed.imagePrompt;
 
     // Build a rich image prompt using brand visual DNA + AI-generated imagePrompt
     const brandColors = [user.color_primary, user.color_secondary, user.color_accent].filter(Boolean);
@@ -171,19 +194,34 @@ router.post('/', authMiddleware, async (req, res) => {
     if (user.mood_keywords?.length) visualDNAParts.push(`Mood: ${user.mood_keywords.join(', ')}`);
     if (user.extracted_colors?.length) visualDNAParts.push(`Detected palette: ${user.extracted_colors.join(', ')}`);
 
+    const selectedProduct = await getProductById(pool, user.id, user.brand_id || null, selectedProductId || null);
+    const selectedProductBlock = selectedProduct ? [
+      `Selected product (must match exact look): ${selectedProduct.name}`,
+      selectedProduct.description ? `Description: ${selectedProduct.description}` : '',
+      selectedProduct.visual_description ? `Visual details to preserve: ${selectedProduct.visual_description}` : '',
+      selectedProduct.category ? `Category: ${selectedProduct.category}` : '',
+      selectedProduct.price ? `Price: ${selectedProduct.price}` : '',
+    ].filter(Boolean).join('\n') : '';
+
     const baseImagePrompt = imagePrompt || `${brief} — ${contentType || 'post'} for ${user.brand_name || 'brand'} on ${platform}`;
 
     const enrichedImagePrompt = [
       baseImagePrompt,
       visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
+      selectedProductBlock ? `\nPRODUCT TO FEATURE:\n${selectedProductBlock}` : '',
       `\nFormat: social media ${contentType || 'post'} for ${platform}.`,
       `Brand: ${user.brand_name || 'modern brand'}.`,
+      selectedProductBlock
+        ? 'Use the provided product reference image(s) and preserve the same shape, material, color palette, and signature details.'
+        : '',
       'High quality, professional, photorealistic, no text overlays, no watermarks.',
     ].filter(Boolean).join(' ');
 
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
-    const referenceImageUrls = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
+    const primaryRefs = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
+    const selectedRefs = Array.isArray(selectedProduct?.images) ? selectedProduct.images.filter(Boolean).slice(0, 3) : [];
+    const referenceImageUrls = [...selectedRefs, ...primaryRefs].filter(Boolean).slice(0, 3);
     const imageResult = await generateImageDetailed(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
     const rawImage = imageResult?.imageData || null;
     if (!rawImage) {

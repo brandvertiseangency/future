@@ -2,16 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, Sparkles, Images, Settings2 } from 'lucide-react'
+import { IconLayoutDashboard, IconCalendarEvent, IconSparkles, IconPhoto, IconSettings2 } from '@tabler/icons-react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
 const TABS = [
-	{ href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-	{ href: '/calendar', label: 'Calendar', icon: CalendarDays },
-	{ href: '/generate', label: 'Generate', icon: Sparkles, primary: true },
-	{ href: '/outputs', label: 'Outputs', icon: Images },
-	{ href: '/settings', label: 'Settings', icon: Settings2 },
+	{ href: '/dashboard', label: 'Home', icon: IconLayoutDashboard },
+	{ href: '/calendar', label: 'Calendar', icon: IconCalendarEvent },
+	{ href: '/generate', label: 'Generate', icon: IconSparkles, primary: true },
+	{ href: '/outputs', label: 'Outputs', icon: IconPhoto },
+	{ href: '/settings', label: 'Settings', icon: IconSettings2 },
 ]
 
 export function BottomTabBar() {
@@ -20,10 +20,10 @@ export function BottomTabBar() {
 	return (
 		<nav
 			className="fixed bottom-0 left-0 right-0 z-50
-                 bg-black/90 backdrop-blur-2xl
-                 border-t border-white/[0.06]
+                 backdrop-blur-2xl
+                 border-t border-white/[0.10]
                  flex items-center justify-around px-2"
-			style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)', paddingTop: 8 }}
+			style={{ background: 'rgba(15,20,28,0.92)', paddingBottom: 'max(env(safe-area-inset-bottom), 10px)', paddingTop: 8 }}
 		>
 			{TABS.map(({ href, label, icon: Icon, primary }) => {
 				const active = pathname.startsWith(href)

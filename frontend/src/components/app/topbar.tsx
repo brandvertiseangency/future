@@ -1,7 +1,17 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { Bell, Sparkles, X, CheckCheck, Megaphone, CalendarDays, AlertTriangle, BarChart2, type LucideIcon } from 'lucide-react'
+import {
+  IconBell,
+  IconSparkles,
+  IconX,
+  IconChecks,
+  IconSpeakerphone,
+  IconCalendarDue,
+  IconAlertTriangle,
+  IconChartBar,
+  type Icon,
+} from '@tabler/icons-react'
 import Link from 'next/link'
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
@@ -36,9 +46,9 @@ interface Notification {
 
 const fetcher = <T,>(url: string): Promise<T> => apiCall(url) as Promise<T>
 
-const NOTIF_ICON_COMPONENTS: Record<string, LucideIcon> = {
-  post_published: Megaphone, post_scheduled: CalendarDays,
-  credits_low: AlertTriangle, weekly_digest: BarChart2, generation_complete: Sparkles,
+const NOTIF_ICON_COMPONENTS: Record<string, Icon> = {
+  post_published: IconSpeakerphone, post_scheduled: IconCalendarDue,
+  credits_low: IconAlertTriangle, weekly_digest: IconChartBar, generation_complete: IconSparkles,
 }
 
 export function Topbar() {
@@ -89,10 +99,10 @@ export function Topbar() {
     <header
       className="fixed top-0 left-0 md:left-[220px] right-0 h-14 z-30 flex items-center justify-between px-5 md:px-7"
       style={{
-        background: 'rgba(0,0,0,0.80)',
+        background: 'rgba(16,20,28,0.78)',
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        borderBottom: '1px solid rgba(255,255,255,0.055)',
+        borderBottom: '1px solid rgba(255,255,255,0.10)',
       }}
     >
       {/* LEFT — page title */}
@@ -139,7 +149,7 @@ export function Topbar() {
             onMouseEnter={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.05)' }}
             onMouseLeave={e => { if (!notifOpen) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
-            <Bell size={14} style={{ color: 'rgba(255,255,255,0.55)' }} />
+            <IconBell size={14} style={{ color: 'rgba(255,255,255,0.55)' }} />
             {unreadCount > 0 && (
               <span className="absolute top-1 right-1 min-w-[14px] h-3.5 rounded-full
                                ring-1 ring-black text-[8.5px] text-black font-bold
@@ -159,8 +169,8 @@ export function Topbar() {
                 transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute right-0 top-11 w-80 rounded-2xl overflow-hidden z-50"
                 style={{
-                  background: '#0d0d0d',
-                  border: '1px solid rgba(255,255,255,0.10)',
+                  background: '#161b24',
+                  border: '1px solid rgba(255,255,255,0.14)',
                   boxShadow: '0 24px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
                 }}
               >
@@ -171,11 +181,11 @@ export function Topbar() {
                     {unreadCount > 0 && (
                       <button onClick={markAllRead}
                         className="flex items-center gap-1 text-[11px] text-[var(--text-3)] hover:text-white transition-colors">
-                        <CheckCheck size={11} />All read
+                        <IconChecks size={11} />All read
                       </button>
                     )}
                     <button onClick={() => setNotifOpen(false)} className="text-[var(--text-4)] hover:text-[var(--text-2)] transition-colors">
-                      <X size={13} />
+                      <IconX size={13} />
                     </button>
                   </div>
                 </div>
@@ -184,12 +194,12 @@ export function Topbar() {
                 <div className="max-h-72 overflow-y-auto divide-y" style={{ borderColor: 'rgba(255,255,255,0.04)' }}>
                   {notifications.length === 0 ? (
                     <div className="py-10 text-center">
-                      <Bell size={20} style={{ color: 'rgba(255,255,255,0.10)', margin: '0 auto 10px' }} />
+                      <IconBell size={20} style={{ color: 'rgba(255,255,255,0.10)', margin: '0 auto 10px' }} />
                       <p className="text-[12px] text-[var(--text-4)]">No notifications yet</p>
                     </div>
                   ) : (
                     notifications.slice(0, 20).map((n) => {
-                      const Icon: LucideIcon = NOTIF_ICON_COMPONENTS[n.type] ?? Bell
+                      const Icon: Icon = NOTIF_ICON_COMPONENTS[n.type] ?? IconBell
                       return (
                         <div key={n.id} onClick={() => !n.read && markRead(n.id)}
                           className={cn('flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors',
@@ -240,7 +250,7 @@ export function Topbar() {
             className="flex items-center gap-1.5 h-7 px-3 rounded-lg text-[11.5px] font-semibold text-black transition-all duration-150 hover:opacity-90 hover:-translate-y-px"
             style={{ background: 'linear-gradient(135deg, #ffffff 0%, #cccccc 100%)' }}
           >
-            <Sparkles size={11} />
+            <IconSparkles size={11} />
             Generate
           </button>
         </Link>

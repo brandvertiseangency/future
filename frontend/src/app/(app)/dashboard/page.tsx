@@ -1,6 +1,14 @@
 'use client'
 
-import { AlertCircle, ArrowRight, Layers, TrendingUp, ImageIcon, CalendarDays, Sparkles } from 'lucide-react'
+import {
+  IconAlertCircle,
+  IconArrowRight,
+  IconLayersIntersect,
+  IconTrendingUp,
+  IconPhoto,
+  IconCalendarEvent,
+  IconSparkles,
+} from '@tabler/icons-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -51,7 +59,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between rounded-2xl border border-white/[0.10] bg-white/[0.025] px-4 py-3.5 gap-3 hover:border-white/[0.18] transition-all group">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.10] flex items-center justify-center flex-shrink-0">
-                <AlertCircle size={14} className="text-white/50" />
+                <IconAlertCircle size={14} className="text-white/50" />
               </div>
               <div>
                 <p className="text-[13px] font-medium text-white/80">Complete your brand setup</p>
@@ -59,7 +67,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="flex items-center gap-1.5 text-white/35 text-[12px] font-medium group-hover:text-white/60 transition-colors flex-shrink-0">
-              Set up <ArrowRight size={12} />
+              Set up <IconArrowRight size={12} />
             </div>
           </div>
         </Link>
@@ -93,7 +101,7 @@ export default function DashboardPage() {
       {/* Hero greeting */}
       <div className="pt-1 pb-2">
         <div className="flex items-center gap-1.5 text-[10px] text-white/20 uppercase tracking-[0.12em] mb-3">
-          <Layers size={9} strokeWidth={1.5} />
+          <IconLayersIntersect size={9} strokeWidth={1.5} />
           {brandName}
         </div>
         <PageHeader
@@ -107,9 +115,9 @@ export default function DashboardPage() {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Posts generated', value: totalPosts > 0 ? totalPosts.toString() : '0', icon: ImageIcon, href: '/outputs' },
-          { label: 'Credits remaining', value: credits.toString(), icon: Sparkles, href: '/pricing' },
-          { label: 'Scheduled this week', value: scheduledPosts.toString(), icon: CalendarDays, href: '/calendar' },
+          { label: 'Posts generated', value: totalPosts > 0 ? totalPosts.toString() : '0', icon: IconPhoto, href: '/outputs' },
+          { label: 'Credits remaining', value: credits.toString(), icon: IconSparkles, href: '/pricing' },
+          { label: 'Scheduled this week', value: scheduledPosts.toString(), icon: IconCalendarEvent, href: '/calendar' },
         ].map(({ label, value, icon: Icon, href }) => (
           <button
             key={label}
@@ -118,7 +126,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between mb-3">
               <Icon size={14} className="text-white/25 group-hover:text-white/50 transition-colors" />
-              <TrendingUp size={10} className="text-white/15" />
+              <IconTrendingUp size={10} className="text-white/15" />
             </div>
             <p className="text-[22px] font-semibold tracking-[-0.02em] text-white">{value}</p>
             <p className="text-[11px] text-white/30 mt-0.5">{label}</p>

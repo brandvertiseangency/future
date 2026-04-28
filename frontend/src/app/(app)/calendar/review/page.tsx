@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
@@ -152,9 +152,21 @@ function CalendarReviewInner() {
   const router = useRouter()
   const params = useSearchParams()
   const planId = params.get('planId')
+  const { data: latestPlanData } = useSWR(
+    !planId ? '/api/calendar/plans/latest' : null,
+    (u: string) => apiCall<any>(u),
+    { revalidateOnFocus: false }
+  )
+  const resolvedPlanId = planId || latestPlanData?.plan?.id || null
+
+  useEffect(() => {
+    if (!planId && latestPlanData?.plan?.id) {
+      router.replace(`/calendar/review?planId=${latestPlanData.plan.id}`)
+    }
+  }, [planId, latestPlanData, router])
 
   const { data: planData, mutate } = useSWR(
-    planId ? `/api/calendar/plans/${planId}` : null,
+    resolvedPlanId ? `/api/calendar/plans/${resolvedPlanId}` : null,
     (u: string) => apiCall<any>(u),
     { revalidateOnFocus: false }
   )
@@ -191,11 +203,12 @@ function CalendarReviewInner() {
   })
 
   const handleApprove = async () => {
+    if (!resolvedPlanId) return
     setApproving(true)
     try {
       const slotIds = selected.size > 0 ? Array.from(selected) : slots.map(s => s.id)
       const token = await getToken()
-      const res = await fetch(`${API_BASE}/api/calendar/plans/${planId}/approve`, {
+      const res = await fetch(`${API_BASE}/api/calendar/plans/${resolvedPlanId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ selectedSlotIds: slotIds, slotEdits: edits }),
