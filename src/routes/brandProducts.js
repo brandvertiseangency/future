@@ -4,9 +4,17 @@
  */
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
 const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
+const { uploadBuffer } = require('../services/storageService');
+const { randomUUID } = require('crypto');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -39,6 +47,26 @@ router.get('/', authMiddleware, async (req, res) => {
   } catch (err) {
     logger.error('Get brand products failed', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch products.' });
+  }
+});
+
+// ─── POST /api/brand-products/upload-image ─────────────────────────────────────
+router.post('/upload-image', authMiddleware, upload.single('file'), async (req, res) => {
+  try {
+    const { pool, userId, brandId } = await getUserAndBrand(req.user.uid);
+    if (!pool || !userId) return res.status(404).json({ error: 'User not found.' });
+    if (!req.file) return res.status(400).json({ error: 'No file provided.' });
+
+    const ext = (req.file.originalname?.split('.').pop() || 'jpg').toLowerCase();
+    const filename = `${Date.now()}-${randomUUID()}.${ext}`;
+    const gcsPath = `${userId}/${brandId || 'unscoped-brand'}/products/${filename}`;
+    const url = await uploadBuffer(req.file.buffer, gcsPath, req.file.mimetype || 'image/jpeg');
+    if (!url) return res.status(503).json({ error: 'storage_unavailable', message: 'Failed to upload product image.' });
+
+    res.status(201).json({ url });
+  } catch (err) {
+    logger.error('Upload product image failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to upload product image.' });
   }
 });
 

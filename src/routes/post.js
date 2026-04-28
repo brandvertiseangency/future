@@ -10,6 +10,26 @@ const { regeneratePost } = require("../services/regenerationService");
 const { getPool } = require("../config/postgres");
 const logger = require("../utils/logger");
 const { buildSystemPrompt: buildEngineSystemPrompt, buildUserPrompt: buildEngineUserPrompt } = require("../lib/prompt-engine");
+const { persistGeneratedImageToStorage, stringifyPromptPayload } = require("../lib/generatedImageStore");
+
+const purgePromptArtifactsForPost = async (pool, postId, userId) => {
+  await pool.query(
+    `UPDATE posts
+     SET generation_prompt=NULL, updated_at=NOW()
+     WHERE id=$1 AND user_id=$2`,
+    [postId, userId]
+  );
+  try {
+    await pool.query(
+      `UPDATE post_versions
+       SET generation_prompt=NULL
+       WHERE post_id=$1`,
+      [postId]
+    );
+  } catch {
+    // Optional table in some installs
+  }
+};
 
 // ── In-memory job store (TTL 10 min) — no Redis needed ──────────────
 const jobs = new Map();
@@ -29,6 +49,26 @@ const getUserWithBrand = async (uid) => {
     [uid]
   );
   return rows[0] || null;
+};
+
+const getPrimaryProductReferenceImages = async (pool, userId, brandId) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT images, is_primary
+       FROM brand_products
+       WHERE user_id=$1 AND ($2::uuid IS NULL OR brand_id=$2 OR brand_id IS NULL)
+       ORDER BY is_primary DESC, created_at ASC
+       LIMIT 5`,
+      [userId, brandId || null]
+    );
+    const images = [];
+    for (const row of rows || []) {
+      if (Array.isArray(row.images)) images.push(...row.images.slice(0, 1));
+    }
+    return images.filter(Boolean).slice(0, 3);
+  } catch {
+    return [];
+  }
 };
 
 const toneDescriptor = (tone) =>
@@ -143,11 +183,25 @@ router.post('/generate', authMiddleware, async (req, res) => {
         const userPrompt = buildUserPrompt({ platform, contentType, brief, mood }, user);
         const raw = await callAI(systemPrompt, userPrompt);
         const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
+        const referenceImageUrls = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
 
         // Generate image with Imagen 3 nano
-        const imageUrl = await generateImage(
-          `${imagePrompt}. Style: social media ${contentType} for ${platform}. Brand: ${user.brand_name || 'modern brand'}. High quality, professional, no text overlays.`
+        const rawImage = await generateImage(
+          `${imagePrompt}. Style: social media ${contentType} for ${platform}. Brand: ${user.brand_name || 'modern brand'}. High quality, professional, no text overlays.`,
+          { referenceImageUrls }
         );
+        if (!rawImage) {
+          throw new Error('image_generation_failed');
+        }
+        const imageUrl = await persistGeneratedImageToStorage({
+          imageData: rawImage,
+          userId: user.id,
+          brandId: user.brand_id || null,
+          traceId: `${platform}-${Date.now()}`,
+        });
+        if (!imageUrl) {
+          throw new Error('image_persist_failed');
+        }
 
         await client.query('BEGIN');
         await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);
@@ -167,7 +221,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
           `INSERT INTO posts (user_id,brand_id,platform,content_type,caption,hashtags,status,is_ai_generated,generation_prompt,image_url)
            VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8) RETURNING *`,
           [user.id, user.brand_id || null, platform, contentType, caption, hashtags,
-           JSON.stringify({ brief, mood, imagePrompt }), imageUrl]
+           stringifyPromptPayload({ brief, mood, imagePrompt }), imageUrl]
         );
         await client.query('COMMIT');
 
@@ -266,6 +320,9 @@ router.patch("/:id/status", authMiddleware, async (req, res) => {
       [status, req.params.id, userId]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    if (status === 'approved' || status === 'scheduled') {
+      await purgePromptArtifactsForPost(pool, req.params.id, userId);
+    }
     res.json({ message: "Post status updated.", post: rows[0] });
   } catch (err) {
     logger.error("Post status update failed", { error: err.message });

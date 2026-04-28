@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 export interface OutputCard {
   id: string
@@ -49,29 +48,21 @@ const defaultForm: GenerationForm = {
   selectedProductId: null,
 }
 
-export const useGenerationStore = create<GenerationStore>()(
-  persist(
-    (set) => ({
-      form: defaultForm,
-      outputs: [],
-      isGenerating: false,
-      jobId: null,
-      setForm: (partial) =>
-        set((state) => ({ form: { ...state.form, ...partial } })),
-      addOutput: (card) =>
-        set((state) => ({ outputs: [card, ...state.outputs] })),
-      updateOutput: (id, partial) =>
-        set((state) => ({
-          outputs: state.outputs.map((o) => (o.id === id ? { ...o, ...partial } : o)),
-        })),
-      setOutputs: (cards) => set({ outputs: cards }),
-      setGenerating: (b) => set({ isGenerating: b }),
-      setJobId: (id) => set({ jobId: id }),
-      reset: () => set({ form: defaultForm, outputs: [], isGenerating: false, jobId: null }),
-    }),
-    {
-      name: 'brandvertise-generation',
-      partialize: (state) => ({ form: state.form }),
-    }
-  )
-)
+export const useGenerationStore = create<GenerationStore>()((set) => ({
+  form: defaultForm,
+  outputs: [],
+  isGenerating: false,
+  jobId: null,
+  setForm: (partial) =>
+    set((state) => ({ form: { ...state.form, ...partial } })),
+  addOutput: (card) =>
+    set((state) => ({ outputs: [card, ...state.outputs] })),
+  updateOutput: (id, partial) =>
+    set((state) => ({
+      outputs: state.outputs.map((o) => (o.id === id ? { ...o, ...partial } : o)),
+    })),
+  setOutputs: (cards) => set({ outputs: cards }),
+  setGenerating: (b) => set({ isGenerating: b }),
+  setJobId: (id) => set({ jobId: id }),
+  reset: () => set({ form: defaultForm, outputs: [], isGenerating: false, jobId: null }),
+}))

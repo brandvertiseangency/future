@@ -9,7 +9,7 @@ import { BlurFade } from '@/components/ui/blur-fade'
 import { DotPattern } from '@/components/ui/dot-pattern'
 import { AIButton } from '@/components/ui/ai-button'
 import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
-import { apiCall } from '@/lib/api'
+import { apiCall, apiUpload } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -43,20 +43,51 @@ interface Product {
 const fetcher = <T,>(url: string): Promise<T> => apiCall(url) as Promise<T>
 
 // ─── Add Product Modal ────────────────────────────────────────────────────────
-function AddProductModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function AddProductModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void
+  onSaved: () => void
+}) {
   const [form, setForm] = useState({ name: '', description: '', price: '', category: '', visual_description: '' })
+  const [productImageUrl, setProductImageUrl] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error('Product name is required'); return }
     setSaving(true)
     try {
-      await apiCall('/api/brand-products', { method: 'POST', body: JSON.stringify(form) })
+      await apiCall('/api/brand-products', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...form,
+          images: productImageUrl ? [productImageUrl] : [],
+        }),
+      })
       toast.success('Product added!')
       onSaved()
       onClose()
     } catch { toast.error('Failed to add product') }
     finally { setSaving(false) }
+  }
+
+  const handleImagePick = async (file: File | null) => {
+    if (!file) return
+    setUploadingImage(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const data = await apiUpload('/api/brand-products/upload-image', fd) as { url?: string }
+      if (!data?.url) throw new Error('Upload failed')
+      setProductImageUrl(data.url)
+      toast.success('Product image uploaded')
+    } catch {
+      toast.error('Failed to upload image')
+    } finally {
+      setUploadingImage(false)
+    }
   }
 
   return (
@@ -98,9 +129,31 @@ function AddProductModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
             />
           </div>
         ))}
+        <div>
+          <label className="block text-[10px] text-white/30 uppercase tracking-[0.1em] mb-1">Product Image</label>
+          <div className="flex items-center gap-2">
+            <label className="px-3 py-2 rounded-xl border border-white/[0.10] bg-white/[0.03] text-white/60 text-xs cursor-pointer hover:border-white/[0.2] transition-colors">
+              {uploadingImage ? 'Uploading…' : 'Attach Image'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleImagePick(e.target.files?.[0] ?? null)}
+                disabled={uploadingImage}
+              />
+            </label>
+            {productImageUrl && (
+              <span className="text-[11px] text-emerald-400/80">Image attached</span>
+            )}
+          </div>
+          {productImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={productImageUrl} alt="Product preview" className="mt-2 w-16 h-16 rounded-lg object-cover border border-white/[0.1]" />
+          )}
+        </div>
         <button
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || uploadingImage}
           className="w-full h-10 rounded-xl bg-white text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/90 transition-all disabled:opacity-60"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
@@ -394,7 +447,10 @@ export default function AssetsPage() {
       {/* Add Product Modal */}
       <AnimatePresence>
         {showAddProduct && (
-          <AddProductModal onClose={() => setShowAddProduct(false)} onSaved={() => mutateProducts()} />
+          <AddProductModal
+            onClose={() => setShowAddProduct(false)}
+            onSaved={() => mutateProducts()}
+          />
         )}
       </AnimatePresence>
     </PageContainer>

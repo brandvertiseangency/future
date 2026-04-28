@@ -17,6 +17,56 @@ You CANNOT generate images directly — direct users to the Generate or Calendar
 Keep responses concise and actionable. When suggesting post ideas give 2–3 specific ready-to-use hooks.
 Format lists with line breaks. Never say "as an AI" — you have full brand context.`;
 
+function removeJsonOnlyDirectives(systemPrompt) {
+  if (!systemPrompt) return '';
+  return systemPrompt
+    .replace(/- Always respond with valid JSON only[^\n]*\n?/gi, '')
+    .replace(/- JSON format:[^\n]*\n?/gi, '')
+    .trim();
+}
+
+function normalizeChatResponse(raw) {
+  if (raw && typeof raw === 'object') {
+    const parsed = raw;
+    if (Array.isArray(parsed)) return parsed.map((x) => `- ${String(x)}`).join('\n');
+    if (parsed.postIdeas && Array.isArray(parsed.postIdeas)) {
+      const lines = parsed.postIdeas.slice(0, 3).map((p, i) => {
+        const caption = p.caption || p.idea || p.post_idea || 'Post idea';
+        return `${i + 1}. ${caption}`;
+      });
+      return `Here are strong options:\n${lines.join('\n')}`;
+    }
+    if (parsed.caption || parsed.imagePrompt) {
+      return [parsed.caption ? `Caption: ${parsed.caption}` : '', parsed.imagePrompt ? `Visual direction: ${parsed.imagePrompt}` : '']
+        .filter(Boolean)
+        .join('\n');
+    }
+    return 'I generated a structured response. Tell me if you want ideas, captions, or a monthly plan and I will format it conversationally.';
+  }
+
+  const text = String(raw || '').trim();
+  if (!(text.startsWith('{') || text.startsWith('['))) return text;
+  try {
+    const parsed = JSON.parse(text);
+    if (Array.isArray(parsed)) return parsed.map((x) => `- ${String(x)}`).join('\n');
+    if (parsed.postIdeas && Array.isArray(parsed.postIdeas)) {
+      const lines = parsed.postIdeas.slice(0, 3).map((p, i) => {
+        const caption = p.caption || p.idea || p.post_idea || 'Post idea';
+        return `${i + 1}. ${caption}`;
+      });
+      return `Here are strong options:\n${lines.join('\n')}`;
+    }
+    if (parsed.caption || parsed.imagePrompt) {
+      return [parsed.caption ? `Caption: ${parsed.caption}` : '', parsed.imagePrompt ? `Visual direction: ${parsed.imagePrompt}` : '']
+        .filter(Boolean)
+        .join('\n');
+    }
+    return 'I generated a structured response. Tell me if you want ideas, captions, or a monthly plan and I will format it conversationally.';
+  } catch {
+    return text;
+  }
+}
+
 async function getBrandForUser(uid, pool) {
   const { rows } = await pool.query(
     `SELECT b.*, u.id as user_db_id FROM brands b
@@ -68,8 +118,8 @@ router.post('/brand', authMiddleware, async (req, res) => {
       return res.json({ response: "I don't see a brand set up yet. Complete your brand setup to unlock Brand AI!" });
     }
 
-    const systemPrompt = buildSystemPrompt(brand) + CHAT_SUFFIX;
-    const response = await callClaude(systemPrompt, messages);
+    const systemPrompt = `${removeJsonOnlyDirectives(buildSystemPrompt(brand))}\n\n${CHAT_SUFFIX}`;
+    const response = normalizeChatResponse(await callClaude(systemPrompt, messages));
 
     // Save async (non-blocking)
     const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';

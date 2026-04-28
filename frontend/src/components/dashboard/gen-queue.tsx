@@ -107,6 +107,8 @@ export function GenQueue() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {jobs.slice(0, 4).map(job => {
+            const normalizedStatus: Job['status'] =
+              job.total_slots > 0 && job.completed_slots >= job.total_slots ? 'complete' : job.status
             const pct = job.total_slots > 0 ? (job.completed_slots / job.total_slots) * 100 : 0
             return (
               <div
@@ -116,9 +118,9 @@ export function GenQueue() {
               >
                 {/* Row */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                  <StatusDot status={job.status} />
+                  <StatusDot status={normalizedStatus} />
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'rgba(255,255,255,0.7)', flex: 1 }}>
-                    {STATUS_LABEL[job.status]}
+                    {STATUS_LABEL[normalizedStatus]}
                   </span>
                   <span style={{
                     fontSize: 10, fontVariantNumeric: 'tabular-nums',
@@ -135,7 +137,7 @@ export function GenQueue() {
                   <div style={{
                     height: '100%', borderRadius: 1,
                     width: `${pct}%`,
-                    background: job.status === 'failed'
+                    background: normalizedStatus === 'failed'
                       ? 'rgba(244,63,94,0.7)'
                       : 'linear-gradient(90deg, rgba(255,255,255,0.25), rgba(255,255,255,0.65))',
                     transition: 'width 0.5s ease',

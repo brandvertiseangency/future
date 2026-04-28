@@ -6,6 +6,26 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
+const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
+
+const purgePromptArtifactsForPost = async (pool, postId, userId) => {
+  await pool.query(
+    `UPDATE posts
+     SET generation_prompt=NULL, updated_at=NOW()
+     WHERE id=$1 AND user_id=$2`,
+    [postId, userId]
+  );
+  try {
+    await pool.query(
+      `UPDATE post_versions
+       SET generation_prompt=NULL
+       WHERE post_id=$1`,
+      [postId]
+    );
+  } catch {
+    // post_versions table may not exist in older setups
+  }
+};
 
 
 const getUserId = async (uid) => {
@@ -160,6 +180,9 @@ router.patch('/:id', authMiddleware, async (req, res) => {
       vals
     );
     if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    if (rows[0].status === 'approved' || rows[0].status === 'scheduled' || rows[0].approval_status === 'approved') {
+      await purgePromptArtifactsForPost(pool, rows[0].id, userId);
+    }
     res.json({ post: rows[0] });
   } catch (err) {
     logger.error('Patch post failed', { error: err.message });
@@ -262,6 +285,7 @@ router.post('/:id/approve', authMiddleware, async (req, res) => {
       [req.params.id, userId]
     );
     if (!rows[0]) return res.status(404).json({ error: 'Post not found.' });
+    await purgePromptArtifactsForPost(pool, req.params.id, userId);
     res.json({ post: rows[0] });
   } catch (err) {
     logger.error('Post approve failed', { error: err.message });
@@ -332,7 +356,15 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
       // Generate new image if we have a prompt
       if (imagePrompt) {
         const newImg = await genImg(`${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image, no text.`);
-        if (newImg) imageUrl = newImg;
+        if (newImg) {
+          const persisted = await persistGeneratedImageToStorage({
+            imageData: newImg,
+            userId,
+            brandId: post.brand_id,
+            traceId: `${post.id}-${newVersion}`,
+          });
+          if (persisted) imageUrl = persisted;
+        }
       }
     } catch (e) {
       logger.warn('AI regen failed, keeping original', { error: e.message });
@@ -357,7 +389,19 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
         await client.query(
           `INSERT INTO post_versions (post_id, version_number, caption, image_url, hashtags, generation_prompt, feedback_note)
            VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [req.params.id, newVersion, caption, imageUrl, hashtags, JSON.stringify({ imagePrompt }), feedback]
+          [req.params.id, newVersion, caption, imageUrl, hashtags, stringifyPromptPayload({ imagePrompt }), feedback]
+        );
+        // Keep only latest 3 versions per post to control storage bloat.
+        await client.query(
+          `DELETE FROM post_versions
+           WHERE post_id=$1
+             AND id IN (
+               SELECT id FROM post_versions
+               WHERE post_id=$1
+               ORDER BY version_number DESC
+               OFFSET 3
+             )`,
+          [req.params.id]
         );
       } catch { /* post_versions may not exist */ }
       await client.query('COMMIT');

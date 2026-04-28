@@ -7,6 +7,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
+const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
 
 const getUserWithBrand = async (uid) => {
   const pool = getPool();
@@ -37,6 +38,26 @@ const getUserWithBrand = async (uid) => {
     [uid]
   );
   return rows[0] || null;
+};
+
+const getPrimaryProductReferenceImages = async (pool, userId, brandId) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT images, is_primary
+       FROM brand_products
+       WHERE user_id=$1 AND ($2::uuid IS NULL OR brand_id=$2 OR brand_id IS NULL)
+       ORDER BY is_primary DESC, created_at ASC
+       LIMIT 5`,
+      [userId, brandId || null]
+    );
+    const images = [];
+    for (const row of rows || []) {
+      if (Array.isArray(row.images)) images.push(...row.images.slice(0, 1));
+    }
+    return images.filter(Boolean).slice(0, 3);
+  } catch {
+    return [];
+  }
 };
 
 const { buildSystemPrompt: buildSystemPromptV2, buildUserPrompt: buildUserPromptV2, getToneTemperature } = require('../lib/prompt-engine');
@@ -162,7 +183,20 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
-    const imageUrl = await generateImage(enrichedImagePrompt, { aspectRatio });
+    const referenceImageUrls = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
+    const rawImage = await generateImage(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
+    if (!rawImage) {
+      return res.status(503).json({ error: 'image_generation_failed', message: 'Image generation failed. Please retry.' });
+    }
+    const imageUrl = await persistGeneratedImageToStorage({
+      imageData: rawImage,
+      userId: user.id,
+      brandId: user.brand_id || null,
+      traceId: `${platform}-${Date.now()}`,
+    });
+    if (!imageUrl) {
+      return res.status(503).json({ error: 'image_persist_failed', message: 'Image could not be persisted. Please retry.' });
+    }
 
     await client.query('BEGIN');
     await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);
@@ -181,7 +215,7 @@ router.post('/', authMiddleware, async (req, res) => {
       `INSERT INTO posts (user_id,brand_id,platform,content_type,caption,hashtags,status,is_ai_generated,generation_prompt,image_url)
        VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8) RETURNING *`,
       [user.id, user.brand_id||null, platform, contentType||'post', caption, hashtags,
-       JSON.stringify({ brief, mood, imagePrompt }), imageUrl]
+       stringifyPromptPayload({ brief, mood, theme, campaign, imagePrompt }), imageUrl]
     );
     await client.query('COMMIT');
 

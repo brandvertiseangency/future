@@ -70,9 +70,14 @@ function FieldRow({ label, children }: { label: string; children: React.ReactNod
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function BrandDetailsPage() {
-  const { data: brandRes, isLoading } = useSWR(
+  const { data: brandRes, isLoading: brandLoading } = useSWR(
     '/api/brand/me',
     (url: string) => apiCall<{ brand: BrandData }>(url),
+    { revalidateOnFocus: false }
+  )
+  const { data: currentRes, isLoading: currentLoading } = useSWR(
+    '/api/brands/current',
+    (url: string) => apiCall<{ brand: BrandData | null }>(url),
     { revalidateOnFocus: false }
   )
 
@@ -82,11 +87,12 @@ export default function BrandDetailsPage() {
   const logoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (brandRes?.brand) {
-      setForm(brandRes.brand)
+    const resolved = brandRes?.brand || currentRes?.brand
+    if (resolved) {
+      setForm(resolved)
       setDirty(false)
     }
-  }, [brandRes])
+  }, [brandRes, currentRes])
 
   const update = (patch: Partial<BrandData>) => {
     setForm((f) => ({ ...f, ...patch }))
@@ -142,7 +148,7 @@ export default function BrandDetailsPage() {
 
   const initials = form.name?.slice(0, 2).toUpperCase() ?? 'BV'
 
-  if (isLoading) {
+  if (brandLoading || currentLoading) {
     return (
       <div className="h-[calc(100vh-56px)] flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-white/20" />

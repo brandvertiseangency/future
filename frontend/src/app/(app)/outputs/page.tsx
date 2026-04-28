@@ -104,6 +104,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
   const platformColor = PLATFORM_COLORS[post.platform?.toLowerCase()] ?? 'rgba(255,255,255,0.5)'
   const isApproved = post.approval_status === 'approved' || post.status === 'approved'
+  const imageMissing = !post.image_url
   const [editingCaption, setEditingCaption] = useState(false)
   const [caption, setCaption] = useState(post.caption)
   const [saving, setSaving] = useState(false)
@@ -166,10 +167,11 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
         )}
         {/* Status badge */}
         <span className={cn('absolute top-2.5 left-2.5 text-[9px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md border',
-          isApproved ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400'
+          imageMissing ? 'bg-rose-500/15 border-rose-500/25 text-rose-400'
+          : isApproved ? 'bg-emerald-500/15 border-emerald-500/25 text-emerald-400'
           : post.status === 'scheduled' ? 'bg-blue-500/15 border-blue-500/25 text-blue-400'
           : 'bg-white/[0.06] border-white/[0.10] text-white/35')}>
-          {isApproved ? 'approved' : post.status}
+          {imageMissing ? 'image failed' : isApproved ? 'approved' : post.status}
         </span>
         {/* Platform badge */}
         <span className="absolute top-2.5 right-2.5 text-[9px] font-semibold capitalize px-2 py-0.5 rounded-md" style={{ background: `${platformColor}25`, color: platformColor, border: `1px solid ${platformColor}40` }}>
@@ -179,13 +181,13 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-end justify-center pb-3">
           <div className="flex items-center gap-1.5">
             {[
-              { icon: Download, label: 'Download', fn: handleDownload, color: 'white' },
+              { icon: Download, label: 'Download', fn: handleDownload, color: 'white', disabled: imageMissing },
               { icon: CalendarDays, label: 'Schedule', fn: handleSchedule, color: '#60a5fa' },
               { icon: Check, label: 'Approve', fn: handleApprove, color: '#34d399' },
               { icon: Trash2, label: 'Delete', fn: handleDelete, color: '#f87171' },
-            ].map(({ icon: Icon, label, fn, color }) => (
-              <button key={label} title={label} onClick={fn}
-                className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-black/80 transition-all"
+            ].map(({ icon: Icon, label, fn, color, disabled }) => (
+              <button key={label} title={disabled ? `${label} unavailable` : label} onClick={fn} disabled={disabled}
+                className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-35 disabled:cursor-not-allowed"
               >
                 <Icon size={13} style={{ color }} />
               </button>
@@ -225,8 +227,8 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
                   className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/40 hover:text-white/70 hover:bg-white/[0.08] transition-all text-[11px] font-medium flex-1">
                   <Pencil size={11} />Edit
                 </button>
-                <button onClick={handleDownload} title="Download"
-                  className="w-8 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/30 hover:text-white/60 hover:bg-white/[0.08] transition-all">
+                <button onClick={handleDownload} title={imageMissing ? 'Download unavailable' : 'Download'} disabled={imageMissing}
+                  className="w-8 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/30 hover:text-white/60 hover:bg-white/[0.08] transition-all disabled:opacity-35 disabled:cursor-not-allowed">
                   <Download size={12} />
                 </button>
                 <button onClick={handleSchedule} title="Schedule"

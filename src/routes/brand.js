@@ -63,7 +63,8 @@ router.get("/me", authMiddleware, async (req, res) => {
        LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
        LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
        JOIN users u ON u.id = b.user_id
-       WHERE u.firebase_uid = $1 AND b.is_default = TRUE
+       WHERE u.firebase_uid = $1
+       ORDER BY b.is_default DESC, b.created_at ASC
        LIMIT 1`,
       [req.user.uid]
     );
@@ -107,8 +108,14 @@ router.patch("/me", authMiddleware, async (req, res) => {
 
     const { rows } = await pool.query(
       `UPDATE brands SET ${setClauses.join(", ")}, updated_at = NOW()
-       WHERE user_id = (SELECT id FROM users WHERE firebase_uid = $${values.length + 1})
-         AND is_default = TRUE
+       WHERE id = (
+         SELECT b2.id
+         FROM brands b2
+         JOIN users u2 ON u2.id = b2.user_id
+         WHERE u2.firebase_uid = $${values.length + 1}
+         ORDER BY b2.is_default DESC, b2.created_at ASC
+         LIMIT 1
+       )
        RETURNING *`,
       [...values, req.user.uid]
     );

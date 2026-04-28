@@ -10,6 +10,8 @@ const DEFAULT_TIMEOUT_MS = 45_000;
 const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
+const NANO_BANANA_MODEL = 'gemini-2.0-flash-preview-image-generation';
+const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'nano-banana').toLowerCase();
 
 const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
   let timer;
@@ -89,15 +91,66 @@ const callAIJSON = async (prompt, opts = {}) => {
 };
 
 /**
- * Generate an image using Imagen (requires GOOGLE_AI_API_KEY).
+ * Convert remote image URL to Gemini inlineData part.
+ */
+const buildInlineImagePartFromUrl = async (url) => {
+  try {
+    const axios = require('axios');
+    const response = await axios.get(url, { responseType: 'arraybuffer', timeout: 15_000 });
+    const mimeType = response.headers['content-type'] || 'image/jpeg';
+    const data = Buffer.from(response.data).toString('base64');
+    return { inlineData: { mimeType, data } };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Generate an image (Nano Banana primary, Imagen fallback).
  * Returns base64 data URL or null.
  */
 const generateImage = async (imagePrompt, opts = {}) => {
   if (!process.env.GOOGLE_AI_API_KEY) return null;
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1' } = opts;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [] } = opts;
+  const logger = require('../utils/logger');
   try {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+
+    const shouldUseNano = IMAGE_MODEL === 'nano-banana';
+    if (shouldUseNano) {
+      const inlineParts = [];
+      const refs = Array.isArray(referenceImageUrls) ? referenceImageUrls.slice(0, 3) : [];
+      for (const refUrl of refs) {
+        const part = await buildInlineImagePartFromUrl(refUrl);
+        if (part) inlineParts.push(part);
+      }
+      const response = await withTimeout(
+        ai.models.generateContent({
+          model: NANO_BANANA_MODEL,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: imagePrompt },
+                ...inlineParts,
+              ],
+            },
+          ],
+          config: { responseModalities: ['IMAGE', 'TEXT'] },
+        }),
+        timeoutMs
+      );
+      const parts = response?.candidates?.[0]?.content?.parts || [];
+      const imagePart = parts.find((p) => p.inlineData?.data);
+      if (imagePart?.inlineData?.data) {
+        const mimeType = imagePart.inlineData.mimeType || 'image/jpeg';
+        return `data:${mimeType};base64,${imagePart.inlineData.data}`;
+      }
+      logger.warn('Nano Banana returned no image payload');
+      return null;
+    }
+
     const response = await withTimeout(
       ai.models.generateImages({
         model: IMAGEN_MODEL,
@@ -109,8 +162,26 @@ const generateImage = async (imagePrompt, opts = {}) => {
     const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
     return b64 ? `data:image/jpeg;base64,${b64}` : null;
   } catch (err) {
-    const logger = require('../utils/logger');
-    logger.warn('Imagen generation failed', { error: err.message });
+    logger.warn('Image generation failed', { model: IMAGE_MODEL, error: err.message });
+    if (IMAGE_MODEL === 'nano-banana') {
+      // Fallback for resilience.
+      try {
+        const { GoogleGenAI } = require('@google/genai');
+        const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+        const response = await withTimeout(
+          ai.models.generateImages({
+            model: IMAGEN_MODEL,
+            prompt: imagePrompt,
+            config: { numberOfImages: 1, aspectRatio, outputMimeType: 'image/jpeg' },
+          }),
+          timeoutMs
+        );
+        const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
+        return b64 ? `data:image/jpeg;base64,${b64}` : null;
+      } catch (fallbackErr) {
+        logger.warn('Imagen fallback also failed', { error: fallbackErr.message });
+      }
+    }
     return null;
   }
 };

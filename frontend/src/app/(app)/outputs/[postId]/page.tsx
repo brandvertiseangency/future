@@ -104,7 +104,11 @@ export default function OutputDetailPage() {
             {displayVersion?.image_url
               ? <img src={displayVersion.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ color: 'rgba(255,255,255,0.15)', fontSize: 12 }}>No image</p>
+                  <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, textAlign: 'center', maxWidth: 220 }}>
+                    Image generation failed for this version.
+                    <br />
+                    Try regenerate with feedback.
+                  </p>
                 </div>
             }
           </div>

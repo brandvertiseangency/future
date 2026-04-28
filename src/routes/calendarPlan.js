@@ -12,6 +12,7 @@ const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 const { buildSystemPrompt, buildUserPrompt } = require('../lib/prompt-engine');
+const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -133,6 +134,46 @@ const CONTENT_TYPE_MAP = {
   bts: 'reel',
   festive: 'post',
 };
+
+const GENERIC_PHRASES = [
+  'elevate your brand',
+  'unlock potential',
+  'game changer',
+  'we are excited',
+  'discover now',
+];
+
+function enforceSlotQuality(slot, fallbackPlatform) {
+  const cleaned = { ...slot };
+  cleaned.post_idea = String(cleaned.post_idea || '').trim();
+  cleaned.caption_draft = String(cleaned.caption_draft || '').trim();
+  cleaned.creative_brief = String(cleaned.creative_brief || '').trim();
+  cleaned.platform = String(cleaned.platform || fallbackPlatform || 'instagram').toLowerCase();
+
+  // Reject generic ideas by replacing with a more specific fallback derived from category.
+  const ideaLower = cleaned.post_idea.toLowerCase();
+  if (!cleaned.post_idea || GENERIC_PHRASES.some((p) => ideaLower.includes(p)) || cleaned.post_idea.length < 24) {
+    const category = String(cleaned.category || 'promotional');
+    cleaned.post_idea = `Create a ${category} ${cleaned.content_type || 'post'} showing a real use-case, concrete customer benefit, and a specific visual scene for ${cleaned.platform}.`;
+  }
+
+  if (!cleaned.creative_brief || !cleaned.creative_brief.includes('Goal')) {
+    cleaned.creative_brief = [
+      'Goal: Drive clear intent for this post objective.',
+      'Key message: One concrete value proposition tied to audience pain point.',
+      'Visual concept: Realistic scene with subject, environment, and brand/product context.',
+      'Composition: Foreground/background hierarchy, camera angle, focal point.',
+      'Lighting: Explicit lighting style with shadow mood.',
+      'Product placement: Explicit placement or N/A.',
+    ].join('\n');
+  }
+
+  if (!cleaned.caption_draft || cleaned.caption_draft.length < 40) {
+    cleaned.caption_draft = `${cleaned.post_idea}\n\nHighlight one practical takeaway.\nInvite action with a direct CTA.`;
+  }
+
+  return cleaned;
+}
 
 // ─── POST /api/calendar/generate-plan ────────────────────────────────────────
 
@@ -281,6 +322,7 @@ Rules:
 - Build cohesion across the month (themes that evolve), but keep each post standalone.
 - Distribute platforms across ${platforms.join(', ')} evenly if multiple.
 - creative_brief must be actionable for an image generator (clear composition + lighting + subject).
+- Avoid any generic promise language; each post_idea must mention a concrete scenario, audience pain point, or product context.
 ${productsSummary ? `- When category is promotional or testimonial, try to feature a real product/service from PRODUCT_LIBRARY in the idea and creative_brief (product placement must be explicit).\n` : ''}
 
 Anti-patterns to avoid:
@@ -328,7 +370,7 @@ Return ONLY JSON.`;
 
       const insertedSlots = [];
       for (let i = 0; i < slots.length; i++) {
-        const s = slots[i];
+        const s = enforceSlotQuality(slots[i], platforms[i % platforms.length] || platforms[0]);
         const d = dates[i];
         const contentType = s.content_type || CONTENT_TYPE_MAP[s.category] || 'post';
         const platform = s.platform || platforms[i % platforms.length] || platforms[0];
@@ -493,9 +535,9 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
       [selectedSlotIds, plan.id]
     );
 
-    // Mark unselected slots as rejected
+    // Keep unselected slots pending so queue/progress only reflects selected slots.
     await client.query(
-      `UPDATE calendar_slots SET status='rejected' WHERE plan_id=$1 AND id!=ALL($2::uuid[]) AND status='pending'`,
+      `UPDATE calendar_slots SET status='pending' WHERE plan_id=$1 AND id!=ALL($2::uuid[]) AND status='pending'`,
       [plan.id, selectedSlotIds]
     );
 
@@ -571,7 +613,7 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
               p.id AS post_id, p.image_url
        FROM calendar_slots cs
        LEFT JOIN posts p ON p.slot_id = cs.id AND p.id = cs.post_id
-       WHERE cs.plan_id = $1 AND cs.status IN ('approved','generating','generated','rejected')
+       WHERE cs.plan_id = $1 AND cs.status IN ('approved','generating','generated','failed')
        ORDER BY cs.sort_order ASC, cs.slot_date ASC`,
       [jobRows[0].plan_id]
     );
@@ -621,6 +663,10 @@ async function runGenerationJob(jobId, slotIds, pool) {
     const products = await getBrandProducts(pool, brand.user_id, brand.id);
     const imageProducts = (products || []).filter((p) => (Array.isArray(p.use_in) ? p.use_in : []).includes('image_generation'));
     const primaryImageProduct = pickPrimaryProduct(imageProducts, 'image_generation');
+    const fallbackReferenceImages = [
+      ...(Array.isArray(primaryImageProduct?.images) ? primaryImageProduct.images : []),
+      ...imageProducts.flatMap((p) => (Array.isArray(p.images) ? p.images.slice(0, 1) : [])),
+    ].filter(Boolean).slice(0, 3);
 
     const brandColors = [brand.color_primary, brand.color_secondary, brand.color_accent].filter(Boolean);
     const brandVisualNotes = [
@@ -712,11 +758,12 @@ async function runGenerationJob(jobId, slotIds, pool) {
           const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
           const match = cleaned.match(/\{[\s\S]*\}/);
           const parsed = JSON.parse(match ? match[0] : cleaned);
-          caption = parsed.caption || slot.post_idea;
+          caption = parsed.caption || slot.caption_draft || slot.post_idea;
           hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
-          imagePrompt = parsed.imagePrompt || `Professional social media ${slot.content_type} for ${brand.name}`;
+          imagePrompt = parsed.imagePrompt || `${slot.post_idea}. ${creativeBrief || 'Premium product-focused composition.'}`;
         } catch {
-          caption = slot.post_idea;
+          caption = slot.caption_draft || slot.post_idea;
+          imagePrompt = `${slot.post_idea}. ${creativeBrief || 'Premium social media visual, specific composition and lighting.'}`;
         }
 
         // Generate image (art-directed using Brand DNA + slot creative brief)
@@ -738,7 +785,22 @@ async function runGenerationJob(jobId, slotIds, pool) {
         ].filter(Boolean).join('\n\n');
 
         const fullImagePrompt = `${imagePrompt}\n\n${artDirection}`;
-        const imageUrl = await generateImage(fullImagePrompt, { aspectRatio });
+        const rawImage = await generateImage(fullImagePrompt, {
+          aspectRatio,
+          referenceImageUrls: fallbackReferenceImages,
+        });
+        if (!rawImage) {
+          throw new Error('IMAGE_GENERATION_FAILED');
+        }
+        const imageUrl = await persistGeneratedImageToStorage({
+          imageData: rawImage,
+          userId: brand.user_id,
+          brandId: brand.id,
+          traceId: slotId,
+        });
+        if (!imageUrl) {
+          throw new Error('IMAGE_PERSIST_FAILED');
+        }
 
         const client = await pool.connect();
         try {
@@ -759,11 +821,18 @@ async function runGenerationJob(jobId, slotIds, pool) {
           }
 
           // Insert post
+          const generationPromptPayload = stringifyPromptPayload({
+            brief: slot.post_idea,
+            captionDraft: slot.caption_draft,
+            creativeBrief,
+            imagePrompt,
+            artDirection,
+          });
           const { rows: postRows } = await client.query(
             `INSERT INTO posts (user_id, brand_id, platform, content_type, caption, hashtags, status, is_ai_generated, generation_prompt, image_url, slot_id, generation_job_id, approval_status, version_number)
              VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8,$9,$10,'pending',1) RETURNING *`,
             [brand.user_id, brand.id, slot.platform, slot.content_type, caption, hashtags,
-             JSON.stringify({ brief: slot.post_idea, creativeBrief, imagePrompt }), imageUrl,
+             generationPromptPayload, imageUrl,
              slot.id, jobId]
           );
           const post = postRows[0];
@@ -772,7 +841,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
           await client.query(
             `INSERT INTO post_versions (post_id, version_number, caption, image_url, hashtags, generation_prompt)
              VALUES ($1,1,$2,$3,$4,$5)`,
-            [post.id, caption, imageUrl, hashtags, JSON.stringify({ brief: slot.post_idea, imagePrompt })]
+            [post.id, caption, imageUrl, hashtags, stringifyPromptPayload({ brief: slot.post_idea, imagePrompt, creativeBrief })]
           );
 
           // Update slot with post reference
@@ -799,7 +868,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
         logger.error('Slot generation failed', { slotId, error: err.message });
         failed++;
         await pool.query(
-          `UPDATE calendar_slots SET status='rejected' WHERE id=$1`,
+          `UPDATE calendar_slots SET status='failed' WHERE id=$1`,
           [slotId]
         );
         await pool.query(
