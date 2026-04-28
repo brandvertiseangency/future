@@ -13,6 +13,7 @@ interface Job {
   total_slots: number
   completed_slots: number
   failed_slots: number
+  last_error?: string
 }
 
 interface SlotDetail {
@@ -23,6 +24,7 @@ interface SlotDetail {
   status: 'pending' | 'generating' | 'generated' | 'failed'
   post_id?: string
   image_url?: string
+  error_message?: string
 }
 
 function GenerationQueueInner() {
@@ -88,6 +90,13 @@ function GenerationQueueInner() {
           }} />
         </div>
 
+        {job.last_error && (
+          <div className="mt-3 rounded-lg border border-red-500/25 bg-red-500/[0.07] px-3 py-2">
+            <p className="text-[11px] uppercase tracking-[0.08em] text-red-300/70 mb-1">Failure reason</p>
+            <p className="text-xs text-red-200/80 break-words">{job.last_error}</p>
+          </div>
+        )}
+
         {isDone && (
           <button
             onClick={() => router.push('/outputs')}
@@ -127,6 +136,11 @@ function GenerationQueueInner() {
               <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)' }}>
                 {slot.platform} · {slot.content_type}
               </p>
+              {slot.status === 'failed' && slot.error_message && (
+                <p style={{ fontSize: 11, color: 'rgba(248,113,113,0.85)', marginTop: 4 }} title={slot.error_message}>
+                  {slot.error_message}
+                </p>
+              )}
             </div>
 
             {/* Status */}

@@ -27,6 +27,14 @@ async function hasColumn(pool, tableName, columnName) {
   return !!rows[0];
 }
 
+let generationDebugColumnsReady = false;
+async function ensureGenerationDebugColumns(pool) {
+  if (generationDebugColumnsReady) return;
+  await pool.query(`ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS last_error TEXT`);
+  await pool.query(`ALTER TABLE calendar_slots ADD COLUMN IF NOT EXISTS error_message TEXT`);
+  generationDebugColumnsReady = true;
+}
+
 async function getBrandProducts(pool, userId, brandId) {
   try {
     const { rows } = await pool.query(
@@ -613,6 +621,7 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   try {
+    await ensureGenerationDebugColumns(pool);
     const { rows: userRows } = await pool.query('SELECT id FROM users WHERE firebase_uid=$1', [req.user.uid]);
     const userId = userRows[0]?.id;
     if (!userId) return res.status(404).json({ error: 'User not found.' });
@@ -624,7 +633,7 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
     if (!jobRows[0]) return res.status(404).json({ error: 'Job not found.' });
 
     const { rows: slots } = await pool.query(
-      `SELECT cs.id, cs.post_idea, cs.content_type, cs.platform, cs.status,
+      `SELECT cs.id, cs.post_idea, cs.content_type, cs.platform, cs.status, cs.error_message,
               p.id AS post_id, p.image_url
        FROM calendar_slots cs
        LEFT JOIN posts p ON p.slot_id = cs.id AND p.id = cs.post_id
@@ -644,8 +653,9 @@ router.get('/jobs/:jobId', authMiddleware, async (req, res) => {
 
 async function runGenerationJob(jobId, slotIds, pool) {
   try {
+    await ensureGenerationDebugColumns(pool);
     // Mark job as running
-    await pool.query(`UPDATE generation_jobs SET status='running', started_at=NOW() WHERE id=$1`, [jobId]);
+    await pool.query(`UPDATE generation_jobs SET status='running', started_at=NOW(), last_error=NULL WHERE id=$1`, [jobId]);
 
     const { rows: jobRows } = await pool.query('SELECT * FROM generation_jobs WHERE id=$1', [jobId]);
     const job = jobRows[0];
@@ -670,7 +680,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
     );
     const brand = brandRows[0];
     if (!brand) {
-      await pool.query(`UPDATE generation_jobs SET status='failed' WHERE id=$1`, [jobId]);
+      await pool.query(`UPDATE generation_jobs SET status='failed', last_error=$2 WHERE id=$1`, [jobId, 'Brand not found for generation job']);
       return;
     }
 
@@ -736,7 +746,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
     for (const slotId of slotIds) {
       try {
         // Mark slot as generating
-        await pool.query(`UPDATE calendar_slots SET status='generating' WHERE id=$1`, [slotId]);
+        await pool.query(`UPDATE calendar_slots SET status='generating', error_message=NULL WHERE id=$1`, [slotId]);
         await pool.query(`UPDATE generation_jobs SET current_slot_id=$1 WHERE id=$2`, [slotId, jobId]);
 
         const { rows: slotRows } = await pool.query('SELECT * FROM calendar_slots WHERE id=$1', [slotId]);
@@ -861,7 +871,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
 
           // Update slot with post reference
           await client.query(
-            `UPDATE calendar_slots SET status='generated', post_id=$1 WHERE id=$2`,
+          `UPDATE calendar_slots SET status='generated', post_id=$1, error_message=NULL WHERE id=$2`,
             [post.id, slotId]
           );
 
@@ -880,15 +890,16 @@ async function runGenerationJob(jobId, slotIds, pool) {
           [completed, jobId]
         );
       } catch (err) {
-        logger.error('Slot generation failed', { slotId, error: err.message });
+        const safeError = String(err?.message || 'Unknown generation error').slice(0, 1000);
+        logger.error('Slot generation failed', { slotId, error: safeError, stack: err?.stack });
         failed++;
         await pool.query(
-          `UPDATE calendar_slots SET status='failed' WHERE id=$1`,
-          [slotId]
+          `UPDATE calendar_slots SET status='failed', error_message=$2 WHERE id=$1`,
+          [slotId, safeError]
         );
         await pool.query(
-          `UPDATE generation_jobs SET failed_slots=$1 WHERE id=$2`,
-          [failed, jobId]
+          `UPDATE generation_jobs SET failed_slots=$1, last_error=$3 WHERE id=$2`,
+          [failed, jobId, `slot ${slotId}: ${safeError}`]
         );
       }
     }
@@ -900,8 +911,9 @@ async function runGenerationJob(jobId, slotIds, pool) {
     );
     logger.info('Generation job complete', { jobId, completed, failed });
   } catch (err) {
-    logger.error('runGenerationJob fatal', { jobId, error: err.message });
-    await pool.query(`UPDATE generation_jobs SET status='failed' WHERE id=$1`, [jobId]).catch(() => {});
+    const safeError = String(err?.message || 'Unknown fatal generation error').slice(0, 1000);
+    logger.error('runGenerationJob fatal', { jobId, error: safeError, stack: err?.stack });
+    await pool.query(`UPDATE generation_jobs SET status='failed', last_error=$2 WHERE id=$1`, [jobId, safeError]).catch(() => {});
   }
 }
 
