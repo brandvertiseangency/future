@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS calendar_slots (
   caption_draft    TEXT,
   platform         TEXT NOT NULL,
   status           TEXT DEFAULT 'pending'
-    CHECK (status IN ('pending','approved','generating','generated','rejected')),
+    CHECK (status IN ('pending','approved','generating','generated','failed','rejected')),
   post_id          UUID REFERENCES posts(id) ON DELETE SET NULL,
   sort_order       INTEGER DEFAULT 0,
   created_at       TIMESTAMPTZ DEFAULT NOW()
