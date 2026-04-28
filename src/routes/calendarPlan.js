@@ -152,7 +152,7 @@ const getUserWithBrand = async (uid) => {
   return rows[0] || null;
 };
 
-const { callAI, generateImage } = require('../lib/ai');
+const { callAI, generateImageDetailed } = require('../lib/ai');
 
 const AI_TIMEOUT_MS = 45_000;
 
@@ -859,12 +859,15 @@ async function runGenerationJob(jobId, slotIds, pool) {
         ].filter(Boolean).join('\n\n');
 
         const fullImagePrompt = `${imagePrompt}\n\n${artDirection}`;
-        const rawImage = await generateImage(fullImagePrompt, {
+        const imageResult = await generateImageDetailed(fullImagePrompt, {
           aspectRatio,
           referenceImageUrls: fallbackReferenceImages,
         });
+        const rawImage = imageResult?.imageData || null;
         if (!rawImage) {
-          throw new Error('IMAGE_GENERATION_FAILED');
+          const reason = imageResult?.error || 'unknown_provider_failure';
+          const provider = imageResult?.provider || 'unknown_provider';
+          throw new Error(`IMAGE_GENERATION_FAILED: ${provider} - ${reason}`);
         }
         const imageUrl = await persistGeneratedImageToStorage({
           imageData: rawImage,
