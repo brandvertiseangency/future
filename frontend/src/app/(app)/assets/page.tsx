@@ -12,6 +12,7 @@ import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-pri
 import { apiCall, apiUpload } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const PLATFORM_COLORS: Record<string, string> = {
   instagram: '#f43f5e', linkedin: '#3b82f6', twitter: '#94a3b8',
@@ -263,6 +264,8 @@ export default function AssetsPage() {
   const [query, setQuery] = useState('')
   const [uploading, setUploading] = useState(false)
   const [showAddProduct, setShowAddProduct] = useState(false)
+  const [assetToDelete, setAssetToDelete] = useState<string | null>(null)
+  const [productToDelete, setProductToDelete] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const assetsKey = `/api/assets?q=${query}`
@@ -288,15 +291,15 @@ export default function AssetsPage() {
   }
 
   async function handleDeleteAsset(id: string) {
-    if (!confirm('Delete this asset?')) return
     await apiCall(`/api/assets/${id}`, { method: 'DELETE' })
     mutate(assetsKey)
+    setAssetToDelete(null)
   }
 
   async function handleDeleteProduct(id: string) {
-    if (!confirm('Delete this product?')) return
     await apiCall(`/api/brand-products/${id}`, { method: 'DELETE' })
     mutateProducts()
+    setProductToDelete(null)
   }
 
   const isLoading = tab === 'assets' ? assetsLoading : productsLoading
@@ -403,7 +406,7 @@ export default function AssetsPage() {
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
             {assets.map((asset) => (
-              <AssetCard key={asset.id} asset={asset} onDelete={() => handleDeleteAsset(asset.id)} />
+              <AssetCard key={asset.id} asset={asset} onDelete={() => setAssetToDelete(asset.id)} />
             ))}
           </div>
         )
@@ -430,7 +433,7 @@ export default function AssetsPage() {
         ) : (
           <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))' }}>
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} onDelete={() => handleDeleteProduct(product.id)} />
+              <ProductCard key={product.id} product={product} onDelete={() => setProductToDelete(product.id)} />
             ))}
             {/* Add another */}
             <button
@@ -453,6 +456,24 @@ export default function AssetsPage() {
           />
         )}
       </AnimatePresence>
+      <ConfirmDialog
+        open={!!assetToDelete}
+        title="Delete this asset?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setAssetToDelete(null)}
+        onConfirm={() => assetToDelete && handleDeleteAsset(assetToDelete)}
+      />
+      <ConfirmDialog
+        open={!!productToDelete}
+        title="Delete this product?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        tone="danger"
+        onCancel={() => setProductToDelete(null)}
+        onConfirm={() => productToDelete && handleDeleteProduct(productToDelete)}
+      />
     </PageContainer>
   )
 }

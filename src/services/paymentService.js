@@ -140,16 +140,17 @@ async function verifyPayment(uid, { razorpay_order_id, razorpay_payment_id, razo
 /**
  * Handle Razorpay webhook events.
  */
-async function handleWebhook(body, signature) {
+async function handleWebhook(body, signature, rawBody) {
   if (!config.razorpay.webhookSecret) {
     logger.warn("Webhook secret not configured");
     return { handled: false };
   }
 
   // Verify webhook signature
+  const payloadForSignature = rawBody || JSON.stringify(body);
   const expectedSig = crypto
     .createHmac("sha256", config.razorpay.webhookSecret)
-    .update(JSON.stringify(body))
+    .update(payloadForSignature)
     .digest("hex");
 
   if (expectedSig !== signature) {

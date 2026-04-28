@@ -119,18 +119,27 @@ BUFFER_ACCESS_TOKEN=xxxx
 
 ## 🔧 Pre-Deploy Commands
 ```bash
-# 1. Run DB migrations (already done, safe to re-run)
-npm run db:migrate
+# 1. Run tracked SQL migrations first
+npm run db:migrate:files
 
-# 2. Test all connections
+# 2. (Optional) run additive fallback migration for older databases
+npm run db:migrate:additive
+
+# 3. Test all connections
 node -e "require('./src/config/postgres').testConnection()"
 
-# 3. Build frontend
+# 4. Build frontend
 cd frontend && npm run build
 
-# 4. Start production server
+# 5. Start production server
 NODE_ENV=production npm start
 ```
+
+## ✅ Public V1 Release Order
+1. Apply migrations (`db:migrate:files`) on production database.
+2. Deploy backend API and ensure `/health` returns `status: ok`.
+3. Run frontend CI gates (lint + typecheck + build).
+4. Deploy frontend and verify onboarding -> calendar -> generation -> outputs flow.
 
 ---
 

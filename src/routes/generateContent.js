@@ -8,6 +8,7 @@ const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
+const { deductByUserIdAndLog } = require('../services/creditService');
 
 const getUserWithBrand = async (uid) => {
   const pool = getPool();
@@ -156,8 +157,21 @@ router.post('/', authMiddleware, async (req, res) => {
   const client = await pool.connect();
   try {
     const { platform, contentType, brief, mood, theme, campaign, ratio, selectedProductId } = req.body;
-    if (!platform) return res.status(400).json({ error: 'platform is required' });
-    if (!brief) return res.status(400).json({ error: 'brief is required' });
+    const allowedPlatforms = ['instagram', 'facebook', 'linkedin', 'x', 'twitter', 'tiktok', 'youtube', 'pinterest'];
+    const allowedContentTypes = ['post', 'reel', 'carousel', 'story'];
+    const allowedRatios = ['1:1', '4:5', '9:16', '16:9'];
+    if (!platform || !allowedPlatforms.includes(String(platform).toLowerCase())) {
+      return res.status(400).json({ error: 'platform is invalid' });
+    }
+    if (!brief || String(brief).trim().length < 8) {
+      return res.status(400).json({ error: 'brief must be at least 8 characters' });
+    }
+    if (contentType && !allowedContentTypes.includes(String(contentType).toLowerCase())) {
+      return res.status(400).json({ error: 'contentType is invalid' });
+    }
+    if (ratio && !allowedRatios.includes(String(ratio))) {
+      return res.status(400).json({ error: 'ratio is invalid' });
+    }
 
     const user = await getUserWithBrand(req.user.uid);
     if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -247,18 +261,12 @@ router.post('/', authMiddleware, async (req, res) => {
     }
 
     await client.query('BEGIN');
-    await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);
-    try {
-      await client.query(
-        `INSERT INTO credit_transactions (user_id,amount,type,description) VALUES ($1,-2,'usage',$2)`,
-        [user.id, `Generated ${contentType||'post'} for ${platform}`]
-      );
-    } catch {
-      await client.query(
-        `INSERT INTO credit_transactions (user_id,amount,type,reason) VALUES ($1,-2,'usage',$2)`,
-        [user.id, `Generated ${contentType||'post'} for ${platform}`]
-      );
-    }
+    const remainingCredits = await deductByUserIdAndLog(
+      client,
+      user.id,
+      2,
+      `Generated ${contentType || 'post'} for ${platform}`
+    );
     const { rows: postRows } = await client.query(
       `INSERT INTO posts (user_id,brand_id,platform,content_type,caption,hashtags,status,is_ai_generated,generation_prompt,image_url)
        VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8) RETURNING *`,
@@ -267,8 +275,7 @@ router.post('/', authMiddleware, async (req, res) => {
     );
     await client.query('COMMIT');
 
-    const { rows: updatedUser } = await pool.query('SELECT credits FROM users WHERE id=$1', [user.id]);
-    res.json({ post: postRows[0], creditsRemaining: updatedUser[0]?.credits ?? user.credits - 2, imagePrompt, imageUrl });
+    res.json({ post: postRows[0], creditsRemaining: remainingCredits, imagePrompt, imageUrl });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     logger.error('Generate content failed', { error: err.message });

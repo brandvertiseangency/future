@@ -7,6 +7,7 @@ import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { ChevronLeft, RotateCcw, Download, Check, Loader2 } from 'lucide-react'
 import { PageContainer, SurfaceCard } from '@/components/ui/page-primitives'
+import { toast } from 'sonner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
@@ -60,7 +61,7 @@ export default function OutputDetailPage() {
       })
       setFeedback('')
       mutate()
-    } catch (e: any) { alert(e.message) }
+    } catch (e: any) { toast.error(e.message || 'Failed to regenerate') }
     finally { setRegenerate(false) }
   }
 
@@ -73,7 +74,7 @@ export default function OutputDetailPage() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       })
       mutate()
-    } catch (e: any) { alert(e.message) }
+    } catch (e: any) { toast.error(e.message || 'Failed to approve') }
     finally { setApproving(false) }
   }
 

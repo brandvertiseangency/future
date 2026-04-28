@@ -7,6 +7,7 @@ import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { Edit2, Trash2, CheckCircle2, Loader2, ChevronLeft, Check } from 'lucide-react'
 import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
+import { toast } from 'sonner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
@@ -15,10 +16,15 @@ interface Slot {
   id: string
   slot_date: string
   day_of_week: string
+  topic?: string
   content_type: 'post' | 'reel' | 'carousel' | 'story'
+  format?: string
   content_category: string
   post_idea: string
+  creative_copy?: string
   creative_brief?: string
+  caption_draft?: string
+  hashtags_draft?: string[]
   platform: string
   status: string
 }
@@ -35,10 +41,14 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
   selected: boolean
   onToggle: () => void
   onDelete: () => void
-  onEdit: (value: { post_idea?: string; creative_brief?: string }) => void
+  onEdit: (value: { topic?: string; post_idea?: string; creative_copy?: string; caption_draft?: string; hashtags_draft?: string[]; creative_brief?: string }) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [topic, setTopic] = useState(slot.topic || '')
   const [idea, setIdea] = useState(slot.post_idea)
+  const [creativeCopy, setCreativeCopy] = useState(slot.creative_copy || '')
+  const [captionDraft, setCaptionDraft] = useState(slot.caption_draft || '')
+  const [hashtagsDraft, setHashtagsDraft] = useState((slot.hashtags_draft || []).join(', '))
   const [creativeBrief, setCreativeBrief] = useState(slot.creative_brief || '')
   const styles = TYPE_STYLES[slot.content_type] ?? TYPE_STYLES.post
   const date = new Date(slot.slot_date)
@@ -83,11 +93,42 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
       {/* Idea */}
       {editing ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <textarea
+          <input
             autoFocus
+            value={topic}
+            onChange={e => setTopic(e.target.value)}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 7, padding: '8px 9px', color: 'rgba(255,255,255,0.86)', fontSize: 12,
+              outline: 'none', fontFamily: 'inherit',
+            }}
+            placeholder="Topic"
+          />
+          <textarea
             value={idea}
             onChange={e => setIdea(e.target.value)}
-            onBlur={() => { onEdit({ post_idea: idea, creative_brief: creativeBrief }); setEditing(false) }}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
             style={{
               width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 12,
@@ -96,9 +137,84 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
             rows={3}
           />
           <textarea
+            value={creativeCopy}
+            onChange={e => setCreativeCopy(e.target.value)}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              resize: 'none', outline: 'none', fontFamily: 'inherit',
+            }}
+            rows={3}
+            placeholder="Creative copy"
+          />
+          <textarea
+            value={captionDraft}
+            onChange={e => setCaptionDraft(e.target.value)}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              resize: 'none', outline: 'none', fontFamily: 'inherit',
+            }}
+            rows={3}
+            placeholder="Caption draft"
+          />
+          <input
+            value={hashtagsDraft}
+            onChange={e => setHashtagsDraft(e.target.value)}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
+            style={{
+              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+              borderRadius: 7, padding: '8px 9px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              outline: 'none', fontFamily: 'inherit',
+            }}
+            placeholder="Hashtags (comma-separated)"
+          />
+          <textarea
             value={creativeBrief}
             onChange={e => setCreativeBrief(e.target.value)}
-            onBlur={() => { onEdit({ post_idea: idea, creative_brief: creativeBrief }); setEditing(false) }}
+            onBlur={() => {
+              onEdit({
+                topic,
+                post_idea: idea,
+                creative_copy: creativeCopy,
+                caption_draft: captionDraft,
+                hashtags_draft: hashtagsDraft.split(',').map((t) => t.trim().replace(/^#/, '')).filter(Boolean),
+                creative_brief: creativeBrief,
+              })
+              setEditing(false)
+            }}
             style={{
               width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
               borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
@@ -110,9 +226,29 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
         </div>
       ) : (
         <div style={{ marginBottom: 8, paddingRight: 24 }}>
+          {slot.topic && (
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.48)', lineHeight: 1.35, marginBottom: 6 }}>
+              Topic: {slot.topic}
+            </p>
+          )}
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4, marginBottom: slot.creative_brief ? 6 : 0 }}>
             {idea}
           </p>
+          {slot.creative_copy && (
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+              Creative Copy: {slot.creative_copy}
+            </p>
+          )}
+          {slot.caption_draft && (
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.52)', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+              Caption: {slot.caption_draft}
+            </p>
+          )}
+          {slot.hashtags_draft && slot.hashtags_draft.length > 0 && (
+            <p style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.38)', lineHeight: 1.3 }}>
+              Hashtags: {slot.hashtags_draft.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
+            </p>
+          )}
           {slot.creative_brief && (
             <p style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
               {slot.creative_brief}
@@ -124,6 +260,9 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
       {/* Platform + category */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{slot.platform}</span>
+        {slot.format && (
+          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.24)' }}>· {slot.format}</span>
+        )}
         {slot.content_category && (
           <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>· {slot.content_category}</span>
         )}
@@ -175,7 +314,7 @@ function CalendarReviewInner() {
   const allSlots: Slot[] = planData?.slots ?? []
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
-  const [edits, setEdits] = useState<Record<string, { post_idea?: string; creative_brief?: string }>>({})
+  const [edits, setEdits] = useState<Record<string, { topic?: string; post_idea?: string; creative_copy?: string; caption_draft?: string; hashtags_draft?: string[]; creative_brief?: string }>>({})
   const [approving, setApproving] = useState(false)
 
   const slots = allSlots.filter(s => !deletedIds.has(s.id))
@@ -217,7 +356,7 @@ function CalendarReviewInner() {
       const { jobId } = await res.json()
       router.push(`/generate/queue?jobId=${jobId}`)
     } catch (e: any) {
-      alert(e.message)
+      toast.error(e.message || 'Failed to approve plan')
     } finally {
       setApproving(false)
     }

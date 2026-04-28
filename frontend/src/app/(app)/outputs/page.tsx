@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { PageContainer, PageHeader, EmptyState } from '@/components/ui/page-primitives'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Post {
   id: string
@@ -108,6 +109,7 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
   const [editingCaption, setEditingCaption] = useState(false)
   const [caption, setCaption] = useState(post.caption)
   const [saving, setSaving] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   const handleSaveCaption = async () => {
     setSaving(true)
@@ -121,12 +123,12 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
   }
 
   const handleDelete = async () => {
-    if (!confirm('Delete this post?')) return
     try {
       await apiCall(`/api/posts/${post.id}`, { method: 'DELETE' })
       mutate(swrKey)
       toast.success('Post deleted')
     } catch { toast.error('Delete failed') }
+    finally { setShowDeleteConfirm(false) }
   }
 
   const handleSchedule = async () => {
@@ -156,6 +158,7 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
   }
 
   return (
+    <>
     <div className="group rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0a0a0a] transition-all duration-200 hover:border-white/[0.18] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
       {/* Image */}
       <div className="aspect-square relative bg-white/[0.03] overflow-hidden">
@@ -184,7 +187,7 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
               { icon: Download, label: 'Download', fn: handleDownload, color: 'white', disabled: imageMissing },
               { icon: CalendarDays, label: 'Schedule', fn: handleSchedule, color: '#60a5fa' },
               { icon: Check, label: 'Approve', fn: handleApprove, color: '#34d399' },
-              { icon: Trash2, label: 'Delete', fn: handleDelete, color: '#f87171' },
+              { icon: Trash2, label: 'Delete', fn: () => setShowDeleteConfirm(true), color: '#f87171' },
             ].map(({ icon: Icon, label, fn, color, disabled }) => (
               <button key={label} title={disabled ? `${label} unavailable` : label} onClick={fn} disabled={disabled}
                 className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-black/80 transition-all disabled:opacity-35 disabled:cursor-not-allowed"
@@ -239,7 +242,7 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
                   className="w-8 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/30 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all">
                   <Check size={12} />
                 </button>
-                <button onClick={handleDelete} title="Delete"
+                <button onClick={() => setShowDeleteConfirm(true)} title="Delete"
                   className="w-8 h-7 flex items-center justify-center rounded-lg bg-white/[0.05] border border-white/[0.08] text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-all">
                   <Trash2 size={12} />
                 </button>
@@ -252,5 +255,15 @@ function OutputCard({ post, swrKey }: { post: Post; swrKey: string }) {
         </p>
       </div>
     </div>
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      title="Delete this post?"
+      description="This action cannot be undone."
+      confirmLabel="Delete"
+      tone="danger"
+      onCancel={() => setShowDeleteConfirm(false)}
+      onConfirm={handleDelete}
+    />
+    </>
   )
 }

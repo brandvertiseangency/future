@@ -208,17 +208,30 @@ function CalendarGenerateInner() {
       )}
 
       {latestPlanId && (
-        <button
-          onClick={() => router.push(`/calendar/review?planId=${latestPlanId}`)}
-          style={{
-            marginTop: 12, width: '100%', padding: '11px',
-            borderRadius: 10, border: '1px solid rgba(255,255,255,0.14)',
-            background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.7)',
-            fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Open latest generated plan for review
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+          <button
+            onClick={() => router.push(`/calendar/review?planId=${latestPlanId}`)}
+            style={{
+              width: '100%', padding: '11px',
+              borderRadius: 10, border: '1px solid rgba(255,255,255,0.14)',
+              background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.7)',
+              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Open latest plan
+          </button>
+          <button
+            onClick={() => router.push('/calendar/content')}
+            style={{
+              width: '100%', padding: '11px',
+              borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)',
+              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.84)',
+              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Open Content Studio
+          </button>
+        </div>
       )}
 
       {/* CTA */}

@@ -131,6 +131,13 @@ const generateImageWithOpenAI = async (prompt, timeoutMs) => {
     logger.warn('OpenAI image generation failed', { error: err?.message || 'unknown_error' });
     return null;
   }
+
+const openAiSizeFromAspectRatio = (aspectRatio = '1:1') => {
+  if (aspectRatio === '9:16') return '1024x1536';
+  if (aspectRatio === '4:5') return '1024x1536';
+  if (aspectRatio === '16:9') return '1536x1024';
+  return '1024x1024';
+};
 };
 
 /**
@@ -154,7 +161,28 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
 
   // OpenAI primary path (ChatGPT image model)
   if (openAiPrimary) {
-    const openAiImage = await generateImageWithOpenAI(imagePrompt, timeoutMs);
+    const openAiImage = await (async () => {
+      if (!process.env.OPENAI_API_KEY) return null;
+      try {
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: timeoutMs });
+        const response = await withTimeout(
+          openai.images.generate({
+            model: OPENAI_IMAGE_MODEL,
+            prompt: imagePrompt,
+            size: openAiSizeFromAspectRatio(aspectRatio),
+            quality: 'high',
+          }),
+          timeoutMs
+        );
+        const b64 = response?.data?.[0]?.b64_json;
+        return b64 ? `data:image/png;base64,${b64}` : null;
+      } catch (err) {
+        const logger = require('../utils/logger');
+        logger.warn('OpenAI image generation failed', { error: err?.message || 'unknown_error' });
+        return null;
+      }
+    })();
     if (openAiImage) return { imageData: openAiImage, error: null, provider: 'openai' };
     lastError = `OpenAI image generation failed (model: ${OPENAI_IMAGE_MODEL})`;
     if (!hasGoogle) {

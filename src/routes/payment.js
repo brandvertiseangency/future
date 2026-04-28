@@ -70,12 +70,13 @@ router.post(
  * POST /payment/webhook
  * Razorpay webhook handler.
  */
-router.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+router.post("/webhook", async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
-    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    const rawBody = Buffer.isBuffer(req.body) ? req.body.toString("utf8") : String(req.body || "");
+    const body = JSON.parse(rawBody || "{}");
 
-    const result = await paymentService.handleWebhook(body, signature);
+    const result = await paymentService.handleWebhook(body, signature, rawBody);
     res.json(result);
   } catch (err) {
     logger.error("Webhook handling failed", { error: err.message });

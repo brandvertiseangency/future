@@ -11,6 +11,7 @@ const { getPool } = require("../config/postgres");
 const logger = require("../utils/logger");
 const { buildSystemPrompt: buildEngineSystemPrompt, buildUserPrompt: buildEngineUserPrompt } = require("../lib/prompt-engine");
 const { persistGeneratedImageToStorage, stringifyPromptPayload } = require("../lib/generatedImageStore");
+const { deductByUserIdAndLog } = require('../services/creditService');
 
 const purgePromptArtifactsForPost = async (pool, postId, userId) => {
   await pool.query(
@@ -156,6 +157,17 @@ router.post('/generate', authMiddleware, async (req, res) => {
   const { platforms = [], contentType = 'post', brief, mood } = req.body;
   if (!brief?.trim()) return res.status(400).json({ error: 'brief is required' });
   if (!platforms.length) return res.status(400).json({ error: 'At least one platform is required' });
+  const allowedPlatforms = ['instagram', 'facebook', 'linkedin', 'x', 'twitter', 'tiktok', 'youtube', 'pinterest'];
+  const allowedContentTypes = ['post', 'reel', 'carousel', 'story'];
+  if (!platforms.every((p) => allowedPlatforms.includes(String(p).toLowerCase()))) {
+    return res.status(400).json({ error: 'One or more platforms are invalid.' });
+  }
+  if (!allowedContentTypes.includes(String(contentType).toLowerCase())) {
+    return res.status(400).json({ error: 'contentType is invalid.' });
+  }
+  if (String(brief).trim().length < 8) {
+    return res.status(400).json({ error: 'brief must be at least 8 characters.' });
+  }
 
   const user = await getUserWithBrand(req.user.uid);
   if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -204,19 +216,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
         }
 
         await client.query('BEGIN');
-        await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [user.id]);
-        // Insert credit transaction — handle both old (reason) and new (description) schema
-        try {
-          await client.query(
-            `INSERT INTO credit_transactions (user_id,amount,type,description) VALUES ($1,-2,'usage',$2)`,
-            [user.id, `Generated ${contentType} for ${platform}`]
-          );
-        } catch {
-          await client.query(
-            `INSERT INTO credit_transactions (user_id,amount,type,reason) VALUES ($1,-2,'usage',$2)`,
-            [user.id, `Generated ${contentType} for ${platform}`]
-          );
-        }
+        await deductByUserIdAndLog(client, user.id, 2, `Generated ${contentType} for ${platform}`);
         const { rows } = await client.query(
           `INSERT INTO posts (user_id,brand_id,platform,content_type,caption,hashtags,status,is_ai_generated,generation_prompt,image_url)
            VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8) RETURNING *`,

@@ -8,9 +8,12 @@ const logger = require("../utils/logger");
 async function authMiddleware(req, res, next) {
   // Skip auth in development if Firebase is not configured
   if (!initialized) {
-    logger.warn("Auth middleware skipped — Firebase not initialized");
-    req.user = { uid: "dev-user", email: "dev@brandvertise.ai" };
-    return next();
+    if (process.env.NODE_ENV === "development") {
+      logger.warn("Auth middleware skipped — Firebase not initialized (development only)");
+      req.user = { uid: "dev-user", email: "dev@brandvertise.ai" };
+      return next();
+    }
+    return res.status(503).json({ error: "Authentication is not configured for this environment." });
   }
 
   const header = req.headers.authorization;

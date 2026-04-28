@@ -26,6 +26,7 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/calendar':  { title: 'Calendar',   sub: 'Content Schedule' },
   '/calendar/generate': { title: 'Content Plan', sub: 'Generate' },
   '/calendar/review': { title: 'Content Plan', sub: 'Review' },
+  '/calendar/content': { title: 'Content Studio', sub: 'Saved Calendar Content' },
   '/generate':  { title: 'Generate',   sub: 'Create Content' },
   '/generate/queue': { title: 'Generation Queue', sub: 'Live Progress' },
   '/assets':    { title: 'Assets',     sub: 'Brand Files' },

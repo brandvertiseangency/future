@@ -46,6 +46,7 @@ function GenerationQueueInner() {
   const job: Job | undefined = (jobData as any)?.job
   const slots: SlotDetail[] = (jobData as any)?.slots ?? []
   const pct = job ? Math.round((job.completed_slots / Math.max(job.total_slots, 1)) * 100) : 0
+  const computedDone = !!job && job.total_slots > 0 && (job.completed_slots + (job.failed_slots || 0)) >= job.total_slots
 
   if (!job) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', flexDirection: 'column', gap: 10 }}>
@@ -54,8 +55,8 @@ function GenerationQueueInner() {
     </div>
   )
 
-  const isActive = job.status === 'running' || job.status === 'queued'
-  const isDone = job.status === 'complete'
+  const isActive = (job.status === 'running' || job.status === 'queued') && !computedDone
+  const isDone = job.status === 'complete' || computedDone
 
   return (
     <PageContainer className="max-w-4xl">

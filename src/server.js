@@ -58,6 +58,7 @@ app.use(cors({
 }));
 // Handle preflight for all routes
 app.options("*", cors());
+app.use("/api/payment/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -70,6 +71,17 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/", limiter);
+const expensiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { error: "Too many generation requests. Please try again shortly." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use("/api/calendar/generate-plan", expensiveLimiter);
+app.use("/api/calendar/plans", expensiveLimiter);
+app.use("/api/generate-content", expensiveLimiter);
+app.use("/api/generate", expensiveLimiter);
 
 // ─── Static files (outputs only — prototype removed) ──
 app.use("/outputs", express.static(path.join(__dirname, "../outputs")));

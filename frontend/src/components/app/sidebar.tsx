@@ -50,8 +50,8 @@ const SvgBriefcase = makeIcon(IconBriefcase)
 const NAV_WORKSPACE: { href: string; label: string; icon: SvgIconComponent }[] = [
   { href: '/dashboard',        label: 'Home',         icon: SvgDashboard },
   { href: '/calendar',         label: 'Calendar',     icon: SvgCalendar  },
-  // Review requires a planId; send users to the generator entry instead.
   { href: '/calendar/generate',label: 'Content Plan', icon: SvgSparkles  },
+  { href: '/calendar/content', label: 'Content Studio', icon: SvgSparkles  },
   { href: '/generate',         label: 'Generate',     icon: SvgImages    },
 ]
 const NAV_CONTENT: { href: string; label: string; icon: SvgIconComponent }[] = [

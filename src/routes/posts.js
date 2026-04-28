@@ -7,6 +7,7 @@ const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
+const { deductByUserIdAndLog } = require('../services/creditService');
 
 const purgePromptArtifactsForPost = async (pool, postId, userId) => {
   await pool.query(
@@ -342,6 +343,7 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
     }
 
     // Call AI
+    const newVersion = (post.version_number || 1) + 1;
     let caption = post.caption, hashtags = post.hashtags || [], imagePrompt = '';
     let imageUrl = post.image_url;
     try {
@@ -370,16 +372,10 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
       logger.warn('AI regen failed, keeping original', { error: e.message });
     }
 
-    const newVersion = (post.version_number || 1) + 1;
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [userId]);
-      try {
-        await client.query(`INSERT INTO credit_transactions (user_id,amount,type,description) VALUES ($1,-2,'usage',$2)`, [userId, `Regenerated ${post.content_type}`]);
-      } catch {
-        await client.query(`INSERT INTO credit_transactions (user_id,amount,type,reason) VALUES ($1,-2,'usage',$2)`, [userId, `Regenerated ${post.content_type}`]);
-      }
+      await deductByUserIdAndLog(client, userId, 2, `Regenerated ${post.content_type}`);
       const { rows: updated } = await client.query(
         `UPDATE posts SET caption=$1, hashtags=$2, image_url=$3, version_number=$4, approval_status='pending', updated_at=NOW()
          WHERE id=$5 RETURNING *`,

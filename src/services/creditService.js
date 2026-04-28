@@ -97,6 +97,41 @@ async function deductAndLog(uid, action, metadata = {}) {
 }
 
 /**
+ * Atomically deduct credits by internal user ID inside an open transaction.
+ * Prevents negative balances under concurrent requests.
+ */
+async function deductByUserIdAndLog(client, userId, amount, note) {
+  const debit = Math.max(1, Number(amount) || 1);
+  const { rows } = await client.query(
+    `UPDATE users
+     SET credits = credits - $2,
+         updated_at = NOW()
+     WHERE id = $1 AND credits >= $2
+     RETURNING credits`,
+    [userId, debit]
+  );
+  if (!rows[0]) {
+    const err = new Error('insufficient_credits');
+    err.code = 'INSUFFICIENT_CREDITS';
+    throw err;
+  }
+  try {
+    await client.query(
+      `INSERT INTO credit_transactions (user_id,amount,type,description)
+       VALUES ($1,$2,'usage',$3)`,
+      [userId, -debit, note || 'usage']
+    );
+  } catch {
+    await client.query(
+      `INSERT INTO credit_transactions (user_id,amount,type,reason)
+       VALUES ($1,$2,'usage',$3)`,
+      [userId, -debit, note || 'usage']
+    );
+  }
+  return rows[0].credits;
+}
+
+/**
  * Check regeneration limit based on plan.
  */
 async function checkRegenLimit(uid, postId) {
@@ -157,6 +192,7 @@ async function getUsageHistory(uid, limit = 50) {
 module.exports = {
   canPerform,
   deductAndLog,
+  deductByUserIdAndLog,
   checkRegenLimit,
   getUsageHistory,
 };

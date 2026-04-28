@@ -13,6 +13,7 @@ const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 const { buildSystemPrompt, buildUserPrompt } = require('../lib/prompt-engine');
 const { persistGeneratedImageToStorage, stringifyPromptPayload } = require('../lib/generatedImageStore');
+const { deductByUserIdAndLog } = require('../services/creditService');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,30 +29,41 @@ async function hasColumn(pool, tableName, columnName) {
 }
 
 let generationDebugColumnsReady = false;
+let calendarDraftColumnsReady = false;
 async function ensureGenerationDebugColumns(pool) {
   if (generationDebugColumnsReady) return;
-  await pool.query(`ALTER TABLE generation_jobs ADD COLUMN IF NOT EXISTS last_error TEXT`);
-  await pool.query(`ALTER TABLE calendar_slots ADD COLUMN IF NOT EXISTS error_message TEXT`);
-  // Older installs enforce a status check that excludes "failed".
-  // Recreate it to include failed so slot errors can be persisted correctly.
-  try {
-    await pool.query(`ALTER TABLE calendar_slots DROP CONSTRAINT IF EXISTS calendar_slots_status_check`);
-    await pool.query(`
-      ALTER TABLE calendar_slots
-      ADD CONSTRAINT calendar_slots_status_check
-      CHECK (status IN ('pending','approved','generating','generated','failed','rejected'))
-    `);
-  } catch (err) {
-    logger.warn('Could not update calendar_slots status constraint', { error: err.message });
-  }
+  // DDL moved to tracked SQL migrations.
   generationDebugColumnsReady = true;
 }
 
+async function ensureCalendarDraftColumns(pool) {
+  if (calendarDraftColumnsReady) return;
+  // DDL moved to tracked SQL migrations.
+  calendarDraftColumnsReady = true;
+}
+
 async function reconcileStalledJob(pool, job) {
-  if (!job || job.status !== 'running' || !job.started_at) return job;
+  if (!job) return job;
+  const hasNoRemaining = (job.completed_slots + job.failed_slots) >= job.total_slots;
+
+  // Self-heal inconsistent states: if all slots are accounted for, force complete.
+  if (hasNoRemaining && job.status !== 'complete') {
+    await pool.query(
+      `UPDATE generation_jobs
+       SET status='complete',
+           completed_at=COALESCE(completed_at, NOW()),
+           current_slot_id=NULL
+       WHERE id=$1`,
+      [job.id]
+    );
+    const { rows } = await pool.query(`SELECT * FROM generation_jobs WHERE id=$1`, [job.id]);
+    return rows[0] || job;
+  }
+
+  if (job.status !== 'running' || !job.started_at) return job;
   const startedAt = new Date(job.started_at).getTime();
   const ageMs = Date.now() - startedAt;
-  const STALE_MS = 3 * 60 * 1000; // 3 minutes
+  const STALE_MS = 10 * 60 * 1000; // 10 minutes
   const hasWorkRemaining = (job.completed_slots + job.failed_slots) < job.total_slots;
   if (!hasWorkRemaining || ageMs < STALE_MS) return job;
 
@@ -239,8 +251,10 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
 
-  const { month, postCount, mixPreferences = {} } = req.body;
-  if (!month) return res.status(400).json({ error: 'month is required (YYYY-MM)' });
+    const { month, postCount, mixPreferences = {} } = req.body;
+    if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+      return res.status(400).json({ error: 'month is required (YYYY-MM)' });
+    }
 
   const user = await getUserWithBrand(req.user.uid);
   if (!user) return res.status(404).json({ error: 'User not found.' });
@@ -254,6 +268,11 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
     mixPreferences && Object.keys(mixPreferences).length
       ? mixPreferences
       : (user.pref_content_mix || { promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 });
+  const mixValues = Object.values(resolvedMixPreferences).map((v) => Number(v) || 0);
+  const mixTotal = mixValues.reduce((a, b) => a + b, 0);
+  if (mixTotal <= 0 || mixTotal > 200) {
+    return res.status(400).json({ error: 'mixPreferences looks invalid.' });
+  }
 
   const creditsRequired = resolvedPostCount * 2;
   if ((user.credits || 0) < creditsRequired) {
@@ -374,12 +393,16 @@ Return ONLY valid JSON (no markdown) in this exact shape:
 
 Each item MUST have:
 {
+  "topic": "short campaign/topic title",
   "category": "promotional|educational|testimonial|bts|festive",
   "content_type": "post|reel|carousel|story",
+  "format": "single_image|carousel|video|story_card",
   "platform": "${platforms.join('|')}",
   "post_idea": "ONE sentence concept (not generic)",
+  "creative_copy": "hook + key narrative copy in 2-5 lines",
   "creative_brief": "4-6 bullet lines. Must include: Goal, Key message, Visual concept, Composition, Lighting, Product placement (or 'N/A')",
-  "caption_draft": "Caption only (no hashtags). Must follow: Hook → Value → CTA. Match tone. 2-6 lines with line breaks."
+  "caption_draft": "Caption only (no hashtags). Must follow: Hook → Value → CTA. Match tone. 2-6 lines with line breaks.",
+  "hashtags_draft": ["3-8 relevant hashtags without # prefix"]
 }
 
 Rules:
@@ -424,7 +447,12 @@ Return ONLY JSON.`;
     const dates = buildPostDates(month, slots.length);
 
     // 3. Persist content_plan + calendar_slots
+    await ensureCalendarDraftColumns(pool);
     const canStoreCreativeBrief = await hasColumn(pool, 'calendar_slots', 'creative_brief');
+    const canStoreTopic = await hasColumn(pool, 'calendar_slots', 'topic');
+    const canStoreFormat = await hasColumn(pool, 'calendar_slots', 'format');
+    const canStoreCreativeCopy = await hasColumn(pool, 'calendar_slots', 'creative_copy');
+    const canStoreHashtagsDraft = await hasColumn(pool, 'calendar_slots', 'hashtags_draft');
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -444,8 +472,37 @@ Return ONLY JSON.`;
         const postIdea = (s.post_idea || '').toString().trim();
         const captionDraft = (s.caption_draft || '').toString().trim();
         const creativeBrief = (s.creative_brief || '').toString().trim();
+        const topic = (s.topic || postIdea || '').toString().trim().slice(0, 140);
+        const format = (s.format || (contentType === 'carousel' ? 'carousel' : contentType === 'reel' ? 'video' : 'single_image')).toString().trim();
+        const creativeCopy = (s.creative_copy || captionDraft || postIdea || '').toString().trim();
+        const hashtagsDraft = Array.isArray(s.hashtags_draft)
+          ? s.hashtags_draft.map((h) => String(h || '').replace(/^#/, '').trim()).filter(Boolean).slice(0, 10)
+          : [];
 
-        const { rows: slotRows } = await (canStoreCreativeBrief
+        const canStoreFullSocialCalendar = canStoreCreativeBrief && canStoreTopic && canStoreFormat && canStoreCreativeCopy && canStoreHashtagsDraft;
+        const { rows: slotRows } = await (canStoreFullSocialCalendar
+          ? client.query(
+              `INSERT INTO calendar_slots (plan_id, brand_id, slot_date, day_of_week, topic, content_type, format, content_category, post_idea, creative_copy, creative_brief, caption_draft, hashtags_draft, platform, sort_order)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING *`,
+              [
+                plan.id,
+                user.brand_id,
+                d.date,
+                d.dayOfWeek,
+                topic || postIdea,
+                contentType,
+                format,
+                s.category || 'promotional',
+                postIdea,
+                creativeCopy || null,
+                creativeBrief || null,
+                captionDraft,
+                hashtagsDraft,
+                platform,
+                i,
+              ]
+            )
+          : (canStoreCreativeBrief
           ? client.query(
               `INSERT INTO calendar_slots (plan_id, brand_id, slot_date, day_of_week, content_type, content_category, post_idea, creative_brief, caption_draft, platform, sort_order)
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
@@ -478,7 +535,7 @@ Return ONLY JSON.`;
                 platform,
                 i,
               ]
-            )
+            ))
         );
         insertedSlots.push(slotRows[0]);
       }
@@ -501,7 +558,8 @@ Return ONLY JSON.`;
 
 // ─── GET /api/calendar/plans/:planId ─────────────────────────────────────────
 
-router.get('/plans/:planId', authMiddleware, async (req, res) => {
+router.get('/plans/:planId', authMiddleware, async (req, res, next) => {
+  if (req.params.planId === 'latest') return next();
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   try {
@@ -524,6 +582,29 @@ router.get('/plans/:planId', authMiddleware, async (req, res) => {
   } catch (err) {
     logger.error('get plan failed', { error: err.message });
     res.status(500).json({ error: 'Failed to fetch plan.' });
+  }
+});
+
+router.get('/plans', authMiddleware, async (req, res) => {
+  const pool = getPool();
+  if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
+  try {
+    const { rows: userRows } = await pool.query('SELECT id FROM users WHERE firebase_uid=$1', [req.user.uid]);
+    const userId = userRows[0]?.id;
+    if (!userId) return res.status(404).json({ error: 'User not found.' });
+
+    const { rows } = await pool.query(
+      `SELECT id, month, year, status, total_posts, created_at
+       FROM content_plans
+       WHERE user_id=$1
+       ORDER BY created_at DESC
+       LIMIT 50`,
+      [userId]
+    );
+    res.json({ plans: rows });
+  } catch (err) {
+    logger.error('get plans failed', { error: err.message });
+    res.status(500).json({ error: 'Failed to fetch plans.' });
   }
 });
 
@@ -568,6 +649,9 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
 
   if (!Array.isArray(selectedSlotIds) || !selectedSlotIds.length) {
     return res.status(400).json({ error: 'selectedSlotIds must be a non-empty array.' });
+  }
+  if (!selectedSlotIds.every((id) => typeof id === 'string' && id.length > 10)) {
+    return res.status(400).json({ error: 'selectedSlotIds must contain valid slot ids.' });
   }
 
   const client = await pool.connect();
@@ -655,7 +739,7 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
 
     logger.info('Plan approved, job created', { planId: plan.id, jobId: job.id, slots: selectedSlotIds.length });
 
-    // Start generation in background
+    // Start generation in background, with durable sweeper fallback.
     setImmediate(() => runGenerationJob(job.id, selectedSlotIds, pool));
 
     res.json({ jobId: job.id, totalSlots: selectedSlotIds.length });
@@ -912,19 +996,13 @@ async function runGenerationJob(jobId, slotIds, pool) {
         try {
           await client.query('BEGIN');
 
-          // Deduct credits
-          await client.query('UPDATE users SET credits=credits-2, updated_at=NOW() WHERE id=$1', [brand.user_id]);
-          try {
-            await client.query(
-              `INSERT INTO credit_transactions (user_id,amount,type,description) VALUES ($1,-2,'usage',$2)`,
-              [brand.user_id, `Generated ${slot.content_type} for ${slot.platform}`]
-            );
-          } catch {
-            await client.query(
-              `INSERT INTO credit_transactions (user_id,amount,type,reason) VALUES ($1,-2,'usage',$2)`,
-              [brand.user_id, `Generated ${slot.content_type} for ${slot.platform}`]
-            );
-          }
+          // Deduct credits atomically (prevents negative balances on concurrent workers)
+          await deductByUserIdAndLog(
+            client,
+            brand.user_id,
+            2,
+            `Generated ${slot.content_type} for ${slot.platform}`
+          );
 
           // Insert post
           const generationPromptPayload = stringifyPromptPayload({
@@ -996,6 +1074,58 @@ async function runGenerationJob(jobId, slotIds, pool) {
     logger.error('runGenerationJob fatal', { jobId, error: safeError, stack: err?.stack });
     await pool.query(`UPDATE generation_jobs SET status='failed', last_error=$2 WHERE id=$1`, [jobId, safeError]).catch(() => {});
   }
+}
+
+let sweepInProgress = false;
+const RUNNABLE_STATUSES = ['queued', 'running'];
+async function sweepQueuedGenerationJobs() {
+  if (sweepInProgress) return;
+  const pool = getPool();
+  if (!pool) return;
+  sweepInProgress = true;
+  try {
+    const { rows: jobs } = await pool.query(
+      `SELECT id, plan_id, status
+       FROM generation_jobs
+       WHERE status = ANY($1::text[])
+       ORDER BY created_at ASC
+       LIMIT 3`,
+      [RUNNABLE_STATUSES]
+    );
+    for (const job of jobs) {
+      const { rows: slotRows } = await pool.query(
+        `SELECT id
+         FROM calendar_slots
+         WHERE plan_id=$1 AND status IN ('approved','generating')
+         ORDER BY sort_order ASC, slot_date ASC`,
+        [job.plan_id]
+      );
+      const slotIds = slotRows.map((r) => r.id);
+      if (!slotIds.length) {
+        await pool.query(
+          `UPDATE generation_jobs
+           SET status='complete',
+               completed_at=COALESCE(completed_at, NOW()),
+               current_slot_id=NULL
+           WHERE id=$1`,
+          [job.id]
+        );
+        continue;
+      }
+      setImmediate(() => runGenerationJob(job.id, slotIds, pool));
+    }
+  } catch (err) {
+    logger.error('generation sweeper failed', { error: err.message });
+  } finally {
+    sweepInProgress = false;
+  }
+}
+
+const SWEEP_MS = 15_000;
+if (!global.__brandvertiseGenerationSweeper) {
+  global.__brandvertiseGenerationSweeper = setInterval(() => {
+    sweepQueuedGenerationJobs().catch(() => {});
+  }, SWEEP_MS);
 }
 
 module.exports = router;

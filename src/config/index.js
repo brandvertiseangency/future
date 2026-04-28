@@ -71,8 +71,8 @@ const config = {
 
   // Auth
   auth: {
-    jwtSecret: process.env.JWT_SECRET || "dev-secret-change-in-production",
-    sessionSecret: process.env.SESSION_SECRET || "dev-session-change-in-production",
+    jwtSecret: process.env.JWT_SECRET || "",
+    sessionSecret: process.env.SESSION_SECRET || "",
   },
 
   // PostgreSQL
@@ -96,5 +96,17 @@ const config = {
     premium: { maxRegenerations: 10, maxBrands: 20, calendarPosts: 30 },
   },
 };
+
+if (config.env === "production") {
+  const required = [
+    ["DATABASE_URL", process.env.DATABASE_URL],
+    ["JWT_SECRET", process.env.JWT_SECRET],
+    ["SESSION_SECRET", process.env.SESSION_SECRET],
+    ["RAZORPAY_WEBHOOK_SECRET", process.env.RAZORPAY_WEBHOOK_SECRET],
+  ].filter(([, value]) => !value);
+  if (required.length) {
+    throw new Error(`Missing required production env vars: ${required.map(([k]) => k).join(", ")}`);
+  }
+}
 
 module.exports = config;
