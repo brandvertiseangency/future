@@ -30,6 +30,7 @@ async function hasColumn(pool, tableName, columnName) {
 
 let generationDebugColumnsReady = false;
 let calendarDraftColumnsReady = false;
+const activeGenerationJobs = new Set();
 async function ensureGenerationDebugColumns(pool) {
   if (generationDebugColumnsReady) return;
   // DDL moved to tracked SQL migrations.
@@ -67,6 +68,29 @@ async function reconcileStalledJob(pool, job) {
   const hasWorkRemaining = (job.completed_slots + job.failed_slots) < job.total_slots;
   if (!hasWorkRemaining || ageMs < STALE_MS) return job;
 
+  // Try self-recovery before marking failed: restart remaining approved/generating slots.
+  const { rows: resumableSlots } = await pool.query(
+    `SELECT id
+     FROM calendar_slots
+     WHERE plan_id=$1 AND status IN ('approved','generating')
+     ORDER BY sort_order ASC, slot_date ASC`,
+    [job.plan_id]
+  );
+  const resumableSlotIds = resumableSlots.map((s) => s.id);
+  if (resumableSlotIds.length && !activeGenerationJobs.has(job.id)) {
+    await pool.query(
+      `UPDATE generation_jobs
+       SET status='queued',
+           current_slot_id=NULL,
+           last_error=COALESCE(last_error, 'Auto-resuming stalled generation job.')
+       WHERE id=$1`,
+      [job.id]
+    );
+    queueGenerationJob(job.id, resumableSlotIds, pool);
+    const { rows: restarted } = await pool.query(`SELECT * FROM generation_jobs WHERE id=$1`, [job.id]);
+    return restarted[0] || job;
+  }
+
   const lastError = `Generation timed out after ${Math.round(ageMs / 1000)}s. Worker likely interrupted; please retry.`;
   if (job.current_slot_id) {
     await pool.query(
@@ -89,6 +113,20 @@ async function reconcileStalledJob(pool, job) {
   );
   const { rows } = await pool.query(`SELECT * FROM generation_jobs WHERE id=$1`, [job.id]);
   return rows[0] || job;
+}
+
+function queueGenerationJob(jobId, slotIds, pool) {
+  if (!jobId || !Array.isArray(slotIds) || !slotIds.length) return false;
+  if (activeGenerationJobs.has(jobId)) return false;
+  activeGenerationJobs.add(jobId);
+  setImmediate(async () => {
+    try {
+      await runGenerationJob(jobId, slotIds, pool);
+    } finally {
+      activeGenerationJobs.delete(jobId);
+    }
+  });
+  return true;
 }
 
 async function getBrandProducts(pool, userId, brandId) {
@@ -740,7 +778,7 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
     logger.info('Plan approved, job created', { planId: plan.id, jobId: job.id, slots: selectedSlotIds.length });
 
     // Start generation in background, with durable sweeper fallback.
-    setImmediate(() => runGenerationJob(job.id, selectedSlotIds, pool));
+    queueGenerationJob(job.id, selectedSlotIds, pool);
 
     res.json({ jobId: job.id, totalSlots: selectedSlotIds.length });
   } catch (err) {
@@ -1112,7 +1150,7 @@ async function sweepQueuedGenerationJobs() {
         );
         continue;
       }
-      setImmediate(() => runGenerationJob(job.id, slotIds, pool));
+      queueGenerationJob(job.id, slotIds, pool);
     }
   } catch (err) {
     logger.error('generation sweeper failed', { error: err.message });
