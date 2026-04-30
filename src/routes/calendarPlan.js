@@ -283,6 +283,22 @@ function enforceSlotQuality(slot, fallbackPlatform) {
   return cleaned;
 }
 
+function buildFallbackCreativeBrief(slot, primaryProductName) {
+  const platform = slot?.platform || 'instagram';
+  const ctype = slot?.content_type || 'post';
+  const productLine = primaryProductName
+    ? `Product placement: Keep ${primaryProductName} as hero subject with exact silhouette/material and authentic fabric texture.`
+    : 'Product placement: N/A (or subtle brand context in scene).';
+  return [
+    `Goal: Drive engagement for a ${platform} ${ctype} with a specific real-life use case.`,
+    `Key message: ${slot?.post_idea || 'Show practical value and style confidence in a realistic moment.'}`,
+    'Visual concept: Real location, natural posture, believable wardrobe styling, no poster/mockup framing.',
+    'Composition: Full-body or 3/4 framing, clean background depth, clear focal subject.',
+    'Lighting: Soft natural light with controlled shadows; avoid overprocessed HDR look.',
+    productLine,
+  ].join('\n');
+}
+
 // ─── POST /api/calendar/generate-plan ────────────────────────────────────────
 
 router.post('/generate-plan', authMiddleware, async (req, res) => {
@@ -964,7 +980,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
           userPrompt = `Create a ${slot.content_type} for ${slot.platform} about: ${slot.post_idea}. Return JSON: { "caption": "...", "hashtags": ["..."], "imagePrompt": "..." }`;
         }
 
-        const creativeBrief = (slot.creative_brief || '').toString().trim();
+        const creativeBrief = (slot.creative_brief || '').toString().trim() || buildFallbackCreativeBrief(slot, primaryImageProduct?.name);
         const productPlacementRule = primaryImageProduct
           ? `\n\nPRODUCT PLACEMENT RULE:\nIf the slot is promotional/testimonial or naturally fits, include "${primaryImageProduct.name}" in the imagePrompt with explicit placement (foreground/background, scale, angle).`
           : '';
@@ -1002,11 +1018,12 @@ async function runGenerationJob(jobId, slotIds, pool) {
           brandVisualNotes.length ? `BRAND_VISUAL_IDENTITY:\n${brandVisualNotes.join('\n')}` : '',
           productContextBlock ? productContextBlock : '',
           creativeBrief ? `SLOT_CREATIVE_BRIEF:\n${creativeBrief}` : '',
+          primaryImageProduct ? `PRODUCT_FIDELITY: Preserve exact garment identity of "${primaryImageProduct.name}" (shape, embroidery motifs, stitch lines, fabric drape, color tone, cuff/placket details).` : '',
           'COMPOSITION_RULES: specify subject, environment, camera angle, lens feel, depth-of-field, and focal point.',
           'LIGHTING_RULES: specify lighting (golden hour / softbox / moody low-key / bright airy) and shadows.',
           'QUALITY: premium, high-end, photorealistic, detailed textures.',
-          'RESTRICTIONS: no text overlays, no logos, no watermarks.',
-          'AVOID: flat stock photo look, generic \"professional social media\" phrasing.',
+          'RESTRICTIONS: absolutely no text, letters, numbers, logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',
+          'AVOID: flat stock photo look, generic \"professional social media\" phrasing, malformed hands, warped faces, or distorted garment seams.',
         ].filter(Boolean).join('\n\n');
 
         const fullImagePrompt = `${imagePrompt}\n\n${artDirection}`;
@@ -1049,6 +1066,8 @@ async function runGenerationJob(jobId, slotIds, pool) {
             creativeBrief,
             imagePrompt,
             artDirection,
+            imageProvider: imageResult?.provider || 'unknown',
+            imageModel: imageResult?.model || 'unknown',
           });
           const { rows: postRows } = await client.query(
             `INSERT INTO posts (user_id, brand_id, platform, content_type, caption, hashtags, status, is_ai_generated, generation_prompt, image_url, slot_id, generation_job_id, approval_status, version_number)
@@ -1063,7 +1082,13 @@ async function runGenerationJob(jobId, slotIds, pool) {
           await client.query(
             `INSERT INTO post_versions (post_id, version_number, caption, image_url, hashtags, generation_prompt)
              VALUES ($1,1,$2,$3,$4,$5)`,
-            [post.id, caption, imageUrl, hashtags, stringifyPromptPayload({ brief: slot.post_idea, imagePrompt, creativeBrief })]
+            [post.id, caption, imageUrl, hashtags, stringifyPromptPayload({
+              brief: slot.post_idea,
+              imagePrompt,
+              creativeBrief,
+              imageProvider: imageResult?.provider || 'unknown',
+              imageModel: imageResult?.model || 'unknown',
+            })]
           );
 
           // Update slot with post reference

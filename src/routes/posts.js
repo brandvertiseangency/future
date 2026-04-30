@@ -345,9 +345,11 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
     // Call AI
     const newVersion = (post.version_number || 1) + 1;
     let caption = post.caption, hashtags = post.hashtags || [], imagePrompt = '';
+    let imageProvider = 'unknown';
+    let imageModel = 'unknown';
     let imageUrl = post.image_url;
     try {
-      const { callAI, generateImage: genImg } = require('../lib/ai');
+      const { callAI, generateImageDetailed } = require('../lib/ai');
       const raw = await callAI({ system: sysPrompt, user: userPrompt }, { maxTokens: 1024 });
       const match = raw.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : raw);
@@ -357,7 +359,11 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
 
       // Generate new image if we have a prompt
       if (imagePrompt) {
-        const newImg = await genImg(`${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image, no text.`);
+        const imageResult = await generateImageDetailed(
+          `${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image. No text/letters/numbers/logos/UI elements/watermarks.`,
+          { aspectRatio: post.content_type === 'reel' || post.content_type === 'story' ? '9:16' : '1:1' }
+        );
+        const newImg = imageResult?.imageData || null;
         if (newImg) {
           const persisted = await persistGeneratedImageToStorage({
             imageData: newImg,
@@ -366,6 +372,8 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
             traceId: `${post.id}-${newVersion}`,
           });
           if (persisted) imageUrl = persisted;
+          imageProvider = imageResult?.provider || 'unknown';
+          imageModel = imageResult?.model || 'unknown';
         }
       }
     } catch (e) {
@@ -385,7 +393,7 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
         await client.query(
           `INSERT INTO post_versions (post_id, version_number, caption, image_url, hashtags, generation_prompt, feedback_note)
            VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-          [req.params.id, newVersion, caption, imageUrl, hashtags, stringifyPromptPayload({ imagePrompt }), feedback]
+          [req.params.id, newVersion, caption, imageUrl, hashtags, stringifyPromptPayload({ imagePrompt, imageProvider, imageModel }), feedback]
         );
         // Keep only latest 3 versions per post to control storage bloat.
         await client.query(

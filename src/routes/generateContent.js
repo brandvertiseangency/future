@@ -228,7 +228,11 @@ router.post('/', authMiddleware, async (req, res) => {
       selectedProductBlock
         ? 'Use the provided product reference image(s) and preserve the same shape, material, color palette, and signature details.'
         : '',
-      'High quality, professional, photorealistic, no text overlays, no watermarks.',
+      selectedProductBlock
+        ? 'Maintain exact product identity: preserve garment silhouette, embroidery pattern, cuffs/placket details, and realistic fabric drape.'
+        : '',
+      'High quality, professional, photorealistic output.',
+      'Hard restrictions: absolutely no text/letters/numbers, no logos, no UI cards, no social app frames, no watermarks.',
     ].filter(Boolean).join(' ');
 
     // Generate image — use ratio from request, fallback to content-type logic
@@ -271,7 +275,16 @@ router.post('/', authMiddleware, async (req, res) => {
       `INSERT INTO posts (user_id,brand_id,platform,content_type,caption,hashtags,status,is_ai_generated,generation_prompt,image_url)
        VALUES ($1,$2,$3,$4,$5,$6,'draft',TRUE,$7,$8) RETURNING *`,
       [user.id, user.brand_id||null, platform, contentType||'post', caption, hashtags,
-       stringifyPromptPayload({ brief, mood, theme, campaign, imagePrompt }), imageUrl]
+       stringifyPromptPayload({
+         brief,
+         mood,
+         theme,
+         campaign,
+         imagePrompt,
+         enrichedImagePrompt,
+         imageProvider: imageResult?.provider || 'unknown',
+         imageModel: imageResult?.model || 'unknown',
+       }), imageUrl]
     );
     await client.query('COMMIT');
 

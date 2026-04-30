@@ -1,569 +1,272 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Upload, Globe, Phone, MapPin, Tag, Save, Loader2,
-  Building2, Pencil, CheckCircle2, AlertCircle, X,
-  Palette, Users, Target, Megaphone,
-} from 'lucide-react'
-import useSWR, { mutate } from 'swr'
+import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { ChevronLeft, ChevronRight, Upload, X } from 'lucide-react'
+import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { BlurFade } from '@/components/ui/blur-fade'
-import { PageHeader } from '@/components/ui/page-primitives'
+import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { SectionCard } from '@/components/ui/saas-primitives'
+import { Button } from '@/components/ui/button'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface BrandData {
-  id: string
-  name: string
-  description: string
-  tagline: string
-  website: string
-  phone: string
-  address: string
-  logo_url: string
-  industry: string
-  tone: number
-  color_primary: string
-  color_secondary: string
-  color_accent: string
-  font_mood: string
-  audience_age_min: number
-  audience_age_max: number
-  audience_gender: string
-  audience_location: string
-  goals: string[]
-  platforms: string[]
-  usp_keywords: string[]
-  industry_usp?: string[]
-  industry_answers?: Record<string, unknown>
-  price_segment: string
-  weekly_post_count?: number
-  content_type_mix?: {
-    promotional?: number
-    educational?: number
-    testimonial?: number
-    bts?: number
-    festive?: number
-  }
-  active_platforms?: string[]
-  auto_schedule?: boolean
-}
+const goals = ['Increase Brand Awareness', 'Drive Sales', 'Engagement', 'Product Launch']
+const styles = ['minimal', 'luxury', 'bold'] as const
+const tones = ['Neutral', 'Warm', 'Professional', 'Friendly']
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const inputBase =
-  'w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white placeholder:text-white/20 text-sm focus:outline-none focus:border-white/[0.22] transition-all'
+const brandSchema = z.object({
+  name: z.string().min(2, 'Brand name is required'),
+  industry: z.string().min(2, 'Industry is required'),
+  audience: z.string().min(5, 'Audience details are required'),
+  goals: z.array(z.string()).min(1, 'Select at least one goal'),
+  style: z.enum(styles),
+  tone: z.string().min(1, 'Select a tone'),
+  visualBalance: z.enum(['text', 'balanced', 'visual']),
+  competitorLinks: z.string().optional(),
+})
 
-const inputWithIcon =
-  'w-full bg-white/[0.03] border border-white/[0.08] rounded-xl pl-9 pr-4 py-2.5 text-white placeholder:text-white/20 text-sm focus:outline-none focus:border-white/[0.22] transition-all'
+type BrandSetupForm = z.infer<typeof brandSchema>
 
-function SectionCard({ title, icon: Icon, children }: { title: string; icon: React.ComponentType<{ size?: number; className?: string }>; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl border border-white/[0.07] bg-[#0a0a0a] overflow-hidden">
-      <div className="flex items-center gap-2.5 px-5 py-4 border-b border-white/[0.05]">
-        <Icon size={14} className="text-white/40" />
-        <h3 className="text-[13px] font-semibold text-white/80 tracking-[-0.01em]">{title}</h3>
-      </div>
-      <div className="p-5 space-y-4">{children}</div>
-    </div>
-  )
-}
+const field = 'h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#111111]'
 
-function FieldRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-[10.5px] font-medium text-white/30 uppercase tracking-[0.1em] mb-1.5">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function BrandDetailsPage() {
-  const { data: brandRes, isLoading: brandLoading } = useSWR(
-    '/api/brand/me',
-    (url: string) => apiCall<{ brand: BrandData }>(url),
-    { revalidateOnFocus: false }
-  )
-  const { data: currentRes, isLoading: currentLoading } = useSWR(
-    '/api/brands/current',
-    (url: string) => apiCall<{ brand: BrandData | null }>(url),
-    { revalidateOnFocus: false }
-  )
-
-  const [form, setForm] = useState<Partial<BrandData>>({})
+  const [step, setStep] = useState(1)
+  const [assets, setAssets] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
-  const logoInputRef = useRef<HTMLInputElement>(null)
 
-  const normalizeBrand = (brand: BrandData): Partial<BrandData> => ({
-    ...brand,
-    usp_keywords: Array.isArray(brand.usp_keywords) && brand.usp_keywords.length
-      ? brand.usp_keywords
-      : (Array.isArray(brand.industry_usp) ? brand.industry_usp : []),
-    content_type_mix: brand.content_type_mix || {
-      promotional: 30,
-      educational: 25,
-      testimonial: 20,
-      bts: 15,
-      festive: 10,
-    },
-    active_platforms: Array.isArray(brand.active_platforms) ? brand.active_platforms : (brand.platforms || []),
-    weekly_post_count: brand.weekly_post_count ?? 4,
-    auto_schedule: typeof brand.auto_schedule === 'boolean' ? brand.auto_schedule : false,
+  const { data: brandRes } = useSWR('/api/brand/me', (url: string) => apiCall<{ brand?: { name?: string; industry?: string; description?: string } }>(url), { revalidateOnFocus: false })
+  const defaults = useMemo(
+    () => ({
+      name: brandRes?.brand?.name ?? '',
+      industry: brandRes?.brand?.industry ?? '',
+      audience: '',
+      goals: [] as string[],
+      style: 'minimal' as const,
+      tone: '',
+      visualBalance: 'balanced' as const,
+      competitorLinks: '',
+    }),
+    [brandRes]
+  )
+
+  const form = useForm<BrandSetupForm>({
+    defaultValues: defaults,
+    values: defaults,
+    mode: 'onChange',
   })
 
-  useEffect(() => {
-    const resolved = brandRes?.brand || currentRes?.brand
-    if (resolved) {
-      setForm(normalizeBrand(resolved))
-      setDirty(false)
+  const onSubmit = async (values: BrandSetupForm) => {
+    const parsed = brandSchema.safeParse(values)
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? 'Please complete all required fields')
+      return
     }
-  }, [brandRes, currentRes])
-
-  const update = (patch: Partial<BrandData>) => {
-    setForm((f) => ({ ...f, ...patch }))
-    setDirty(true)
-  }
-
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onloadend = () => update({ logo_url: reader.result as string })
-    reader.readAsDataURL(file)
-  }
-
-  const handleSave = async () => {
     setSaving(true)
     try {
       await apiCall('/api/brand/me', {
         method: 'PATCH',
         body: JSON.stringify({
-          name: form.name,
-          description: form.description,
-          tagline: form.tagline,
-          website: form.website,
-          phone: form.phone,
-          address: form.address,
-          logo_url: form.logo_url,
-          industry: form.industry,
-          tone: form.tone,
-          color_primary: form.color_primary,
-          color_secondary: form.color_secondary,
-          color_accent: form.color_accent,
-          font_mood: form.font_mood,
-          audience_age_min: form.audience_age_min,
-          audience_age_max: form.audience_age_max,
-          audience_gender: form.audience_gender,
-          audience_location: form.audience_location,
-          goals: form.goals,
-          platforms: form.platforms,
-          usp_keywords: form.usp_keywords,
-          price_segment: form.price_segment,
-          weekly_post_count: form.weekly_post_count,
-          content_type_mix: form.content_type_mix,
-          active_platforms: form.active_platforms,
-          auto_schedule: form.auto_schedule,
-          industry_answers: form.industry_answers,
+          name: values.name,
+          industry: values.industry,
+          description: values.audience,
+          goals: values.goals,
+          tone: 50,
+          font_mood: values.style,
+          audience_location: values.audience,
+          website: values.competitorLinks ?? '',
         }),
       })
-      await mutate('/api/brand/me')
-      setDirty(false)
-      toast.success('Brand details saved!')
+      toast.success('Brand setup saved')
     } catch {
-      toast.error('Failed to save — please try again')
+      toast.error('Unable to save brand setup')
     } finally {
       setSaving(false)
     }
   }
 
-  const initials = form.name?.slice(0, 2).toUpperCase() ?? 'BV'
-
-  if (brandLoading || currentLoading) {
-    return (
-      <div className="h-[calc(100vh-56px)] flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-white/20" />
-      </div>
+  const toggleGoal = (goal: string) => {
+    const current = form.getValues('goals')
+    form.setValue(
+      'goals',
+      current.includes(goal) ? current.filter((g) => g !== goal) : [...current, goal],
+      { shouldValidate: true }
     )
   }
 
+  const onAssetUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? [])
+    const urls = files.map((file) => URL.createObjectURL(file))
+    setAssets((prev) => [...prev, ...urls].slice(0, 8))
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-6 py-8 space-y-6 pb-24">
-      {/* Header */}
-      <BlurFade delay={0}>
-        <div className="flex items-start justify-between">
-          <PageHeader
-            title="Your Brand"
-            description="Update your brand details used across all AI-generated content."
-          />
-          <motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={handleSave}
-            disabled={!dirty || saving}
-            className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
-              dirty
-                ? 'bg-white text-black hover:bg-white/90'
-                : 'bg-white/[0.05] text-white/25 cursor-default'
-            )}
-          >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {saving ? 'Saving…' : 'Save Changes'}
-          </motion.button>
+    <PageContainer className="space-y-6">
+      <PageHeader title="Create New Brand" description="Set up your brand details, style and assets for high-quality generation." />
+
+      <div className="app-card p-4">
+        <div className="flex items-center justify-between text-xs text-[#6B7280]">
+          <span className={cn(step >= 1 && 'text-[#111111]')}>1. Brand Details</span>
+          <span className={cn(step >= 2 && 'text-[#111111]')}>2. Brand Assets</span>
+          <span className={cn(step >= 3 && 'text-[#111111]')}>3. Review</span>
         </div>
-      </BlurFade>
+        <div className="mt-2 h-1 rounded-full bg-[#EFEFF1]">
+          <div className="h-1 rounded-full bg-[#111111] transition-all" style={{ width: `${(step / 3) * 100}%` }} />
+        </div>
+      </div>
 
-      {/* Unsaved changes banner */}
-      {dirty && (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500/[0.08] border border-amber-500/20 text-amber-400 text-sm"
-        >
-          <AlertCircle size={14} />
-          You have unsaved changes
-        </motion.div>
-      )}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        {step === 1 && (
+          <SectionCard title="Brand Details" subtitle="Tell us about your brand and audience.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
+                <input className={field} {...form.register('name')} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#6B7280]">Industry</label>
+                <input className={field} {...form.register('industry')} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-xs text-[#6B7280]">Target audience</label>
+                <textarea className="min-h-24 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('audience')} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-2 block text-xs text-[#6B7280]">Goals</label>
+                <div className="flex flex-wrap gap-2">
+                  {goals.map((goal) => (
+                    <button
+                      type="button"
+                      key={goal}
+                      onClick={() => toggleGoal(goal)}
+                      className={cn(
+                        'rounded-full border px-3 py-1 text-xs',
+                        form.watch('goals').includes(goal) ? 'border-[#111111] bg-[#111111] text-white' : 'border-[#E5E7EB] bg-white text-[#6B7280]'
+                      )}
+                    >
+                      {goal}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+        )}
 
-      {/* Brand Identity */}
-      <BlurFade delay={0.04}>
-        <SectionCard title="Brand Identity" icon={Building2}>
-          {/* Logo + name row */}
-          <div className="flex items-start gap-4">
-            {/* Logo */}
-            <div className="flex-shrink-0 space-y-1">
-              <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
-              <button
-                onClick={() => logoInputRef.current?.click()}
-                className={cn(
-                  'w-16 h-16 rounded-2xl border-2 border-dashed flex items-center justify-center overflow-hidden group transition-all relative',
-                  form.logo_url ? 'border-white/15' : 'border-white/[0.10] hover:border-white/25'
-                )}
-              >
-                {form.logo_url ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={form.logo_url} alt="Logo" className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Pencil size={13} className="text-white" />
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col items-center gap-1">
-                    <Upload size={15} className="text-white/30 group-hover:text-white/60 transition-colors" />
-                    <span className="text-[9px] text-white/20">Logo</span>
+        {step === 2 && (
+          <SectionCard title="Style Preferences and Assets" subtitle="Select visual direction and upload references.">
+            <div className="space-y-5">
+              <div>
+                <label className="mb-2 block text-xs text-[#6B7280]">Style</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {styles.map((style) => (
+                    <button
+                      type="button"
+                      key={style}
+                      onClick={() => form.setValue('style', style)}
+                      className={cn(
+                        'h-10 rounded-lg border text-sm capitalize',
+                        form.watch('style') === style ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
+                      )}
+                    >
+                      {style}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-[#6B7280]">Tone</label>
+                <select className={field} {...form.register('tone')}>
+                  <option value="">Select tone</option>
+                  {tones.map((tone) => (
+                    <option key={tone} value={tone}>{tone}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-[#6B7280]">Visual vs text balance</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {['text', 'balanced', 'visual'].map((balance) => (
+                    <button
+                      type="button"
+                      key={balance}
+                      onClick={() => form.setValue('visualBalance', balance as 'text' | 'balanced' | 'visual')}
+                      className={cn(
+                        'h-10 rounded-lg border text-sm capitalize',
+                        form.watch('visualBalance') === balance ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
+                      )}
+                    >
+                      {balance}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs text-[#6B7280]">Upload assets</label>
+                <label className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-[#E5E7EB] bg-[#F7F7F8] text-sm text-[#6B7280]">
+                  <Upload className="mr-2 h-4 w-4" />
+                  Drag & drop or browse
+                  <input type="file" multiple accept="image/*" className="hidden" onChange={onAssetUpload} />
+                </label>
+                {assets.length > 0 && (
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {assets.map((asset, index) => (
+                      <div key={asset} className="relative overflow-hidden rounded-lg border border-[#E5E7EB]">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={asset} alt={`Asset ${index + 1}`} className="h-16 w-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setAssets((prev) => prev.filter((_, i) => i !== index))}
+                          className="absolute right-1 top-1 rounded bg-white p-0.5 text-[#6B7280]"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
-              </button>
-              {form.logo_url && (
-                <button onClick={() => update({ logo_url: '' })} className="flex items-center gap-1 text-[9px] text-white/20 hover:text-red-400 transition-colors mx-auto">
-                  <X size={9} />Remove
-                </button>
-              )}
-            </div>
-
-            {/* Name + tagline */}
-            <div className="flex-1 space-y-3">
-              <FieldRow label="Brand Name *">
-                <input className={inputBase} value={form.name ?? ''} onChange={(e) => update({ name: e.target.value })} placeholder="e.g. Acme Studio" />
-              </FieldRow>
-              <FieldRow label="Tagline">
-                <div className="relative">
-                  <Tag size={13} className="absolute left-3 top-3 text-white/25 pointer-events-none" />
-                  <input className={inputWithIcon} value={form.tagline ?? ''} onChange={(e) => update({ tagline: e.target.value })} placeholder="e.g. Wear your story" />
-                </div>
-              </FieldRow>
-            </div>
-          </div>
-
-          {/* Description */}
-          <FieldRow label="Brand Description *">
-            <textarea
-              rows={3}
-              className={`${inputBase} resize-none`}
-              value={form.description ?? ''}
-              onChange={(e) => update({ description: e.target.value })}
-              placeholder="What does your brand do? Who do you serve?"
-            />
-          </FieldRow>
-
-          {/* Industry + price segment */}
-          <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="Industry">
-              <input className={inputBase} value={form.industry ?? ''} onChange={(e) => update({ industry: e.target.value })} placeholder="e.g. Fashion" />
-            </FieldRow>
-            <FieldRow label="Price Segment">
-              <select
-                className={inputBase}
-                value={form.price_segment ?? ''}
-                onChange={(e) => update({ price_segment: e.target.value })}
-              >
-                <option value="">Select…</option>
-                <option value="budget">Budget</option>
-                <option value="mid">Mid-range</option>
-                <option value="premium">Premium</option>
-                <option value="luxury">Luxury</option>
-              </select>
-            </FieldRow>
-          </div>
-        </SectionCard>
-      </BlurFade>
-
-      {/* Contact & Location */}
-      <BlurFade delay={0.08}>
-        <SectionCard title="Contact & Location" icon={MapPin}>
-          <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="Website">
-              <div className="relative">
-                <Globe size={13} className="absolute left-3 top-3 text-white/25 pointer-events-none" />
-                <input className={inputWithIcon} value={form.website ?? ''} onChange={(e) => update({ website: e.target.value })} placeholder="https://yourbrand.com" />
-              </div>
-            </FieldRow>
-            <FieldRow label="Phone">
-              <div className="relative">
-                <Phone size={13} className="absolute left-3 top-3 text-white/25 pointer-events-none" />
-                <input className={inputWithIcon} value={form.phone ?? ''} onChange={(e) => update({ phone: e.target.value })} placeholder="+91 98765 43210" />
-              </div>
-            </FieldRow>
-          </div>
-          <FieldRow label="Address / City">
-            <div className="relative">
-              <MapPin size={13} className="absolute left-3 top-3 text-white/25 pointer-events-none" />
-              <input className={inputWithIcon} value={form.address ?? ''} onChange={(e) => update({ address: e.target.value })} placeholder="123 Main Street, Mumbai, India" />
-            </div>
-          </FieldRow>
-        </SectionCard>
-      </BlurFade>
-
-      {/* Visual Identity */}
-      <BlurFade delay={0.12}>
-        <SectionCard title="Visual Identity" icon={Palette}>
-          <div className="grid grid-cols-3 gap-3">
-            {([
-              { label: 'Primary Color', field: 'color_primary' },
-              { label: 'Secondary Color', field: 'color_secondary' },
-              { label: 'Accent Color', field: 'color_accent' },
-            ] as const).map(({ label, field }) => (
-              <FieldRow key={field} label={label}>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={form[field] ?? '#000000'}
-                    onChange={(e) => update({ [field]: e.target.value })}
-                    className="w-9 h-9 rounded-lg border border-white/[0.08] bg-transparent cursor-pointer p-0.5"
-                  />
-                  <input
-                    className="flex-1 bg-white/[0.03] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-white/[0.22] transition-all uppercase"
-                    value={form[field] ?? ''}
-                    onChange={(e) => update({ [field]: e.target.value })}
-                    placeholder="#000000"
-                    maxLength={7}
-                  />
-                </div>
-              </FieldRow>
-            ))}
-          </div>
-          <FieldRow label="Font Mood">
-            <select
-              className={inputBase}
-              value={form.font_mood ?? ''}
-              onChange={(e) => update({ font_mood: e.target.value })}
-            >
-              <option value="">Select…</option>
-              <option value="modern">Modern (clean, geometric sans-serif)</option>
-              <option value="classic">Classic (elegant serif)</option>
-              <option value="playful">Playful (rounded, bubbly)</option>
-              <option value="luxury">Luxury (high-contrast, editorial)</option>
-              <option value="tech">Tech (monospace / futuristic)</option>
-              <option value="handwritten">Handwritten (organic, personal)</option>
-            </select>
-          </FieldRow>
-
-          {/* Color preview */}
-          <div className="flex items-center gap-2 pt-1">
-            {[form.color_primary, form.color_secondary, form.color_accent].filter(Boolean).map((c, i) => (
-              <div
-                key={i}
-                className="w-8 h-8 rounded-lg border border-white/10 shadow-sm"
-                style={{ background: c }}
-                title={c}
-              />
-            ))}
-            <span className="text-[11px] text-white/20 ml-1">Your brand palette</span>
-          </div>
-        </SectionCard>
-      </BlurFade>
-
-      {/* Audience */}
-      <BlurFade delay={0.16}>
-        <SectionCard title="Target Audience" icon={Users}>
-          <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="Age Range">
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  className={inputBase}
-                  value={form.audience_age_min ?? 22}
-                  onChange={(e) => update({ audience_age_min: Number(e.target.value) })}
-                  min={13} max={80}
-                  placeholder="Min age"
-                />
-                <span className="text-white/20 text-sm flex-shrink-0">–</span>
-                <input
-                  type="number"
-                  className={inputBase}
-                  value={form.audience_age_max ?? 45}
-                  onChange={(e) => update({ audience_age_max: Number(e.target.value) })}
-                  min={13} max={80}
-                  placeholder="Max age"
-                />
-              </div>
-            </FieldRow>
-            <FieldRow label="Gender">
-              <select className={inputBase} value={form.audience_gender ?? 'mixed'} onChange={(e) => update({ audience_gender: e.target.value })}>
-                <option value="mixed">Mixed / All</option>
-                <option value="mostly_female">Mostly Female</option>
-                <option value="mostly_male">Mostly Male</option>
-              </select>
-            </FieldRow>
-          </div>
-          <FieldRow label="Location / City">
-            <div className="relative">
-              <MapPin size={13} className="absolute left-3 top-3 text-white/25 pointer-events-none" />
-              <input className={inputWithIcon} value={form.audience_location ?? ''} onChange={(e) => update({ audience_location: e.target.value })} placeholder="e.g. Mumbai, India" />
-            </div>
-          </FieldRow>
-        </SectionCard>
-      </BlurFade>
-
-      {/* Brand Voice */}
-      <BlurFade delay={0.20}>
-        <SectionCard title="Brand Voice & Goals" icon={Megaphone}>
-          <FieldRow label={`Tone of Voice — ${form.tone ?? 50}%`}>
-            <div className="space-y-2">
-              <input
-                type="range" min={0} max={100}
-                value={form.tone ?? 50}
-                onChange={(e) => update({ tone: Number(e.target.value) })}
-                className="w-full accent-white"
-              />
-              <div className="flex justify-between text-[10px] text-white/20">
-                <span>Casual</span>
-                <span>Balanced</span>
-                <span>Professional</span>
               </div>
             </div>
-          </FieldRow>
-          <FieldRow label="USP Keywords">
-            <input
-              className={inputBase}
-              value={(form.usp_keywords ?? []).join(', ')}
-              onChange={(e) => update({ usp_keywords: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-              placeholder="e.g. handcrafted, sustainable, premium, local"
-            />
-            <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
-          </FieldRow>
-          <FieldRow label="Business Goals">
-            <input
-              className={inputBase}
-              value={(form.goals ?? []).join(', ')}
-              onChange={(e) => update({ goals: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-              placeholder="e.g. brand awareness, leads, website traffic"
-            />
-            <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
-          </FieldRow>
-          <FieldRow label="Primary Platforms">
-            <input
-              className={inputBase}
-              value={(form.platforms ?? []).join(', ')}
-              onChange={(e) => update({ platforms: e.target.value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) })}
-              placeholder="e.g. instagram, facebook, linkedin"
-            />
-            <p className="text-[10px] text-white/20 mt-1">Separate with commas</p>
-          </FieldRow>
-        </SectionCard>
-      </BlurFade>
+          </SectionCard>
+        )}
 
-      <BlurFade delay={0.24}>
-        <SectionCard title="Content Calendar Preferences" icon={Target}>
-          <div className="grid grid-cols-2 gap-3">
-            <FieldRow label="Weekly Post Count">
-              <input
-                type="number"
-                min={1}
-                max={30}
-                className={inputBase}
-                value={form.weekly_post_count ?? 4}
-                onChange={(e) => update({ weekly_post_count: Number(e.target.value || 4) })}
-              />
-            </FieldRow>
-            <FieldRow label="Auto Schedule">
-              <select
-                className={inputBase}
-                value={form.auto_schedule ? 'yes' : 'no'}
-                onChange={(e) => update({ auto_schedule: e.target.value === 'yes' })}
-              >
-                <option value="no">No</option>
-                <option value="yes">Yes</option>
-              </select>
-            </FieldRow>
-          </div>
+        {step === 3 && (
+          <SectionCard title="Competitor Input and Review" subtitle="Add competitor links and review before saving.">
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs text-[#6B7280]">Competitor links</label>
+                <input className={field} placeholder="https://example.com, https://instagram.com/example" {...form.register('competitorLinks')} />
+              </div>
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-sm">
+                <p className="font-medium text-[#111111]">{form.watch('name') || 'Brand name'}</p>
+                <p className="mt-1 text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>
+                <p className="mt-2 text-[#6B7280]">Goals: {form.watch('goals').join(', ') || 'None selected'}</p>
+              </div>
+            </div>
+          </SectionCard>
+        )}
 
-          <FieldRow label="Active Platforms for Calendar">
-            <input
-              className={inputBase}
-              value={(form.active_platforms ?? []).join(', ')}
-              onChange={(e) => update({ active_platforms: e.target.value.split(',').map((s) => s.trim().toLowerCase()).filter(Boolean) })}
-              placeholder="e.g. instagram, youtube, linkedin"
-            />
-          </FieldRow>
-
-          <div className="grid grid-cols-5 gap-2">
-            {(['promotional', 'educational', 'testimonial', 'bts', 'festive'] as const).map((k) => (
-              <FieldRow key={k} label={k}>
-                <input
-                  type="number"
-                  min={0}
-                  max={100}
-                  className={inputBase}
-                  value={form.content_type_mix?.[k] ?? 0}
-                  onChange={(e) =>
-                    update({
-                      content_type_mix: {
-                        ...(form.content_type_mix || {}),
-                        [k]: Number(e.target.value || 0),
-                      },
-                    })
-                  }
-                />
-              </FieldRow>
-            ))}
-          </div>
-        </SectionCard>
-      </BlurFade>
-
-      {/* Save button (bottom sticky) */}
-      {dirty && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
-        >
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2.5 px-6 py-3 rounded-2xl bg-white text-black font-semibold text-sm shadow-[0_8px_32px_rgba(0,0,0,0.6)] hover:bg-white/90 transition-all"
-          >
-            {saving
-              ? <><Loader2 size={15} className="animate-spin" /> Saving…</>
-              : <><CheckCircle2 size={15} /> Save Brand Details</>
-            }
-          </button>
-        </motion.div>
-      )}
-    </div>
+        <div className="flex items-center justify-between">
+          <Button type="button" variant="secondary" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
+            <ChevronLeft className="mr-1 h-4 w-4" />
+            Back
+          </Button>
+          {step < 3 ? (
+            <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))}>
+              Continue
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Saving...' : 'Save & Continue'}
+            </Button>
+          )}
+        </div>
+      </form>
+    </PageContainer>
   )
 }

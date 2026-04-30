@@ -144,25 +144,25 @@ const generateImageWithOpenAI = async (prompt, timeoutMs, aspectRatio = '1:1') =
 
 /**
  * Generate image with metadata for debug visibility.
- * Returns { imageData, error, provider }.
+ * Returns { imageData, error, provider, model }.
  */
 const generateImageDetailed = async (imagePrompt, opts = {}) => {
   const hasGoogle = !!process.env.GOOGLE_AI_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasGoogle && !hasOpenAI) {
-    return { imageData: null, error: 'No image providers configured (OPENAI_API_KEY / GOOGLE_AI_API_KEY).', provider: 'none' };
+    return { imageData: null, error: 'No image providers configured (OPENAI_API_KEY / GOOGLE_AI_API_KEY).', provider: 'none', model: null };
   }
   const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [] } = opts;
   const logger = require('../utils/logger');
   let lastError = '';
   // Hard-prioritize OpenAI for production stability and quality.
   const openAiImage = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
-  if (openAiImage) return { imageData: openAiImage, error: null, provider: 'openai' };
+  if (openAiImage) return { imageData: openAiImage, error: null, provider: 'openai', model: OPENAI_IMAGE_MODEL };
   lastError = `OpenAI image generation failed (model: ${OPENAI_IMAGE_MODEL})`;
 
   // Only use Google as a temporary fallback if not currently rate-limited.
   if (!hasGoogle) {
-    return { imageData: null, error: lastError || 'Google AI key is not configured for fallback.', provider: 'openai' };
+    return { imageData: null, error: lastError || 'Google AI key is not configured for fallback.', provider: 'openai', model: OPENAI_IMAGE_MODEL };
   }
   const now = Date.now();
   if (googleImageRateLimitedUntil > now) {
@@ -170,6 +170,7 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       imageData: null,
       error: `${lastError}; google_image_temporarily_rate_limited`,
       provider: 'openai',
+      model: OPENAI_IMAGE_MODEL,
     };
   }
 
@@ -205,12 +206,12 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       const imagePart = parts.find((p) => p.inlineData?.data);
       if (imagePart?.inlineData?.data) {
         const mimeType = imagePart.inlineData.mimeType || 'image/jpeg';
-        return { imageData: `data:${mimeType};base64,${imagePart.inlineData.data}`, error: null, provider: 'google-nano' };
+        return { imageData: `data:${mimeType};base64,${imagePart.inlineData.data}`, error: null, provider: 'google-nano', model: NANO_BANANA_MODEL };
       }
       logger.warn('Nano Banana returned no image payload');
       const openAiFallback = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
-      if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback' };
-      return { imageData: null, error: 'Nano Banana returned no image payload and OpenAI fallback failed.', provider: 'google-nano' };
+      if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback', model: OPENAI_IMAGE_MODEL };
+      return { imageData: null, error: 'Nano Banana returned no image payload and OpenAI fallback failed.', provider: 'google-nano', model: NANO_BANANA_MODEL };
     }
 
     const response = await withTimeout(
@@ -222,10 +223,10 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       timeoutMs
     );
     const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-    if (b64) return { imageData: `data:image/jpeg;base64,${b64}`, error: null, provider: 'google-imagen' };
+    if (b64) return { imageData: `data:image/jpeg;base64,${b64}`, error: null, provider: 'google-imagen', model: IMAGEN_MODEL };
     const openAiFallback = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
-    if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback' };
-    return { imageData: null, error: 'Imagen returned empty payload and OpenAI fallback failed.', provider: 'google-imagen' };
+    if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback', model: OPENAI_IMAGE_MODEL };
+    return { imageData: null, error: 'Imagen returned empty payload and OpenAI fallback failed.', provider: 'google-imagen', model: IMAGEN_MODEL };
   } catch (err) {
     logger.warn('Image generation failed', { model: IMAGE_MODEL, error: err.message });
     lastError = err?.message || String(err);
@@ -240,7 +241,7 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     }
     if (IMAGE_MODEL === 'nano-banana') {
       const openAiFallbackFirst = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
-      if (openAiFallbackFirst) return { imageData: openAiFallbackFirst, error: null, provider: 'openai-fallback' };
+      if (openAiFallbackFirst) return { imageData: openAiFallbackFirst, error: null, provider: 'openai-fallback', model: OPENAI_IMAGE_MODEL };
       // Fallback for resilience.
       try {
         const { GoogleGenAI } = require('@google/genai');
@@ -254,15 +255,15 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
           timeoutMs
         );
         const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
-        if (b64) return { imageData: `data:image/jpeg;base64,${b64}`, error: null, provider: 'google-imagen-fallback' };
+        if (b64) return { imageData: `data:image/jpeg;base64,${b64}`, error: null, provider: 'google-imagen-fallback', model: IMAGEN_MODEL };
       } catch (fallbackErr) {
         logger.warn('Imagen fallback also failed', { error: fallbackErr.message });
         lastError = `${lastError}; imagen_fallback: ${fallbackErr?.message || fallbackErr}`;
       }
     }
     const openAiFallback = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
-    if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback' };
-    return { imageData: null, error: lastError || 'Unknown image generation failure', provider: IMAGE_MODEL };
+    if (openAiFallback) return { imageData: openAiFallback, error: null, provider: 'openai-fallback', model: OPENAI_IMAGE_MODEL };
+    return { imageData: null, error: lastError || 'Unknown image generation failure', provider: IMAGE_MODEL, model: IMAGE_MODEL };
   }
 };
 
