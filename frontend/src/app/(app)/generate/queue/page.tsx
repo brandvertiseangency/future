@@ -28,9 +28,15 @@ function GenerationQueueInner() {
   const router = useRouter()
   const params = useSearchParams()
   const jobId = params.get('jobId')
+  const { data: recentJobs } = useSWR(
+    !jobId ? '/api/calendar/jobs/recent?limit=1' : null,
+    (u: string) => apiCall<{ jobs?: Job[] }>(u),
+    { revalidateOnFocus: false }
+  )
+  const resolvedJobId = jobId ?? recentJobs?.jobs?.[0]?.id ?? null
 
   const { data: jobData } = useSWR(
-    jobId ? `/api/calendar/jobs/${jobId}` : null,
+    resolvedJobId ? `/api/calendar/jobs/${resolvedJobId}` : null,
     (u: string) => apiCall<{ job: Job; slots: SlotDetail[] }>(u),
     {
       // Reduce DB/network pressure on long-running pages.
@@ -45,16 +51,28 @@ function GenerationQueueInner() {
   const pct = job ? Math.round((job.completed_slots / Math.max(job.total_slots, 1)) * 100) : 0
   const computedDone = !!job && job.total_slots > 0 && (job.completed_slots + (job.failed_slots || 0)) >= job.total_slots
 
+  if (!resolvedJobId) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-[#6B7280]">
+        No active generation job found.
+      </div>
+    )
+  }
   if (!job) return <div className="flex min-h-[60vh] items-center justify-center text-sm text-[#6B7280]"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading job...</div>
 
   const isActive = (job.status === 'running' || job.status === 'queued') && !computedDone
   const isDone = job.status === 'complete' || computedDone
+  const etaMinutes = Math.max(1, Math.ceil((job.total_slots - job.completed_slots) * 0.6))
+  const currentItem = slots.find((slot) => slot.status === 'generating') ?? slots.find((slot) => slot.status === 'pending')
 
   return (
     <PageContainer className="max-w-4xl">
 
       {/* Header */}
-      <PageHeader title={isDone ? 'Generation complete' : 'Generating your creatives'} description={`${job.completed_slots} of ${job.total_slots} completed`} />
+      <PageHeader
+        title={isDone ? 'Generation complete' : <>Generating <span className="text-highlight">Creatives</span></>}
+        description={`${job.completed_slots} of ${job.total_slots} completed`}
+      />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
         <SectionCard title="Progress" subtitle="Live generation status">
@@ -83,6 +101,12 @@ function GenerationQueueInner() {
               })}
             </div>
 
+            {!isDone && (
+              <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">
+                Estimated time remaining: <span className="font-medium text-[#111111]">{etaMinutes}m</span>
+              </div>
+            )}
+
             {isDone && (
               <Button onClick={() => router.push('/outputs')} className="w-full">
                 View Outputs
@@ -92,6 +116,12 @@ function GenerationQueueInner() {
         </SectionCard>
 
         <SectionCard title="Live Activity" subtitle="Latest queue logs">
+          {currentItem && (
+            <div className="mb-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs">
+              <p className="text-[#6B7280]">Currently generating</p>
+              <p className="text-[#111111]">{currentItem.post_idea}</p>
+            </div>
+          )}
           <div className="space-y-2">
             {slots.slice(0, 10).map((slot) => (
               <div key={slot.id} className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm">

@@ -12,11 +12,11 @@ const inter = Inter({
   display: "swap",
 });
 
-// DM Serif Display Italic — used for highlighted/accent words in headings
+// DM Serif Display — used for highlighted/important words
 const dmSerifDisplay = DM_Serif_Display({
   variable: "--font-display",
   subsets: ["latin"],
-  style: ["italic"],
+  style: ["normal", "italic"],
   weight: "400",    // DM Serif Display only ships weight 400
   display: "swap",
 });

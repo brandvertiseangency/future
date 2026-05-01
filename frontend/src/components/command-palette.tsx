@@ -5,16 +5,19 @@ import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  LayoutDashboard, CalendarDays, Sparkles, Images, Settings,
+  LayoutDashboard, CalendarDays, Sparkles, Images, Settings, Clock3, BriefcaseBusiness, Bot,
   LogOut, CreditCard, Bell, Search, User,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 
 const NAVIGATE = [
   { label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-  { label: 'Calendar', icon: CalendarDays, href: '/calendar' },
+  { label: 'Brand Setup', icon: BriefcaseBusiness, href: '/brand' },
+  { label: 'Content Calendar', icon: CalendarDays, href: '/calendar' },
   { label: 'Generate', icon: Sparkles, href: '/generate' },
-  { label: 'Assets', icon: Images, href: '/assets' },
+  { label: 'Outputs', icon: Images, href: '/outputs' },
+  { label: 'Scheduler', icon: Clock3, href: '/scheduler' },
+  { label: 'Agents', icon: Bot, href: '/agents' },
   { label: 'Settings', icon: Settings, href: '/settings' },
 ]
 
@@ -65,40 +68,40 @@ export function CommandPalette() {
             className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-[520px] z-[61]"
           >
             <Command
-              className="rounded-xl border border-[var(--border-loud)] bg-[var(--bg-raised)] shadow-2xl overflow-hidden"
+              className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xl"
               label="Command menu"
             >
-              <div className="flex items-center gap-2 px-4 border-b border-[var(--border-dim)]">
-                <Search size={15} className="text-[var(--text-3)]" />
+              <div className="flex items-center gap-2 border-b border-[#E5E7EB] px-4">
+                <Search size={15} className="text-[#6B7280]" />
                 <Command.Input
                   placeholder="Type a command or search..."
-                  className="flex-1 bg-transparent py-3.5 text-sm text-[var(--text-1)] placeholder:text-[var(--text-4)] outline-none"
+                  className="flex-1 bg-transparent py-3.5 text-sm text-[#111111] placeholder:text-[#9CA3AF] outline-none"
                 />
-                <kbd className="hidden sm:inline-flex text-[10px] text-[var(--text-4)] bg-[var(--bg-subtle)] px-1.5 py-0.5 rounded border border-[var(--border-base)]">ESC</kbd>
+                <kbd className="hidden rounded border border-[#E5E7EB] bg-[#F3F4F6] px-1.5 py-0.5 text-[10px] text-[#6B7280] sm:inline-flex">ESC</kbd>
               </div>
               <Command.List className="max-h-[320px] overflow-y-auto p-2">
-                <Command.Empty className="py-6 text-center text-sm text-[var(--text-3)]">No results found.</Command.Empty>
-                <Command.Group heading="Navigate" className="text-[10px] uppercase tracking-wider text-[var(--text-4)] font-semibold px-2 pt-2 pb-1">
+                <Command.Empty className="py-6 text-center text-sm text-[#6B7280]">No results found.</Command.Empty>
+                <Command.Group heading="Navigate" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                   {NAVIGATE.map(item => (
                     <Command.Item key={item.href} value={item.label} onSelect={() => go(item.href)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-2)] cursor-pointer data-[selected=true]:bg-[var(--bg-subtle)] data-[selected=true]:text-[var(--text-1)] transition-colors">
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#6B7280] transition-colors data-[selected=true]:bg-[#F3F4F6] data-[selected=true]:text-[#111111]">
                       <item.icon size={15} className="flex-shrink-0" />
                       {item.label}
                     </Command.Item>
                   ))}
                 </Command.Group>
-                <Command.Separator className="h-px bg-[var(--border-dim)] my-1" />
-                <Command.Group heading="Actions" className="text-[10px] uppercase tracking-wider text-[var(--text-4)] font-semibold px-2 pt-2 pb-1">
+                <Command.Separator className="my-1 h-px bg-[#E5E7EB]" />
+                <Command.Group heading="Actions" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                   {ACTIONS.map(item => (
                     <Command.Item key={item.label} value={item.label} onSelect={() => go(item.href)}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-[var(--text-2)] cursor-pointer data-[selected=true]:bg-[var(--bg-subtle)] data-[selected=true]:text-[var(--text-1)] transition-colors">
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#6B7280] transition-colors data-[selected=true]:bg-[#F3F4F6] data-[selected=true]:text-[#111111]">
                       <item.icon size={15} className="flex-shrink-0" />
                       {item.label}
                     </Command.Item>
                   ))}
                 </Command.Group>
-                <Command.Separator className="h-px bg-[var(--border-dim)] my-1" />
-                <Command.Group heading="Account" className="text-[10px] uppercase tracking-wider text-[var(--text-4)] font-semibold px-2 pt-2 pb-1">
+                <Command.Separator className="my-1 h-px bg-[#E5E7EB]" />
+                <Command.Group heading="Account" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
                   <Command.Item value="Sign out" onSelect={() => { setOpen(false); signOut() }}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-rose-400 cursor-pointer data-[selected=true]:bg-rose-500/10 transition-colors">
                     <LogOut size={15} className="flex-shrink-0" />

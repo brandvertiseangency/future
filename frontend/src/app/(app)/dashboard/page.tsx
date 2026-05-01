@@ -25,10 +25,14 @@ export default function DashboardPage() {
   const reelsLeft = Math.max(0, 10 - Math.floor(totalPosts / 3))
   const recentOutputs = ((outputsData as { posts?: { id: string; caption?: string; image_url?: string; created_at?: string }[] })?.posts ?? []).slice(0, 4)
   const brandName = brand?.name ?? 'My Brand'
+  const usedPercent = Math.min(Math.round((totalPosts / 30) * 100), 100)
 
   return (
     <PageContainer className="space-y-6">
-      <PageHeader title="Dashboard" description={`Welcome back. Here's what's happening for ${brandName}.`} />
+      <PageHeader
+        title={<>Dashboard <span className="text-highlight">Overview</span></>}
+        description={`Welcome back. Here's what's happening for ${brandName}.`}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Posts Remaining" value={postsLeft} />
@@ -75,20 +79,48 @@ export default function DashboardPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Activity" subtitle="Weekly progress">
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="text-[#6B7280]">Scheduled this week</span>
-          <span className="font-medium text-[#111111]">{scheduledPosts}</span>
-        </div>
-        <div className="h-2 rounded-full bg-[#EFEFF1]">
-          <div className="h-2 rounded-full bg-[#111111]" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
-        </div>
-        <div className="mt-3 flex items-center gap-2 text-xs text-[#6B7280]">
-          <CalendarDays className="h-4 w-4" />
-          <Sparkles className="h-4 w-4" />
-          Keep approving content to increase publishing momentum.
-        </div>
-      </SectionCard>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
+        <SectionCard title="Usage Summary" subtitle="Monthly consumption overview">
+          <div className="flex items-center gap-4">
+            <div
+              className="flex h-24 w-24 items-center justify-center rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#111111]"
+              style={{ background: `conic-gradient(#111111 ${usedPercent}%, #EFEFF1 ${usedPercent}% 100%)` }}
+            >
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white">
+                {usedPercent}%
+              </div>
+            </div>
+            <div className="space-y-2 text-sm">
+              <p className="text-[#6B7280]">Posts <span className="font-semibold text-[#111111]">{totalPosts}/30</span></p>
+              <p className="text-[#6B7280]">Reels <span className="font-semibold text-[#111111]">{10 - reelsLeft}/10</span></p>
+              <p className="text-[#6B7280]">Credits <span className="font-semibold text-[#111111]">{credits}/200</span></p>
+            </div>
+          </div>
+        </SectionCard>
+
+        <SectionCard title="Calendar Overview" subtitle="Weekly publishing map">
+          <div className="mb-3 flex items-center justify-between text-sm">
+            <span className="text-[#6B7280]">Scheduled this week</span>
+            <span className="font-medium text-[#111111]">{scheduledPosts}</span>
+          </div>
+          <div className="h-2 rounded-full bg-[#EFEFF1]">
+            <div className="h-2 rounded-full bg-[#111111]" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-xs text-[#6B7280]">
+            <CalendarDays className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
+            Keep approving content to increase publishing momentum.
+          </div>
+          <div className="mt-4 grid grid-cols-7 gap-1">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+              <div key={day} className="rounded-md border border-[#E5E7EB] bg-white p-2 text-center">
+                <p className="text-[10px] text-[#6B7280]">{day}</p>
+                <p className="text-sm font-semibold text-[#111111]">{index < scheduledPosts ? 1 : 0}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      </div>
     </PageContainer>
   )
 }

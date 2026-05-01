@@ -65,6 +65,8 @@ export default function SchedulerPage() {
     { id: 'sat-10', label: 'Sat · 10:00 AM' },
   ])
   const [selectedPostId, setSelectedPostId] = useState<string | null>(posts[0]?.id ?? null)
+  const [scheduling, setScheduling] = useState(false)
+  const [comment, setComment] = useState('')
 
   const postMap = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts])
   const selectedPost = selectedPostId ? postMap.get(selectedPostId) : undefined
@@ -74,12 +76,31 @@ export default function SchedulerPage() {
     setSlots((prev) => prev.map((slot) => slot.id === over.id ? { ...slot, postId: String(active.id) } : slot))
   }
 
+  const scheduleSelected = async () => {
+    if (!selectedPost) return
+    const target = slots.find((slot) => slot.postId === selectedPost.id)
+    if (!target) return
+    setScheduling(true)
+    try {
+      await apiCall(`/api/posts/${selectedPost.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'scheduled',
+          scheduled_at: new Date().toISOString(),
+          scheduler_slot: target.id,
+        }),
+      })
+    } finally {
+      setScheduling(false)
+    }
+  }
+
   return (
     <PageContainer className="space-y-6">
-      <PageHeader title="Scheduler" description="Drag and drop posts into calendar slots and publish confidently." />
+      <PageHeader title={<>Content <span className="text-highlight">Scheduler</span></>} description="Drag and drop posts into calendar slots and publish confidently." />
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[300px_1fr_320px]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">
           <SectionCard title="Posts" subtitle="Ready to schedule">
             <div className="space-y-2">
               {posts.map((post) => (
@@ -89,14 +110,14 @@ export default function SchedulerPage() {
           </SectionCard>
 
           <SectionCard title="Calendar Grid" subtitle="Drop posts into day/time cells">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
               {slots.map((slot) => (
                 <DroppableSlot key={slot.id} slot={slot} post={slot.postId ? postMap.get(slot.postId) : undefined} />
               ))}
             </div>
           </SectionCard>
 
-          <SectionCard title="Selected Post Details" subtitle="Review before scheduling">
+          <SectionCard title="Selected Post Details" subtitle="Review before scheduling" className="xl:sticky xl:top-20 h-fit">
             {selectedPost ? (
               <div className="space-y-3">
                 <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
@@ -112,7 +133,20 @@ export default function SchedulerPage() {
                   <StatusBadge tone="neutral">{selectedPost.platform}</StatusBadge>
                   <StatusBadge tone={selectedPost.status === 'approved' ? 'success' : 'neutral'}>{selectedPost.status}</StatusBadge>
                 </div>
-                <Button className="w-full">Schedule Post</Button>
+                <div>
+                  <label className="mb-1 block text-xs text-[#6B7280]">Comments</label>
+                  <textarea
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Add notes for this scheduled post..."
+                    className="min-h-20 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm outline-none focus:border-[#111111]"
+                  />
+                </div>
+                <Button className="w-full" onClick={scheduleSelected} disabled={scheduling}>
+                  {scheduling ? 'Scheduling...' : 'Schedule Post'}
+                </Button>
+                <Button variant="secondary" className="w-full">Reschedule</Button>
+                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 hover:text-red-700">Delete Post</Button>
               </div>
             ) : (
               <p className="text-sm text-[#6B7280]">Select a post to inspect details.</p>

@@ -103,7 +103,10 @@ export default function BrandDetailsPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <PageHeader title="Create New Brand" description="Set up your brand details, style and assets for high-quality generation." />
+      <PageHeader
+        title={<>Create New <span className="text-highlight">Brand</span></>}
+        description="Set up your brand details, style and assets for high-quality generation."
+      />
 
       <div className="app-card p-4">
         <div className="flex items-center justify-between text-xs text-[#6B7280]">
@@ -116,7 +119,8 @@ export default function BrandDetailsPage() {
         </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
+        <div className="space-y-4">
         {step === 1 && (
           <SectionCard title="Brand Details" subtitle="Tell us about your brand and audience.">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -266,6 +270,38 @@ export default function BrandDetailsPage() {
             </Button>
           )}
         </div>
+        </div>
+
+        <SectionCard title="Brand Preview" subtitle="Live preview of configured identity." className="xl:sticky xl:top-20 h-fit">
+          <div className="space-y-4">
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-center">
+              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-lg font-semibold text-[#111111]">
+                {(form.watch('name') || 'BV').slice(0, 2).toUpperCase()}
+              </div>
+              <p className="text-sm font-semibold text-[#111111]">{form.watch('name') || 'Brand Name'}</p>
+              <p className="text-xs text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>
+            </div>
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+              <p className="mb-2 text-xs font-medium text-[#6B7280]">Keywords</p>
+              <div className="flex flex-wrap gap-2">
+                {(form.watch('goals').length ? form.watch('goals') : ['Natural', 'Premium', 'Clean']).slice(0, 4).map((goal) => (
+                  <span key={goal} className="rounded-full border border-[#E5E7EB] bg-[#F7F7F8] px-2 py-1 text-[11px] text-[#6B7280]">{goal}</span>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+              <p className="text-xs font-medium text-[#6B7280]">Tips for better results</p>
+              <ul className="mt-2 space-y-1 text-xs text-[#6B7280]">
+                <li>- Upload clear logo and product images</li>
+                <li>- Add competitor links for direction</li>
+                <li>- Define audience and goals clearly</li>
+              </ul>
+            </div>
+            <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3 text-xs text-[#6B7280]">
+              Next step: Generate a content calendar using this brand profile.
+            </div>
+          </div>
+        </SectionCard>
       </form>
     </PageContainer>
   )

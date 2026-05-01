@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader, EmptyState } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 interface Post {
   id: string
@@ -28,7 +29,24 @@ export default function OutputsPage() {
   const [platform, setPlatform] = useState('all')
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid')
   const [selected, setSelected] = useState<Post | null>(null)
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const regeneratePost = async (postId: string) => {
+    setRegeneratingId(postId)
+    try {
+      await apiCall(`/api/posts/${postId}/regenerate`, {
+        method: 'POST',
+        body: JSON.stringify({ feedback: 'Regenerate with improved composition' }),
+      })
+      toast.success('Regeneration started')
+    } catch {
+      toast.error('Failed to regenerate')
+    } finally {
+      setRegeneratingId(null)
+    }
+  }
+
 
   const query = new URLSearchParams({ limit: '50' })
   if (platform !== 'all') query.set('platform', platform)
@@ -42,7 +60,7 @@ export default function OutputsPage() {
 
   return (
     <PageContainer className="max-w-[1100px] pb-20">
-      <PageHeader title="Outputs" description={`${posts.length} creatives generated`} />
+      <PageHeader title={<>Outputs <span className="text-highlight">Library</span></>} description={`${posts.length} creatives generated`} />
 
       <SectionCard title="Filters" subtitle="Find outputs quickly by platform, status, or keyword.">
         <div className="flex flex-wrap items-center gap-2">
@@ -65,17 +83,22 @@ export default function OutputsPage() {
               {s === 'all' ? 'All Statuses' : s}
             </FilterPill>
           ))}
+          <div className="ml-auto rounded-lg border border-[#E5E7EB] p-1">
+            <button onClick={() => setLayoutMode('grid')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'grid' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Grid</button>
+            <button onClick={() => setLayoutMode('list')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'list' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>List</button>
+          </div>
         </div>
       </SectionCard>
 
-      <div className="mt-6">
+      <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+      <div>
         {posts.length === 0 ? (
           <EmptyState title="No outputs yet" subtitle="Generate your first content to see it here." />
         ) : (
-          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
+          <div className={cn(layoutMode === 'grid' ? 'grid gap-3' : 'space-y-3')} style={layoutMode === 'grid' ? { gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' } : undefined}>
             {posts.map((post) => (
-              <button key={post.id} onClick={() => setSelected(post)} className="app-card overflow-hidden text-left transition hover:border-[#111111]">
-                <div className="aspect-square bg-[#F3F4F6]">
+              <button key={post.id} onClick={() => setSelected(post)} className={cn('app-card overflow-hidden text-left transition hover:border-[#111111]', layoutMode === 'list' && 'flex items-center')}>
+                <div className={cn('bg-[#F3F4F6]', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={post.image_url} alt={post.caption || 'Generated output'} className="h-full w-full object-cover" />
@@ -90,8 +113,11 @@ export default function OutputsPage() {
                     <span className="text-xs text-[#6B7280] capitalize">{post.platform}</span>
                   </div>
                   <div className="flex gap-2">
-                    <Button size="sm" className="h-8 flex-1">View</Button>
-                    <Button size="sm" variant="secondary" className="h-8 flex-1"><RefreshCcw className="mr-1 h-3 w-3" />Regenerate</Button>
+                    <Button size="sm" className="h-8 flex-1" onClick={(e) => { e.stopPropagation(); setSelected(post) }}>View</Button>
+                    <Button size="sm" variant="secondary" className="h-8 flex-1" onClick={(e) => { e.stopPropagation(); regeneratePost(post.id) }}>
+                      <RefreshCcw className="mr-1 h-3 w-3" />
+                      {regeneratingId === post.id ? '...' : 'Regenerate'}
+                    </Button>
                   </div>
                 </div>
               </button>
@@ -99,38 +125,36 @@ export default function OutputsPage() {
           </div>
         )}
       </div>
-
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setSelected(null)}>
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-xl bg-white p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
-                {selected.image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selected.image_url} alt={selected.caption || 'Selected output'} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-72 items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-6 w-6" /></div>
-                )}
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-[#6B7280]">Caption</p>
-                  <p className="mt-1 text-sm text-[#111111]">{selected.caption}</p>
-                </div>
-                <div>
-                  <p className="mb-2 text-xs text-[#6B7280]">Version Selector</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['v1', 'v2', 'v3'].map((version) => (
-                      <button key={version} className="rounded-lg border border-[#E5E7EB] py-2 text-sm text-[#111111]">{version}</button>
-                    ))}
-                  </div>
-                </div>
-                <Button className="w-full"><RefreshCcw className="mr-2 h-4 w-4" />Regenerate</Button>
+      <SectionCard title="Selected Output" subtitle="Inspect details and versions">
+        {selected ? (
+          <div className="space-y-3">
+            <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
+              {selected.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selected.image_url} alt={selected.caption || 'Selected output'} className="h-44 w-full object-cover" />
+              ) : (
+                <div className="flex h-44 items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-6 w-6" /></div>
+              )}
+            </div>
+            <p className="text-sm text-[#111111]">{selected.caption}</p>
+            <div>
+              <p className="mb-2 text-xs text-[#6B7280]">Versions</p>
+              <div className="grid grid-cols-3 gap-2">
+                {['v1', 'v2', 'v3'].map((version) => (
+                  <button key={version} className="rounded-lg border border-[#E5E7EB] py-2 text-sm text-[#111111]">{version}</button>
+                ))}
               </div>
             </div>
+            <Button className="w-full" onClick={() => regeneratePost(selected.id)}>
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              {regeneratingId === selected.id ? 'Regenerating...' : 'Regenerate'}
+            </Button>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-[#6B7280]">Select an output card to inspect details.</p>
+        )}
+      </SectionCard>
+      </div>
     </PageContainer>
   )
 }

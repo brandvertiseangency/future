@@ -48,7 +48,13 @@ export default function GeneratePage() {
     setLoading(false)
     if (generated.length > 0) {
       toast.success('Generation complete')
-      router.push('/generate/queue')
+      try {
+        const recent = await apiCall<{ jobs?: { id: string }[] }>('/api/calendar/jobs/recent?limit=1')
+        const recentJobId = recent?.jobs?.[0]?.id
+        router.push(recentJobId ? `/generate/queue?jobId=${recentJobId}` : '/generate/queue')
+      } catch {
+        router.push('/generate/queue')
+      }
     } else {
       toast.error('Generation failed')
     }
@@ -56,7 +62,10 @@ export default function GeneratePage() {
 
   return (
     <PageContainer className="space-y-6">
-      <PageHeader title="Generate Creatives" description="Create content aligned to your brand style." />
+      <PageHeader
+        title={<>Generate <span className="text-highlight">Creatives</span></>}
+        description="Create content aligned to your brand style."
+      />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[420px_1fr]">
         <SectionCard title="Generation Setup" subtitle="Choose platform and describe what to create.">
@@ -84,7 +93,9 @@ export default function GeneratePage() {
                 placeholder="Describe what you want to generate..."
               />
             </div>
-            <p className="text-xs text-[#6B7280]">Credits left: {credits}</p>
+            <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">
+              Credits left: <span className="font-medium text-[#111111]">{credits}</span>
+            </div>
             <Button onClick={generate} disabled={loading} className="w-full">
               {loading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</> : <><Sparkles className="mr-2 h-4 w-4" />Generate</>}
             </Button>

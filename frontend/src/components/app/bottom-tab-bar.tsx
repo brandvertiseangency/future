@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, Sparkles, ImageIcon, Settings } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Sparkles, ImageIcon, Clock3 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TABS = [
@@ -10,7 +10,7 @@ const TABS = [
 	{ href: '/calendar', label: 'Calendar', icon: CalendarDays },
 	{ href: '/generate', label: 'Generate', icon: Sparkles },
 	{ href: '/outputs', label: 'Outputs', icon: ImageIcon },
-	{ href: '/settings', label: 'Settings', icon: Settings },
+	{ href: '/scheduler', label: 'Scheduler', icon: Clock3 },
 ]
 
 export function BottomTabBar() {

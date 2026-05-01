@@ -30,11 +30,13 @@ const fetcher = (url: string) => apiCall<{ posts?: Array<{ id: string; title?: s
 
 export default function CalendarPage() {
   const { data } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
+  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [selected, setSelected] = useState<CalendarRow | null>(null)
   const [editedIdea, setEditedIdea] = useState('')
   const [editedCaption, setEditedCaption] = useState('')
   const [editedProduct, setEditedProduct] = useState('')
   const [saving, setSaving] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
 
   const rows: CalendarRow[] = useMemo(() => {
     return (data?.posts ?? []).map((post) => ({
@@ -90,21 +92,44 @@ export default function CalendarPage() {
     }
   }
 
+  const approveAll = async () => {
+    if (!rows.length) return
+    setBulkSaving(true)
+    try {
+      await Promise.all(
+        rows.map((row) =>
+          apiCall(`/api/posts/${row.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'approved' }),
+          })
+        )
+      )
+    } finally {
+      setBulkSaving(false)
+    }
+  }
+
   return (
     <PageContainer className="space-y-6">
       <PageHeader
-        title="Content Calendar"
+        title={<>Content <span className="text-highlight">Calendar</span></>}
         description="Review ideas, edit captions, and approve content before generation."
         actions={
-          <Link href="/calendar/generate">
-            <Button><Sparkles className="mr-2 h-4 w-4" />Generate Calendar</Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-[#E5E7EB] p-1">
+              <button onClick={() => setViewMode('table')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'table' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Table</button>
+              <button onClick={() => setViewMode('calendar')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'calendar' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Calendar</button>
+            </div>
+            <Link href="/calendar/generate">
+              <Button><Sparkles className="mr-2 h-4 w-4" />Generate Calendar</Button>
+            </Link>
+          </div>
         }
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
         <SectionCard title="Weekly Plan" subtitle="Click a row to edit details on the right panel.">
-          <div className="overflow-x-auto">
+          {viewMode === 'table' ? <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-separate border-spacing-0">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -133,10 +158,20 @@ export default function CalendarPage() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div> : (
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+              {rows.map((row) => (
+                <button key={row.id} onClick={() => selectRow(row)} className="rounded-lg border border-[#E5E7EB] p-3 text-left hover:bg-[#F7F7F8]">
+                  <p className="text-xs text-[#6B7280]">{row.day}</p>
+                  <p className="mt-1 text-sm font-medium text-[#111111]">{row.idea}</p>
+                  <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">{row.caption}</p>
+                </button>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
-        <SectionCard title="Post Editor" subtitle="Update and approve selected item.">
+        <SectionCard title="Post Editor" subtitle="Update and approve selected item." className="xl:sticky xl:top-20 h-fit">
           {selected ? (
             <div className="space-y-3">
               <div>
@@ -163,8 +198,12 @@ export default function CalendarPage() {
       </div>
 
       <div className="flex items-center justify-end gap-2">
-        <Button variant="secondary">Regenerate</Button>
-        <Button>Approve All</Button>
+        <Link href="/calendar/generate">
+          <Button variant="secondary">Regenerate</Button>
+        </Link>
+        <Button onClick={approveAll} disabled={bulkSaving}>
+          {bulkSaving ? 'Approving...' : 'Approve All'}
+        </Button>
       </div>
     </PageContainer>
   )

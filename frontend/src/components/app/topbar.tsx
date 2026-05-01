@@ -41,6 +41,8 @@ export function Topbar() {
   )
   const notifications = notifData?.notifications ?? []
   const unreadCount = notifications.filter((n) => !n.read).length
+  const { data: creditsData } = useSWR('/api/credits/balance', fetcher<{ balance: number }>, { revalidateOnFocus: false })
+  const credits = creditsData?.balance ?? 0
 
   const markAllRead = async () => {
     try {
@@ -89,6 +91,10 @@ export function Topbar() {
             {initials}
           </div>
         </Link>
+
+        <div className="hidden rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-1 text-xs font-medium text-[#111111] md:block">
+          Credits {credits}
+        </div>
 
         <Link href="/generate">
           <button className="flex h-9 items-center gap-1.5 rounded-lg bg-[#111111] px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90">

@@ -8,17 +8,27 @@ import { apiCall } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 export default function SettingsPage() {
   const { user } = useAuth()
   const [name, setName] = useState(user?.displayName ?? '')
   const [email] = useState(user?.email ?? '')
+  const [savingProfile, setSavingProfile] = useState(false)
   const { data: billingData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number; plan: string }>(url), { revalidateOnFocus: false })
   const credits = billingData?.balance ?? 0
   const plan = billingData?.plan ?? 'trial'
 
   const saveProfile = async () => {
-    await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name }) })
+    setSavingProfile(true)
+    try {
+      await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name }) })
+      toast.success('Profile updated')
+    } catch {
+      toast.error('Failed to update profile')
+    } finally {
+      setSavingProfile(false)
+    }
   }
 
   return (
@@ -40,7 +50,9 @@ export default function SettingsPage() {
               <input value={email} readOnly className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 text-sm text-[#6B7280]" />
             </div>
           </div>
-          <Button className="mt-4" onClick={saveProfile}>Save Profile</Button>
+          <Button className="mt-4" onClick={saveProfile} disabled={savingProfile}>
+            {savingProfile ? 'Saving...' : 'Save Profile'}
+          </Button>
         </SectionCard>
 
         <SectionCard title="Brand Settings" subtitle="Update brand profile and design preferences.">
@@ -49,6 +61,7 @@ export default function SettingsPage() {
           </a>
         </SectionCard>
 
+        <div id="billing" className="scroll-mt-20">
         <SectionCard title="Billing" subtitle="Manage your plan and credits.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div className="rounded-lg border border-[#E5E7EB] p-3">
@@ -60,8 +73,12 @@ export default function SettingsPage() {
               <p className="mt-1 text-lg font-semibold text-[#111111]">{credits}</p>
             </div>
           </div>
-          <Button className="mt-4"><CreditCard className="mr-2 h-4 w-4" />Upgrade Plan</Button>
+          <Button className="mt-4" onClick={() => window.location.assign('/pricing')}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Upgrade Plan
+          </Button>
         </SectionCard>
+        </div>
 
         <SectionCard title="API / Integrations" subtitle="Reserved for future integrations and developer setup.">
           <p className="text-sm text-[#6B7280]">Coming soon: API keys, webhooks, and third-party integrations.</p>
