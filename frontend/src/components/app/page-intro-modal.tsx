@@ -1,8 +1,10 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { MOTION_TRANSITIONS } from '@/lib/motion'
 
 const INTRO_VERSION = 'v2'
 
@@ -32,13 +34,19 @@ export function PageIntroModal({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="bg-white border-t border-[#E5E7EB]">
-          <Button onClick={dismiss} className="w-full">Get started</Button>
-        </DialogFooter>
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={MOTION_TRANSITIONS.micro}
+        >
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="bg-white border-t border-[#E5E7EB]">
+            <Button onClick={dismiss} className="w-full">Get started</Button>
+          </DialogFooter>
+        </motion.div>
       </DialogContent>
     </Dialog>
   )

@@ -44,6 +44,7 @@ export function ProgressScore({ value }: { value: number }) {
           transition={MOTION_TRANSITIONS.micro}
         />
       </div>
+      <p className="mt-2 text-[11px] text-[#6B7280]">Tip: complete Brand, Audience, Goals, and Publishing for best first-plan quality.</p>
     </div>
   )
 }

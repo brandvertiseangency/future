@@ -13,6 +13,8 @@ import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
+import { logUxEvent } from '@/lib/ux-events'
 
 const styleOptions = ['minimal', 'luxury', 'bold'] as const
 const toneOptions = ['Neutral', 'Warm', 'Professional', 'Friendly'] as const
@@ -91,6 +93,9 @@ function parseApiError(error: unknown): string {
 export default function BrandDetailsPage() {
   const { setBrand } = useBrandStore()
   const [saving, setSaving] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const { data: brandMeRes, isLoading: loadingBrandMe, mutate: mutateBrandMe } = useSWR(
     '/api/brand/me',
@@ -205,10 +210,12 @@ export default function BrandDetailsPage() {
   const onSubmit = async (values: FormValues) => {
     const parsed = schema.safeParse(values)
     if (!parsed.success) {
+      logUxEvent('brand_form_validation_failed', { issue: parsed.error.issues[0]?.message ?? 'invalid_form' })
       toast.error(parsed.error.issues[0]?.message ?? 'Please complete all required fields')
       return
     }
     setSaving(true)
+    setSaveState('saving')
     try {
       await apiCall('/api/brand/me', {
         method: 'PATCH',
@@ -244,8 +251,11 @@ export default function BrandDetailsPage() {
         }),
       })
       await mutateBrandMe()
+      setLastSavedAt(new Date().toLocaleTimeString())
+      setSaveState('saved')
       toast.success('Brand profile updated')
     } catch (error) {
+      setSaveState('error')
       toast.error(parseApiError(error) || 'Unable to update brand profile')
     } finally {
       setSaving(false)
@@ -267,8 +277,13 @@ export default function BrandDetailsPage() {
 
   if (loadingBrandMe || loadingCurrent) {
     return (
-      <PageContainer className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-[#111111]" />
+      <PageContainer className="space-y-4">
+        <SkeletonCard lines={2} />
+        <SkeletonCard lines={8} />
+        <div className="flex items-center justify-center text-xs text-[#6B7280]">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#111111]" />
+          Loading brand profile...
+        </div>
       </PageContainer>
     )
   }
@@ -340,6 +355,17 @@ export default function BrandDetailsPage() {
               <label className="mb-1 block text-xs text-[#6B7280]">Website / competitor link</label>
               <input className={field} {...form.register('website')} />
             </div>
+            <div className="md:col-span-2">
+              <button
+                type="button"
+                className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-xs text-[#111111] hover:bg-[#F7F7F8]"
+                onClick={() => setShowAdvanced((v) => !v)}
+              >
+                {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
+              </button>
+            </div>
+            {showAdvanced ? (
+              <>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Phone</label>
               <input className={field} {...form.register('phone')} />
@@ -418,6 +444,8 @@ export default function BrandDetailsPage() {
               <input id="auto-schedule" type="checkbox" {...form.register('autoSchedule')} />
               <label htmlFor="auto-schedule" className="text-sm text-[#111111]">Auto schedule enabled</label>
             </div>
+              </>
+            ) : null}
             <div className="md:col-span-2">
               <label className="mb-2 block text-xs text-[#6B7280]">Goals</label>
               <div className="flex flex-wrap gap-2">
@@ -442,6 +470,9 @@ export default function BrandDetailsPage() {
               {saving ? 'Saving...' : 'Save Brand Changes'}
             </Button>
           </div>
+          <p className="mt-2 text-xs text-[#6B7280]">
+            {saveState === 'saving' ? 'Saving changes...' : saveState === 'saved' ? `Saved at ${lastSavedAt}` : saveState === 'error' ? 'Save failed. Please retry.' : 'No recent save.'}
+          </p>
         </SectionCard>
 
         <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="xl:sticky xl:top-20 h-fit">

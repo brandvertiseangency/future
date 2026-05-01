@@ -10,6 +10,7 @@ import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { logUxEvent } from '@/lib/ux-events'
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok']
 
@@ -62,17 +63,20 @@ export default function GeneratePage() {
           body: JSON.stringify({ platform, contentType: 'post', brief }),
         })
         generated.push(result.post)
+        logUxEvent('generate_platform_success', { platform })
         setCompletedCount((count) => count + 1)
         setStage(`Generated ${generated.length}/${platforms.length} platform outputs...`)
       } catch (error) {
         failures.push(`${platform}: ${parseApiError(error)}`)
         setFailedPlatforms((prev) => [...prev, platform])
+        logUxEvent('generate_platform_failed', { platform, error: parseApiError(error) })
       }
     }
     setPreview(generated)
     setStage(`Completed: ${generated.length} succeeded, ${failures.length} failed`)
     setLoading(false)
     if (generated.length > 0) {
+      logUxEvent('generate_completed', { selectedPlatforms: platforms.length, succeeded: generated.length, failed: failures.length })
       toast.success('Generation complete')
       if (failures.length) {
         toast.error(`Some platforms failed: ${failures.slice(0, 2).join(' | ')}`)
@@ -80,6 +84,7 @@ export default function GeneratePage() {
       // This route generates posts directly, not calendar jobs.
       router.push('/outputs')
     } else {
+      logUxEvent('generate_failed_all', { selectedPlatforms: platforms.length })
       toast.error(failures[0] ?? 'Generation failed')
     }
   }

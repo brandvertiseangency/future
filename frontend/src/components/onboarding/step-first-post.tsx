@@ -9,6 +9,7 @@ import { apiCall } from '@/lib/api'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { logUxEvent } from '@/lib/ux-events'
 
 const GENERATION_STEPS = [
   { label: 'Analysing your Brand DNA…',        duration: 2200 },
@@ -276,6 +277,7 @@ export function StepFirstPost() {
         signal: controller.signal,
       })
       clearTimeout(timeout)
+      logUxEvent('onboarding_generate_plan_success', { postCount, planId: res.planId })
       reset()
       router.push(`/calendar/review?planId=${res.planId}`)
     } catch (e: any) {
@@ -283,6 +285,7 @@ export function StepFirstPost() {
       const msg = e?.name === 'AbortError'
         ? 'Generation timed out. The AI is busy — please try again.'
         : parseApiError(e)
+      logUxEvent('onboarding_generate_plan_failed', { postCount, error: msg })
       setError(msg)
     }
   }
@@ -306,11 +309,13 @@ export function StepFirstPost() {
       if (lastError) throw lastError
 
       await syncProducts()
+      logUxEvent('onboarding_skip_completed', { hasProducts: Array.isArray(onboardingData.products) && onboardingData.products.length > 0 })
       reset()
       router.push('/dashboard')
     } catch (e: any) {
       const message = 'Could not save onboarding yet. Please check your connection and try again.'
       console.warn('Onboarding skip save failed', e)
+      logUxEvent('onboarding_skip_failed', { error: message })
       setError(message)
       toast.error(message)
     } finally {

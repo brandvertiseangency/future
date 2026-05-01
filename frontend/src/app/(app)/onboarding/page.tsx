@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { ONBOARDING_SECTIONS, getOnboardingProgress } from '@/lib/onboarding-flow'
 import { getSectionValidity } from '@/lib/onboarding-schemas'
 import { MotionSection, ProgressScore, SectionRail, StickyPreviewPanel } from '@/components/onboarding/primitives/onboarding-shell'
+import { logUxEvent } from '@/lib/ux-events'
 
 // Step 1: reuse existing welcome
 import { StepWelcome } from '@/components/onboarding/step-welcome'
@@ -53,7 +54,7 @@ const STEPS = [
 ]
 
 export default function OnboardingPage() {
-  const { step, setStep, data: onboardingData } = useOnboardingStore()
+  const { step, setStep, data: onboardingData, updateData } = useOnboardingStore()
   const router = useRouter()
   const StepComponent = STEPS[step - 1] || StepWelcome
   const progress = getOnboardingProgress(step)
@@ -113,6 +114,19 @@ export default function OnboardingPage() {
     !validity.calendar ? 'Publishing plan' : '',
   ].filter(Boolean)
 
+  const applyFastPathDefaults = () => {
+    updateData({
+      brandName: onboardingData.brandName || 'My Brand',
+      description: onboardingData.description || 'Premium brand focused on consistent growth and clear positioning.',
+      goals: onboardingData.goals.length ? onboardingData.goals : ['Increase Brand Awareness'],
+      audienceCity: onboardingData.audienceCity || 'Mumbai',
+      activePlatforms: onboardingData.activePlatforms.length ? onboardingData.activePlatforms : ['instagram'],
+      preferredPostingTimes: onboardingData.preferredPostingTimes.length ? onboardingData.preferredPostingTimes : ['10:00'],
+    })
+    if (step < 11) setStep(11)
+    logUxEvent('onboarding_fast_path_applied', { fromStep: step })
+  }
+
   return (
     <div className="min-h-screen bg-[#F7F7F8] py-6">
       <PageContainer className="max-w-[1400px]">
@@ -129,6 +143,16 @@ export default function OnboardingPage() {
             Exit
           </Button>
         </div>
+        {missingCritical.length > 0 ? (
+          <div className="mb-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-xs text-amber-700">
+              Fast path available: apply recommended defaults for missing fields and jump to publishing plan.
+            </p>
+            <Button size="sm" variant="secondary" onClick={applyFastPathDefaults}>
+              Use Fast Path
+            </Button>
+          </div>
+        ) : null}
         <div className="grid grid-cols-12 gap-5">
           <div className="col-span-12 lg:col-span-3">
             <div className="sticky top-6 space-y-4">

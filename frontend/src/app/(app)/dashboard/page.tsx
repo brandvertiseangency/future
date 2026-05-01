@@ -1,13 +1,16 @@
 'use client'
 
 import { CalendarDays, ImageIcon, Sparkles, WandSparkles } from 'lucide-react'
+import { useEffect } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
-import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { getDashboardNextStep } from '@/lib/workflow-next-step'
+import { logUxEvent } from '@/lib/ux-events'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
@@ -27,8 +30,12 @@ export default function DashboardPage() {
   const recentOutputs = ((outputsData as { posts?: { id: string; caption?: string; image_url?: string; created_at?: string }[] })?.posts ?? []).slice(0, 4)
   const brandName = brand?.name ?? 'My Brand'
   const usedPercent = Math.min(Math.round((totalPosts / 30) * 100), 100)
-  const nextAction = scheduledPosts > 0 ? { label: 'Generate Creatives', href: '/generate' } : { label: 'Approve Content Calendar', href: '/calendar' }
+  const nextStep = getDashboardNextStep({ hasScheduledPosts: scheduledPosts > 0, hasOutputs: recentOutputs.length > 0 })
   const hasDataError = Boolean(brandError || creditsError || statsError || scheduledError || outputsError)
+
+  useEffect(() => {
+    logUxEvent('dashboard_next_step_rendered', { title: nextStep.title })
+  }, [nextStep.title])
 
   return (
     <PageContainer className="space-y-6">
@@ -47,14 +54,12 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <SectionCard title="Next Step" subtitle={`You're ${usedPercent}% through this month's workflow.`}>
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-[#6B7280]">Next: {nextAction.label}</p>
-          <Link href={nextAction.href}>
-            <Button>Continue →</Button>
-          </Link>
-        </div>
-      </SectionCard>
+      <NextStepCard
+        title={nextStep.title}
+        reason={`${nextStep.reason} You're ${usedPercent}% through this month's workflow.`}
+        primaryCta={nextStep.primaryCta}
+        secondaryCta={nextStep.secondaryCta}
+      />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Posts Remaining" value={postsLeft} />

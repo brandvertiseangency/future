@@ -1,17 +1,19 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { Download, ImageIcon, RefreshCcw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PageContainer, PageHeader, EmptyState } from '@/components/ui/page-primitives'
+import { PageContainer, PageHeader, EmptyState, NextStepCard } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
+import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
+import { logUxEvent } from '@/lib/ux-events'
 
 interface Post {
   id: string
@@ -23,12 +25,6 @@ interface Post {
   created_at: string
   approval_status?: string
   content_type?: string
-}
-
-function getEffectiveStatus(post: Post): string {
-  if (post.status === 'published' || post.status === 'scheduled') return post.status
-  if (post.approval_status === 'approved' || post.status === 'approved') return 'approved'
-  return post.status || 'draft'
 }
 
 const PLATFORM_FILTERS = ['all', 'instagram', 'linkedin', 'twitter', 'tiktok', 'facebook']
@@ -43,6 +39,7 @@ export default function OutputsPage() {
   const [selected, setSelected] = useState<Post | null>(null)
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const regeneratePost = async (postId: string) => {
     setRegeneratingId(postId)
     try {
@@ -68,6 +65,21 @@ export default function OutputsPage() {
   const posts: Post[] = (data?.posts ?? [])
     .filter((post) => !search || post.caption?.toLowerCase().includes(search.toLowerCase()))
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === '/') {
+        event.preventDefault()
+        searchRef.current?.focus()
+      }
+      if (event.key.toLowerCase() === 's' && selectedIds.length > 0) {
+        event.preventDefault()
+        router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [router, selectedIds])
+
   return (
     <PageContainer className="max-w-[1100px] pb-20">
       <PageIntroModal
@@ -87,18 +99,28 @@ export default function OutputsPage() {
           <Button
             size="sm"
             className="ml-3"
-            onClick={() => router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)}
+            onClick={() => {
+              logUxEvent('outputs_schedule_selected_clicked', { selectedCount: selectedIds.length })
+              router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)
+            }}
           >
             Schedule Selected
           </Button>
         </div>
       ) : null}
+      <NextStepCard
+        title={selectedIds.length > 0 ? 'Schedule selected outputs' : 'Select outputs to schedule'}
+        reason={selectedIds.length > 0 ? 'Selected outputs are ready. Send them to Scheduler to assign publishing slots.' : 'Choose one or more outputs to unlock fast scheduling handoff.'}
+        primaryCta={selectedIds.length > 0 ? { label: 'Schedule Selected', href: `/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}` } : { label: 'Open Scheduler', href: '/scheduler' }}
+        secondaryCta={{ label: 'Generate More', href: '/generate' }}
+      />
 
       <SectionCard title="Filters" subtitle="Find outputs quickly by platform, status, or keyword.">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
             <input
+              ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search outputs..."
@@ -121,6 +143,7 @@ export default function OutputsPage() {
           </div>
         </div>
       </SectionCard>
+      <p className="text-xs text-[#6B7280]">Shortcuts: `/` focus search, `S` schedule selected outputs.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <div>
@@ -158,8 +181,10 @@ export default function OutputsPage() {
                   </div>
                   <p className="line-clamp-2 text-sm text-[#111111]">{post.caption || 'Untitled output'}</p>
                   <div className="flex items-center justify-between">
-                    <StatusBadge tone={getEffectiveStatus(post) === 'approved' ? 'success' : 'neutral'}>
-                      {getEffectiveStatus(post)}
+                    <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(post.status, post.approval_status))}>
+                      <span title={getPostStatusHint(getEffectivePostStatus(post.status, post.approval_status))}>
+                        {getEffectivePostStatus(post.status, post.approval_status)}
+                      </span>
                     </StatusBadge>
                     <span className="text-xs text-[#6B7280] capitalize">{post.platform}</span>
                   </div>

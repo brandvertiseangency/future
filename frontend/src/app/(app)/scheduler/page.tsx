@@ -6,11 +6,13 @@ import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
-import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
+import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
+import { logUxEvent } from '@/lib/ux-events'
 
 type PostItem = {
   id: string
@@ -18,6 +20,7 @@ type PostItem = {
   image_url?: string
   platform: string
   status: string
+  approval_status?: string
   scheduled_at?: string
 }
 
@@ -81,6 +84,7 @@ export default function SchedulerPage() {
 
   const postMap = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts])
   const selectedPost = selectedPostId ? postMap.get(selectedPostId) : undefined
+  const hasSlotForSelected = Boolean(selectedPost && slots.some((slot) => slot.postId === selectedPost.id))
 
   const getSlotIdFromScheduledAt = (scheduledAt?: string) => {
     if (!scheduledAt) return null
@@ -152,6 +156,7 @@ export default function SchedulerPage() {
         }),
       })
       await mutate()
+      logUxEvent('scheduler_post_scheduled', { postId: selectedPost.id, slotId: target.id })
       toast.success('Post scheduled')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to schedule post')
@@ -197,6 +202,26 @@ export default function SchedulerPage() {
     }
   }
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.target as HTMLElement)?.tagName === 'TEXTAREA' || (event.target as HTMLElement)?.tagName === 'INPUT') return
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault()
+        void scheduleSelected()
+      }
+      if (event.key.toLowerCase() === 'u') {
+        event.preventDefault()
+        void unscheduleSelected()
+      }
+      if (event.key === 'Backspace') {
+        event.preventDefault()
+        void deleteSelected()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [scheduleSelected, unscheduleSelected, deleteSelected])
+
   return (
     <PageContainer className="space-y-6">
       <PageIntroModal
@@ -213,6 +238,13 @@ export default function SchedulerPage() {
       <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
         Timezone: <span className="font-medium text-[#111111]">{timezone}</span> · Best time suggestion: 10:00 AM to 12:00 PM
       </div>
+      <NextStepCard
+        title={hasSlotForSelected ? 'Schedule selected post now' : 'Assign selected post to a time slot'}
+        reason={hasSlotForSelected ? 'Selected post has a valid slot assignment and is ready to schedule.' : 'Scheduling is blocked until a post is dropped into one of the calendar slots.'}
+        primaryCta={hasSlotForSelected ? { label: 'Schedule This Post', href: '/scheduler' } : { label: 'Go to Outputs', href: '/outputs' }}
+        secondaryCta={{ label: 'Review Calendar', href: '/calendar' }}
+      />
+      <p className="text-xs text-[#6B7280]">Shortcuts: `Ctrl/Cmd + Enter` schedule, `U` unschedule, `Backspace` delete selected.</p>
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">
@@ -227,6 +259,12 @@ export default function SchedulerPage() {
               {posts.map((post) => (
                 <DraggablePost key={post.id} post={post} selected={selectedPostId === post.id} onSelect={() => setSelectedPostId(post.id)} />
               ))}
+              {!isLoading && posts.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-center">
+                  <p className="text-sm text-[#111111]">No posts available for scheduling</p>
+                  <p className="mt-1 text-xs text-[#6B7280]">Approve items in Calendar or generate new outputs first.</p>
+                </div>
+              ) : null}
             </div>
           </SectionCard>
 
@@ -252,7 +290,11 @@ export default function SchedulerPage() {
                 <p className="text-sm text-[#111111]">{selectedPost.caption}</p>
                 <div className="flex items-center justify-between">
                   <StatusBadge tone="neutral">{selectedPost.platform}</StatusBadge>
-                  <StatusBadge tone={selectedPost.status === 'approved' ? 'success' : 'neutral'}>{selectedPost.status}</StatusBadge>
+                  <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
+                    <span title={getPostStatusHint(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
+                      {getEffectivePostStatus(selectedPost.status, selectedPost.approval_status)}
+                    </span>
+                  </StatusBadge>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-[#6B7280]">Comments</label>

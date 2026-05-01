@@ -40,7 +40,7 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150 hover:scale-[1.01]',
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
         active ? 'bg-[#F3F4F6] text-[#111111] border border-[#E5E7EB]' : 'text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111111]',
       )}
     >
@@ -71,7 +71,7 @@ export function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-[#E5E7EB] bg-white">
-      <div className="flex h-14 items-center px-5">
+      <div className="flex h-14 items-center px-4">
         <Image
           src="/Brandvertise-Dark-Logo.webp"
           alt="Brandvertise"
@@ -82,7 +82,7 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-3 py-3">
+      <div className="scrollbar-hide flex-1 overflow-y-auto px-3 py-4">
         <nav className="space-y-1">
           {NAV_ITEMS.map(({ href, label, icon }) => (
             <NavItem

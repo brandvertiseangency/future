@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { logUxEvent } from '@/lib/ux-events'
 
 function parseApiError(error: unknown): string {
   const raw = error instanceof Error ? error.message : 'Failed to update profile'
@@ -31,6 +32,8 @@ export default function SettingsPage() {
   const [name, setName] = useState(user?.displayName ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const { data: meData, mutate: mutateMe } = useSWR('/api/users/me', (url: string) => apiCall<{ user?: { display_name?: string; email?: string } }>(url), { revalidateOnFocus: false })
   const { data: billingData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number; plan: string }>(url), { revalidateOnFocus: false })
   const credits = billingData?.balance ?? 0
@@ -55,13 +58,23 @@ export default function SettingsPage() {
   }, [meData?.user?.display_name, meData?.user?.email, user?.displayName, user?.email])
 
   const saveProfile = async () => {
-    if (!canSave) return
+    if (!canSave) {
+      logUxEvent('settings_profile_validation_blocked', {
+        nameLength: name.trim().length,
+        unchanged: name.trim() === baselineName.trim(),
+      })
+      return
+    }
     setSavingProfile(true)
+    setSaveState('saving')
     try {
       await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name.trim() }) })
       await mutateMe()
+      setLastSavedAt(new Date().toLocaleTimeString())
+      setSaveState('saved')
       toast.success('Profile updated')
     } catch (error) {
+      setSaveState('error')
       toast.error(parseApiError(error))
     } finally {
       setSavingProfile(false)
@@ -104,6 +117,9 @@ export default function SettingsPage() {
           <Button className="mt-4" onClick={saveProfile} disabled={!canSave}>
             {savingProfile ? 'Saving...' : canSave ? 'Save Profile' : 'Saved'}
           </Button>
+          <p className="mt-2 text-xs text-[#6B7280]">
+            {saveState === 'saving' ? 'Saving changes...' : saveState === 'saved' ? `Saved at ${lastSavedAt}` : saveState === 'error' ? 'Save failed. Please retry.' : 'No unsaved changes.'}
+          </p>
         </SectionCard>
         </TabsContent>
 

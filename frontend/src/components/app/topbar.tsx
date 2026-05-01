@@ -61,7 +61,7 @@ export function Topbar() {
   const progress = getWorkflowProgress(pathname)
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E7EB] bg-white px-4 md:left-[240px] md:px-6">
+    <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E7EB] bg-white/95 px-4 backdrop-blur-sm md:left-[240px] md:px-6">
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-[#111111]">{meta.title}</p>
         <p className="truncate text-xs text-[#6B7280]">{brandName ? `${brandName} · ${meta.sub ?? ''}` : meta.sub}</p>
@@ -80,7 +80,7 @@ export function Topbar() {
 
         <button
           onClick={markAllRead}
-          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#6B7280] hover:bg-[#F3F4F6]"
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#6B7280] transition-colors hover:bg-[#F3F4F6]"
         >
           <Bell size={16} />
           {unreadCount > 0 && (
@@ -102,7 +102,7 @@ export function Topbar() {
 
         {nextAction ? (
           <Link href={nextAction.href} className="hidden md:block">
-            <button className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#111111] hover:bg-[#F3F4F6]">
+            <button className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#111111] transition-colors hover:bg-[#F3F4F6]">
               Next: {nextAction.label}
             </button>
           </Link>

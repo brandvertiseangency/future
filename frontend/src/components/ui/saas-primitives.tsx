@@ -18,14 +18,14 @@ export function SectionCard({
 }) {
   return (
     <section className={cn('app-card', className)}>
-      <div className="flex items-start justify-between border-b border-[#E5E7EB] px-5 py-4">
+      <div className="flex items-start justify-between border-b border-[#E5E7EB] px-4 py-4 md:px-5">
         <div>
-          <h2 className="text-base font-semibold text-[#111111]">{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm text-[#6B7280]">{subtitle}</p> : null}
+          <h2 className="text-[15px] font-semibold text-[#111111]">{title}</h2>
+          {subtitle ? <p className="mt-1 text-[13px] text-[#6B7280]">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
       </div>
-      <div className="p-5">{children}</div>
+      <div className="p-4 md:p-5">{children}</div>
     </section>
   )
 }
@@ -40,9 +40,9 @@ export function StatCard({
   sublabel?: string
 }) {
   return (
-    <div className="app-card p-4">
+    <div className="app-card p-4 md:p-5">
       <p className="text-xs text-[#6B7280]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[#111111]">{value}</p>
+      <p className="mt-2 text-[26px] font-semibold leading-none text-[#111111]">{value}</p>
       {sublabel ? <p className="mt-1 text-xs text-[#6B7280]">{sublabel}</p> : null}
     </div>
   )

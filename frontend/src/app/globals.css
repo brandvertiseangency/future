@@ -53,6 +53,12 @@
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #111111;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
 }
 
 @layer base {
@@ -90,7 +96,16 @@
 }
 
 .app-card {
-  @apply rounded-xl border border-[#E5E7EB] bg-white;
+  @apply rounded-xl border border-[#E5E7EB] bg-white shadow-[0_1px_2px_rgba(17,17,17,0.04)];
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid #111111;
+  outline-offset: 2px;
 }
 
 .scrollbar-hide {

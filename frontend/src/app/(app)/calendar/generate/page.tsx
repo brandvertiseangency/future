@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
 import useSWR from 'swr'
+import Link from 'next/link'
 import { apiCall } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
@@ -229,6 +230,10 @@ function CalendarGenerateInner() {
             {!onboardingReady ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 Complete onboarding before generating a plan. Missing: {missingOnboarding.join(', ')}.
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Link href="/onboarding"><Button size="sm" variant="secondary">Complete Onboarding</Button></Link>
+                  <Link href="/brand"><Button size="sm" variant="secondary">Fix in Brand Page</Button></Link>
+                </div>
               </div>
             ) : null}
 

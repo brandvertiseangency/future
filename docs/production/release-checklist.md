@@ -378,6 +378,37 @@ Fill this block after manual QA:
 - Overall: `<GO / NO-GO>`
 - Blockers (if any): `<none or list>`
 
+## Phase 3 UX Enhancement Log
+
+### Run: 2026-05-02 01:35 IST (Phase 3 Batch A-E implementation)
+
+#### Batch A (Clarity and guidance)
+- Added stronger next-step rationale on dashboard.
+- Added blocker-aware guidance in calendar and scheduler empty/no-approval states.
+
+#### Batch B (Forms and persistence confidence)
+- Added save-state messaging (`Saving/Saved/Retry`) to settings and brand forms.
+- Added progressive disclosure toggle for advanced brand settings to reduce initial form density.
+
+#### Batch C (Status consistency)
+- Added shared status utility (`frontend/src/lib/post-status.ts`) and applied in calendar, outputs, scheduler.
+- Added status hint tooltips for clearer lifecycle understanding.
+
+#### Batch D (Motion/loading consistency)
+- Applied shared motion tokens to page-intro modal interaction.
+- Replaced spinner-only brand loading with skeleton-first loading feedback.
+
+#### Batch E (Optional measurement layer)
+- Added lightweight UX event logger (`frontend/src/lib/ux-events.ts`) with pluggable default sink.
+- Instrumented key flow points:
+  - onboarding skip/generate success/failure,
+  - generate per-platform success/failure + summary,
+  - scheduler schedule conversion,
+  - brand/settings validation block/failure signals.
+
+#### Validation
+- PASS lints for all Phase 3 touched files.
+
 ### Run: 2026-05-01 23:35 IST (strict route-by-route)
 
 #### Environment notes
@@ -409,3 +440,130 @@ Fill this block after manual QA:
   - all listed routes return `200`/expected redirect in <= 3s median locally
   - no runtime errors in browser console
   - external deployment route checks pass from CI or a non-restricted host
+
+## Phase 4 UX Leader Log
+
+### Run: 2026-05-02 02:05 IST (Phase 4 Batch 1-5 implementation)
+
+#### Batch 1 (Conversion framework)
+- Added shared next-step surface and deterministic CTA framework:
+  - `frontend/src/lib/workflow-next-step.ts`
+  - `frontend/src/components/ui/page-primitives.tsx` (`NextStepCard`)
+- Applied on dashboard, calendar, outputs, scheduler with blocker-aware microcopy.
+
+#### Batch 2 (Visual fidelity system)
+- Tightened card typography rhythm and section density in shared primitives.
+- Added global focus-visible treatment and subtle card shadow consistency.
+- Refined topbar/sidebar interaction density and hover consistency.
+
+#### Batch 3 (Funnel compression)
+- Added onboarding fast-path defaults to unblock stalled users and jump to publishing plan.
+- Added direct fix links from calendar generation blocker state (`/onboarding`, `/brand`).
+- Added guidance copy in onboarding profile quality panel.
+
+#### Batch 4 (Interaction efficiency)
+- Added keyboard shortcuts:
+  - calendar: `A`, `Shift+A`, `G`
+  - outputs: `/`, `S`
+  - scheduler: `Ctrl/Cmd+Enter`, `U`, `Backspace`
+- Added route-visible shortcut hints.
+
+#### Batch 5 (Measurement and signoff)
+- Expanded UX event capture for Phase 4 touchpoints:
+  - dashboard next-step rendering,
+  - outputs schedule-selected CTA,
+  - onboarding fast-path usage.
+- Kept instrumentation behind existing vendor-agnostic logger abstraction.
+
+#### Validation
+- Lints: no diagnostics on changed Phase 4 files.
+- Typecheck: frontend `tsc --noEmit` pass.
+
+### Run: 2026-05-02 02:22 IST (Phase 4 route smoke snapshot)
+
+#### Route status (unauthenticated probe)
+- `/dashboard` -> `307` redirect to `/auth?redirect=%2Fdashboard`
+- `/onboarding` -> `307` redirect to `/auth?redirect=%2Fonboarding`
+- `/calendar` -> `307` redirect to `/auth?redirect=%2Fcalendar`
+- `/calendar/generate` -> `307` redirect to `/auth?redirect=%2Fcalendar%2Fgenerate`
+- `/outputs` -> `307` redirect to `/auth?redirect=%2Foutputs`
+- `/scheduler` -> `307` redirect to `/auth?redirect=%2Fscheduler`
+
+#### Interpretation
+- Middleware protection is active and redirect behavior is consistent.
+- Full authenticated visual QA remains required for final UX signoff.
+
+### Run: 2026-05-02 02:06 IST (Phase 4 production build verification)
+
+#### Build result
+- `frontend` production build completed successfully (`next build`).
+- Static page generation completed for all app routes.
+
+#### Known non-blocking note
+- Existing ESLint config warning remains during build:
+  - `Key "reportUnusedDisableDirectives": Could not find "reportUnusedDisableDirectives" in plugin "@"`
+  - Treated as pre-existing tooling configuration issue; build still exits successfully.
+
+### Authenticated QA Runbook (Phase 4 Signoff)
+
+#### Preconditions
+- Run frontend locally on `http://127.0.0.1:3000`.
+- Use a test account with onboarding complete and at least 10 credits.
+- Open browser console and keep it visible during checks.
+
+#### Route-by-route checks
+- `/dashboard`
+  - Verify `Priority Next Step` card shows one primary + one secondary CTA.
+  - Verify CTA copy changes with account state (scheduled posts / outputs available).
+- `/calendar`
+  - Verify blocker copy appears when no approved posts.
+  - Validate shortcuts:
+    - `A` approves selected post,
+    - `Shift+A` approves all,
+    - `G` opens generate page.
+- `/calendar/generate`
+  - Verify missing-onboarding warning includes direct actions (`Complete Onboarding`, `Fix in Brand Page`).
+  - Verify plan generation starts only when prerequisites are satisfied.
+- `/outputs`
+  - Verify `Priority Next Step` card reflects selected items.
+  - Validate shortcuts:
+    - `/` focuses search,
+    - `S` sends selected items to scheduler.
+- `/scheduler`
+  - Verify blocker copy updates when selected post has/does not have assigned slot.
+  - Validate shortcuts:
+    - `Ctrl/Cmd + Enter` schedules selected,
+    - `U` unschedules,
+    - `Backspace` deletes selected.
+- `/onboarding`
+  - Verify `Use Fast Path` appears when critical sections are missing.
+  - Verify fast path fills defaults and advances to publishing-plan step.
+
+#### Visual fidelity checks
+- Confirm spacing follows 8px rhythm between cards/sections.
+- Confirm focus-visible outline is consistent on inputs/buttons/links.
+- Confirm card headers/body density is consistent across dashboard, calendar, outputs, scheduler.
+- Confirm topbar/sidebar hover and active states are visually consistent.
+
+#### Console cleanliness criteria
+- No uncaught runtime exceptions.
+- No red network errors for successful paths (excluding intentional auth redirects).
+
+#### Signoff record template
+- Tester:
+- Environment:
+- Timestamp:
+- Route results:
+  - `/dashboard`:
+  - `/calendar`:
+  - `/calendar/generate`:
+  - `/outputs`:
+  - `/scheduler`:
+  - `/onboarding`:
+- Keyboard shortcuts:
+  - Calendar:
+  - Outputs:
+  - Scheduler:
+- Visual fidelity verdict:
+- Console verdict:
+- Overall: `GO` / `NO-GO`
