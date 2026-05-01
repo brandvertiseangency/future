@@ -61,9 +61,58 @@ router.post('/complete', authMiddleware, async (req, res) => {
       // v2 fields
       colorPrimary, colorSecondary, colorAccent, fontMood,
       priceSegment, industrySubtype, uspKeywords, industryAnswers,
-      weeklyPostCount, contentMix, autoSchedule,
+      weeklyPostCount, contentMix, preferredPostingTimes, activePlatforms, autoSchedule,
       extractedStyleProfile, referenceImageUrls,
     } = req.body;
+
+    if (!brandName || !String(brandName).trim()) {
+      return res.status(400).json({ error: 'brandName is required.' });
+    }
+    if (!industry || !String(industry).trim()) {
+      return res.status(400).json({ error: 'industry is required.' });
+    }
+    const normalizedPlatforms = Array.isArray(activePlatforms) && activePlatforms.length
+      ? activePlatforms
+      : (Array.isArray(platforms) ? platforms : []);
+    const normalizedPostingTimes = Array.isArray(preferredPostingTimes)
+      ? preferredPostingTimes
+      : ['09:00', '18:00'];
+    const mixTotal = contentMix && typeof contentMix === 'object'
+      ? Object.values(contentMix).reduce((sum, value) => sum + (Number(value) || 0), 0)
+      : 0;
+    const missingBySection = {
+      brand: [
+        !brandName || !String(brandName).trim() ? 'brandName' : null,
+        !description || String(description).trim().length < 10 ? 'description' : null,
+      ].filter(Boolean),
+      personality: [
+        !Array.isArray(styles) || styles.length === 0 ? 'styles' : null,
+        Number(tone) < 0 || Number(tone) > 100 ? 'tone' : null,
+      ].filter(Boolean),
+      audience: [
+        !audienceLocation || !String(audienceLocation).trim() ? 'audienceLocation' : null,
+        !Array.isArray(audienceInterests) || audienceInterests.length === 0 ? 'audienceInterests' : null,
+      ].filter(Boolean),
+      goals: [
+        !Array.isArray(goals) || goals.length === 0 ? 'goals' : null,
+      ].filter(Boolean),
+      industryConfig: [
+        !industry || !String(industry).trim() ? 'industry' : null,
+        !industryAnswers || Object.keys(industryAnswers).length === 0 ? 'industryAnswers' : null,
+      ].filter(Boolean),
+      calendar: [
+        !Array.isArray(normalizedPlatforms) || normalizedPlatforms.length === 0 ? 'activePlatforms' : null,
+        mixTotal !== 100 ? 'contentMix' : null,
+      ].filter(Boolean),
+    };
+    const hasMissing = Object.values(missingBySection).some((fields) => fields.length > 0);
+    if (hasMissing) {
+      return res.status(422).json({
+        error: 'ONBOARDING_INCOMPLETE',
+        message: 'Complete required onboarding sections before generation.',
+        missingBySection,
+      });
+    }
 
     await client.query('BEGIN');
 
@@ -108,11 +157,11 @@ router.post('/complete', authMiddleware, async (req, res) => {
         user.id, brandName || 'My Brand', description || '', industry || '', tone ?? 50,
         styles || [], audienceAgeMin || 22, audienceAgeMax || 45,
         audienceGender || 'mixed', audienceLocation || '',
-        audienceInterests || [], platforms || [], goals || [],
+        audienceInterests || [], normalizedPlatforms, goals || [],
         colorPrimary || null, colorSecondary || null, colorAccent || null, fontMood || null,
         industrySubtype || null, priceSegment || null, weeklyPostCount || 4,
         contentMix ? JSON.stringify(contentMix) : null,
-        platforms || [],
+        normalizedPlatforms,
         tagline || null, website || null, phone || null, address || null, logoUrl || null,
       ]
     );
@@ -174,19 +223,21 @@ router.post('/complete', authMiddleware, async (req, res) => {
     if (brand) {
       await client.query(
         `INSERT INTO content_calendar_preferences (brand_id, weekly_post_count, content_type_mix,
-           auto_schedule, active_platforms)
-         VALUES ($1,$2,$3,$4,$5)
+           auto_schedule, active_platforms, preferred_posting_times)
+         VALUES ($1,$2,$3,$4,$5,$6)
          ON CONFLICT (brand_id) DO UPDATE SET
            weekly_post_count = EXCLUDED.weekly_post_count,
            content_type_mix = EXCLUDED.content_type_mix,
            auto_schedule = EXCLUDED.auto_schedule,
            active_platforms = EXCLUDED.active_platforms,
+           preferred_posting_times = EXCLUDED.preferred_posting_times,
            updated_at = NOW()`,
         [
           brand.id, weeklyPostCount || 4,
           contentMix ? JSON.stringify(contentMix) : JSON.stringify({ promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 }),
           autoSchedule || false,
-          platforms || [],
+          normalizedPlatforms,
+          normalizedPostingTimes,
         ]
       );
     }

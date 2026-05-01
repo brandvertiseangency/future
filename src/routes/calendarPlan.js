@@ -177,14 +177,15 @@ const getUserWithBrand = async (uid) => {
     `SELECT u.id, u.credits,
             b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
             b.tone, b.styles, b.goals, b.platforms,
-            b.audience_age_min, b.audience_age_max, b.audience_gender, b.audience_interests,
+            b.audience_age_min, b.audience_age_max, b.audience_gender, b.audience_location, b.audience_interests,
             b.font_mood,
             b.color_primary, b.color_secondary, b.color_accent,
             b.industry_subtype, b.price_segment, b.posting_frequency, b.content_mix,
             bic.usp_keywords, bic.industry_answers,
             bsp.dominant_aesthetic, bsp.mood_keywords, bsp.photography_style,
             bsp.layout_style, bsp.font_mood_detected,
-            ccp.weekly_post_count AS pref_weekly_posts, ccp.content_type_mix AS pref_content_mix
+            ccp.weekly_post_count AS pref_weekly_posts, ccp.content_type_mix AS pref_content_mix,
+            ccp.active_platforms AS pref_active_platforms
      FROM users u
      LEFT JOIN LATERAL (
        SELECT b1.*
@@ -313,6 +314,27 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
   const user = await getUserWithBrand(req.user.uid);
   if (!user) return res.status(404).json({ error: 'User not found.' });
   if (!user.brand_id) return res.status(400).json({ error: 'No brand found. Complete onboarding first.' });
+  const persistedMixTotal = user.pref_content_mix && typeof user.pref_content_mix === 'object'
+    ? Object.values(user.pref_content_mix).reduce((sum, value) => sum + (Number(value) || 0), 0)
+    : 0;
+  const missingForGeneration = [
+    !user.brand_name ? 'brandName' : null,
+    !user.description ? 'description' : null,
+    !user.industry ? 'industry' : null,
+    !Array.isArray(user.goals) || user.goals.length === 0 ? 'goals' : null,
+    !Array.isArray(user.styles) || user.styles.length === 0 ? 'styles' : null,
+    !user.audience_location ? 'audienceLocation' : null,
+    !Array.isArray(user.audience_interests) || user.audience_interests.length === 0 ? 'audienceInterests' : null,
+    !Array.isArray(user.pref_active_platforms) || user.pref_active_platforms.length === 0 ? 'activePlatforms' : null,
+    persistedMixTotal !== 100 ? 'contentMix' : null,
+  ].filter(Boolean);
+  if (missingForGeneration.length) {
+    return res.status(422).json({
+      error: 'ONBOARDING_INCOMPLETE',
+      message: 'Complete onboarding before generating a calendar plan.',
+      missingFields: missingForGeneration,
+    });
+  }
 
   const resolvedPostCount =
     Number.isFinite(Number(postCount)) && Number(postCount) > 0
@@ -346,7 +368,7 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       tone: user.tone || 50,
       styles: user.styles || [],
       goals: user.goals || [],
-      platforms: (user.active_platforms && user.active_platforms.length) ? user.active_platforms : (user.platforms || ['instagram']),
+      platforms: (user.pref_active_platforms && user.pref_active_platforms.length) ? user.pref_active_platforms : (user.platforms || ['instagram']),
       audienceAgeMin: user.audience_age_min || 18,
       audienceAgeMax: user.audience_age_max || 65,
       audienceGender: user.audience_gender || 'mixed',

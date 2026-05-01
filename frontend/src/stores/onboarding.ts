@@ -125,8 +125,10 @@ export interface OnboardingData {
 interface OnboardingStore {
   step: number
   data: OnboardingData
+  sectionCompletion: Record<string, boolean>
   setStep: (n: number) => void
   updateData: (partial: Partial<OnboardingData>) => void
+  refreshSectionCompletion: () => void
   setIndustryAnswer: (key: string, value: string | string[] | boolean | number) => void
   addReferenceImage: (img: ReferenceImage) => void
   removeReferenceImage: (index: number) => void
@@ -191,18 +193,30 @@ const defaultData: OnboardingData = {
 
 export const useOnboardingStore = create<OnboardingStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       step: 1,
       data: defaultData,
+      sectionCompletion: computeSectionCompletion(defaultData),
       setStep: (n) => set({ step: n }),
       updateData: (partial) =>
-        set((state) => ({ data: { ...state.data, ...partial } })),
+        set((state) => {
+          const nextData = { ...state.data, ...partial }
+          return { data: nextData, sectionCompletion: computeSectionCompletion(nextData) }
+        }),
+      refreshSectionCompletion: () => {
+        const next = computeSectionCompletion(get().data)
+        set({ sectionCompletion: next })
+      },
       setIndustryAnswer: (key, value) =>
         set((state) => ({
           data: {
             ...state.data,
             industryAnswers: { ...state.data.industryAnswers, [key]: value },
           },
+          sectionCompletion: computeSectionCompletion({
+            ...state.data,
+            industryAnswers: { ...state.data.industryAnswers, [key]: value },
+          }),
         })),
       addReferenceImage: (img) =>
         set((state) => ({
@@ -225,6 +239,11 @@ export const useOnboardingStore = create<OnboardingStore>()(
             extractedStyleProfile: profile,
             referenceAnalysisComplete: true,
           },
+          sectionCompletion: computeSectionCompletion({
+            ...state.data,
+            extractedStyleProfile: profile,
+            referenceAnalysisComplete: true,
+          }),
         })),
       addProduct: (product) =>
         set((state) => ({
@@ -249,7 +268,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
             products: (Array.isArray(state.data.products) ? state.data.products : []).filter((p) => p.id !== id),
           },
         })),
-      reset: () => set({ step: 1, data: defaultData }),
+      reset: () => set({ step: 1, data: defaultData, sectionCompletion: computeSectionCompletion(defaultData) }),
     }),
     {
       name: 'brandvertise_onboarding_v2',
@@ -257,3 +276,41 @@ export const useOnboardingStore = create<OnboardingStore>()(
     }
   )
 )
+
+export function computeSectionCompletion(data: OnboardingData) {
+  const mixTotal = Object.values(data.contentMix || {}).reduce((a, b) => a + b, 0)
+  return {
+    brand: Boolean(data.brandName.trim() && data.description.trim()),
+    industry: Boolean(data.industry),
+    personality: Boolean(data.vibeStyles?.length && data.tone >= 0),
+    visual: Boolean(data.colorPrimary && data.colorSecondary && data.fontMood),
+    audience: Boolean(data.audienceCity.trim() && (data.audienceLifestyle?.length ?? 0) > 0),
+    goals: Boolean((data.goals?.length ?? 0) > 0),
+    industryConfig: Boolean(Object.keys(data.industryAnswers || {}).length > 0),
+    calendar: Boolean((data.activePlatforms?.length ?? 0) > 0 && mixTotal === 100),
+  }
+}
+
+export function computeProfileScore(data: OnboardingData) {
+  const completion = computeSectionCompletion(data)
+  const total = Object.keys(completion).length
+  const done = Object.values(completion).filter(Boolean).length
+  return Math.round((done / total) * 100)
+}
+
+export function getMissingCriticalFields(data: OnboardingData) {
+  const completion = computeSectionCompletion(data)
+  const labels: Record<keyof typeof completion, string> = {
+    brand: 'Brand brief',
+    industry: 'Industry',
+    personality: 'Voice',
+    visual: 'Visual system',
+    audience: 'Audience',
+    goals: 'Goals',
+    industryConfig: 'Industry module',
+    calendar: 'Publishing plan',
+  }
+  return Object.entries(completion)
+    .filter(([, complete]) => !complete)
+    .map(([k]) => labels[k as keyof typeof completion])
+}

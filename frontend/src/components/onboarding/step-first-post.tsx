@@ -190,45 +190,45 @@ export function StepFirstPost() {
   }
 
   const completeOnboarding = async () => {
-    try {
-      await apiCall('/api/onboarding/complete', {
-        method: 'POST',
-        body: JSON.stringify({
-          brandName: onboardingData.brandName,
-          description: onboardingData.description,
-          industry: onboardingData.industry,
-          industryLabel: onboardingData.industryLabel,
-          tone: onboardingData.tone,
-          styles: onboardingData.vibeStyles?.length ? onboardingData.vibeStyles : (onboardingData.styles || []),
-          audienceAgeMin: onboardingData.audienceAgeMin || 22,
-          audienceAgeMax: onboardingData.audienceAgeMax || 45,
-          audienceGender: onboardingData.audienceGender || 'mixed',
-          audienceLocation: onboardingData.audienceCity || '',
-          audienceInterests: onboardingData.audienceLifestyle?.length ? onboardingData.audienceLifestyle : (onboardingData.interests || []),
-          platforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
-          goals: onboardingData.goals || [],
-          colorPrimary: onboardingData.colorPrimary,
-          colorSecondary: onboardingData.colorSecondary,
-          colorAccent: onboardingData.colorAccent,
-          fontMood: onboardingData.fontMood,
-          priceSegment: onboardingData.priceSegment,
-          industrySubtype: onboardingData.industrySubtype,
-          uspKeywords: onboardingData.uspKeywords,
-          industryAnswers: onboardingData.industryAnswers,
-          weeklyPostCount: onboardingData.weeklyPostCount,
-          contentMix: onboardingData.contentMix,
-          autoSchedule: onboardingData.autoSchedule,
-          extractedStyleProfile: onboardingData.extractedStyleProfile,
-          referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
-          // Brand identity fields
-          tagline: onboardingData.tagline || '',
-          website: onboardingData.website || '',
-          phone: (onboardingData as unknown as { phone: string }).phone || '',
-          address: (onboardingData as unknown as { address: string }).address || onboardingData.city || '',
-          logoUrl: onboardingData.logoUrl || '',
-        }),
-      })
-    } catch { /* non-blocking */ }
+    await apiCall('/api/onboarding/complete', {
+      method: 'POST',
+      body: JSON.stringify({
+        brandName: onboardingData.brandName,
+        description: onboardingData.description,
+        industry: onboardingData.industry,
+        industryLabel: onboardingData.industryLabel,
+        tone: onboardingData.tone,
+        styles: onboardingData.vibeStyles?.length ? onboardingData.vibeStyles : (onboardingData.styles || []),
+        audienceAgeMin: onboardingData.audienceAgeMin || onboardingData.ageRange?.[0] || 22,
+        audienceAgeMax: onboardingData.audienceAgeMax || onboardingData.ageRange?.[1] || 45,
+        audienceGender: onboardingData.audienceGender || 'mixed',
+        audienceLocation: onboardingData.audienceCity || onboardingData.location || '',
+        audienceInterests: onboardingData.audienceLifestyle?.length ? onboardingData.audienceLifestyle : (onboardingData.interests || []),
+        activePlatforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
+        platforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
+        goals: onboardingData.goals || [],
+        colorPrimary: onboardingData.colorPrimary,
+        colorSecondary: onboardingData.colorSecondary,
+        colorAccent: onboardingData.colorAccent,
+        fontMood: onboardingData.fontMood,
+        priceSegment: onboardingData.priceSegment,
+        industrySubtype: onboardingData.industrySubtype,
+        uspKeywords: onboardingData.uspKeywords,
+        industryAnswers: onboardingData.industryAnswers,
+        weeklyPostCount: onboardingData.weeklyPostCount,
+        contentMix: onboardingData.contentMix,
+        preferredPostingTimes: onboardingData.preferredPostingTimes || [],
+        autoSchedule: onboardingData.autoSchedule,
+        extractedStyleProfile: onboardingData.extractedStyleProfile,
+        referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
+        // Brand identity fields
+        tagline: onboardingData.tagline || '',
+        website: onboardingData.website || '',
+        phone: onboardingData.phone || '',
+        address: onboardingData.address || onboardingData.city || '',
+        logoUrl: onboardingData.logoUrl || '',
+      }),
+    })
   }
 
   const syncProducts = async () => {
@@ -240,7 +240,7 @@ export function StepFirstPost() {
         body: JSON.stringify({ products }),
       })
     } catch {
-      // Non-blocking — user can still proceed, but products may not influence first calendar
+      // Product sync is non-blocking. The brand brief itself must already be persisted.
     }
   }
 

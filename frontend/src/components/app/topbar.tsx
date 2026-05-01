@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { useBrandStore } from '@/stores/brand'
-import { getBreadcrumb, getNextWorkflowAction, getWorkflowProgress } from '@/lib/workflow'
+import { getNextWorkflowAction, getWorkflowProgress } from '@/lib/workflow'
 import { Button } from '@/components/ui/button'
 
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
@@ -57,14 +57,12 @@ export function Topbar() {
 
   const initials = (user?.displayName ?? user?.email ?? 'U').charAt(0).toUpperCase()
   const brandName = currentBrand?.name ?? null
-  const breadcrumbs = getBreadcrumb(pathname)
   const nextAction = getNextWorkflowAction(pathname)
   const progress = getWorkflowProgress(pathname)
 
   return (
     <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E7EB] bg-white px-4 md:left-[240px] md:px-6">
       <div className="min-w-0">
-        <p className="truncate text-[11px] text-[#9CA3AF]">{breadcrumbs.join(' / ')}</p>
         <p className="truncate text-sm font-semibold text-[#111111]">{meta.title}</p>
         <p className="truncate text-xs text-[#6B7280]">{brandName ? `${brandName} · ${meta.sub ?? ''}` : meta.sub}</p>
       </div>

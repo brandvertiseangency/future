@@ -479,12 +479,12 @@ export function StepProductLibrary() {
       {/* Navigation */}
       <div className="flex gap-3">
         <button
-          onClick={() => setStep(7)}
+          onClick={() => setStep(9)}
           className="px-5 py-2.5 rounded-xl border border-white/[0.08] text-white/50 text-sm hover:text-white hover:border-white/20 transition-colors"
         >
           Back
         </button>
-        <AIButton onClick={() => setStep(9)} className="flex-1">
+        <AIButton onClick={() => setStep(11)} className="flex-1">
           {products.length === 0 ? 'Skip for now' : `Continue with ${products.length} product${products.length > 1 ? 's' : ''}`}
         </AIButton>
       </div>

@@ -1,32 +1,10 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { IconCheck, IconX } from '@tabler/icons-react'
 import { useOnboardingStore, type VibeStyle } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
-import { cn } from '@/lib/utils'
 import { AIButton } from '@/components/ui/ai-button'
-
-const VIBE_OPTIONS: { id: VibeStyle; label: string; emoji: string }[] = [
-  { id: 'luxury', label: 'Luxury', emoji: '✦' },
-  { id: 'energetic', label: 'Energetic', emoji: '⚡' },
-  { id: 'minimal', label: 'Minimal', emoji: '○' },
-  { id: 'playful', label: 'Playful', emoji: '◎' },
-  { id: 'bold', label: 'Bold', emoji: '◼' },
-  { id: 'trustworthy', label: 'Trustworthy', emoji: '◇' },
-  { id: 'warm', label: 'Warm', emoji: '◉' },
-  { id: 'edgy', label: 'Edgy', emoji: '△' },
-  { id: 'inspirational', label: 'Inspirational', emoji: '★' },
-  { id: 'professional', label: 'Professional', emoji: '▣' },
-]
-
-const toneLabel = (v: number) => {
-  if (v <= 20) return 'Very Casual'
-  if (v <= 40) return 'Conversational'
-  if (v <= 60) return 'Balanced'
-  if (v <= 80) return 'Professional'
-  return 'Very Professional'
-}
+import { VoiceToolbar } from '@/components/onboarding/controls/voice-toolbar'
 
 export function StepPersonality() {
   const { data, updateData, setStep } = useOnboardingStore()
@@ -67,74 +45,35 @@ export function StepPersonality() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Define your brand personality</h2>
-        <p className="text-white/40 text-sm mt-2">This shapes your AI caption tone and style.</p>
+        <h2 className="text-[#111111] font-semibold text-2xl tracking-tight">Define your brand voice</h2>
+        <p className="text-[#6B7280] text-sm mt-1">Pick voice controls that match your positioning and audience intent.</p>
       </div>
 
-      {/* Tone slider */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-white/40 text-xs">Casual</span>
-          <span className="text-[var(--ai-color)] text-sm font-semibold bg-[var(--ai-color)]/10 px-3 py-1 rounded-full">
-            {toneLabel(data.tone)}
-          </span>
-          <span className="text-white/40 text-xs">Professional</span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={data.tone}
-          onChange={(e) => updateData({ tone: parseInt(e.target.value) })}
-          className="w-full accent-cyan-500 cursor-pointer"
-        />
-      </div>
-
-      {/* Vibe chips */}
-      <div>
-        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-3">
-          Brand vibe <span className="text-white/25 normal-case">(pick up to 3)</span>
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {VIBE_OPTIONS.map(({ id, label }) => {
-            const selected = (data.vibeStyles || []).includes(id)
-            return (
-              <button
-                key={id}
-                onClick={() => toggleVibe(id)}
-                className={cn(
-                  'flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-medium border transition-all',
-                  selected
-                    ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/15 text-[var(--ai-color)]'
-                    : 'border-white/[0.1] bg-white/[0.03] text-white/50 hover:border-white/30 hover:text-white/80'
-                )}
-              >
-                {selected && <IconCheck size={10} />}
-                {label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
+      <VoiceToolbar
+        tone={data.tone}
+        selectedStyles={data.vibeStyles || []}
+        onToneChange={(tone) => updateData({ tone })}
+        onToggleStyle={toggleVibe}
+      />
 
       {/* AI Preview */}
-      <div className="rounded-xl bg-white/[0.03] border border-white/[0.07] p-4">
-        <p className="text-[10px] uppercase tracking-widest text-[var(--ai-color)] font-semibold mb-2">AI Preview</p>
+      <div className="rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] p-4">
+        <p className="text-[10px] uppercase tracking-widest text-[#6B7280] font-semibold mb-2">Caption preview</p>
         {loadingPreview ? (
           <div className="space-y-2">
-            <div className="h-3 rounded bg-white/[0.08] animate-pulse w-full" />
-            <div className="h-3 rounded bg-white/[0.05] animate-pulse w-3/4" />
+            <div className="h-3 rounded bg-[#E5E7EB] animate-pulse w-full" />
+            <div className="h-3 rounded bg-[#EFEFF1] animate-pulse w-3/4" />
           </div>
         ) : (
-          <p className="text-white/70 text-sm leading-relaxed italic">&ldquo;{previewCaption}&rdquo;</p>
+          <p className="text-[#111111] text-sm leading-relaxed italic">&ldquo;{previewCaption}&rdquo;</p>
         )}
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(2)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
+        <button onClick={() => setStep(3)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">← Back</button>
         <div className="flex items-center gap-4">
-          <button onClick={() => setStep(4)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip →</button>
-          <AIButton onClick={() => setStep(4)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
+          <button onClick={() => setStep(5)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">Skip →</button>
+          <AIButton onClick={() => setStep(5)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
             Continue →
           </AIButton>
         </div>

@@ -1,11 +1,9 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { IconCheck } from '@tabler/icons-react'
 import { Rocket, DollarSign, MessageSquare, Megaphone } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
-import { cn } from '@/lib/utils'
 import { AIButton } from '@/components/ui/ai-button'
+import { GoalPriorityPicker } from '@/components/onboarding/controls/goal-priority-picker'
 
 const GOALS = [
 	{ id: 'growth', Icon: Rocket, label: 'Growth', desc: 'Grow your follower count and reach new audiences' },
@@ -29,54 +27,40 @@ export function StepGoals() {
 	return (
 		<div className="space-y-8">
 			<div>
-				<h2 className="text-white font-bold text-3xl tracking-tight">What are your main goals?</h2>
-				<p className="text-white/40 text-sm mt-2">Pick up to 2 that matter most right now.</p>
+				<h2 className="text-[#111111] font-semibold text-2xl tracking-tight">Business goals</h2>
+				<p className="text-[#6B7280] text-sm mt-1">Prioritize outcomes so AI can optimize content strategy decisions.</p>
 			</div>
 
-			<div className="grid grid-cols-2 gap-4">
-				{GOALS.map((g) => {
-					const selected = (data.goals || []).includes(g.id)
-					return (
-						<motion.button
-							key={g.id}
-							whileTap={{ scale: 0.97 }}
-							onClick={() => toggle(g.id)}
-							className={cn(
-								'relative text-left p-5 rounded-2xl border transition-all',
-								selected
-									? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.08]'
-									: 'border-white/[0.08] bg-white/[0.02] hover:border-white/20'
-							)}
-						>
-							{selected && (
-								<span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[var(--ai-color)] flex items-center justify-center">
-									<IconCheck size={11} className="text-white" />
-								</span>
-							)}
-							<div className="mb-3"><g.Icon size={32} className="text-[var(--text-2)]" /></div>
-							<p className="text-white font-semibold text-sm mb-1">{g.label}</p>
-							<p className="text-white/40 text-xs leading-relaxed">{g.desc}</p>
-						</motion.button>
-					)
-				})}
+			<GoalPriorityPicker
+				options={GOALS.map((g) => ({ id: g.id, label: g.label, description: g.desc }))}
+				selected={data.goals || []}
+				onToggle={toggle}
+			/>
+			<div className="grid grid-cols-4 gap-3">
+				{GOALS.map((g) => (
+					<div key={g.id} className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3">
+						<g.Icon size={16} className="text-[#111111]" />
+						<p className="mt-1 text-xs font-medium text-[#111111]">{g.label}</p>
+					</div>
+				))}
 			</div>
 
 			<div className="flex items-center justify-between pt-2">
 				<button
-					onClick={() => setStep(5)}
-					className="text-white/30 hover:text-white/60 text-sm transition-colors"
+					onClick={() => setStep(6)}
+					className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors"
 				>
 					← Back
 				</button>
 				<div className="flex items-center gap-4">
 					<button
-						onClick={() => setStep(7)}
-						className="text-white/30 hover:text-white/60 text-sm transition-colors"
+						onClick={() => setStep(8)}
+						className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors"
 					>
 						Skip for now →
 					</button>
 					<AIButton
-						onClick={() => setStep(7)}
+						onClick={() => setStep(8)}
 						className="px-6 py-2.5 rounded-xl text-sm font-semibold"
 					>
 						Continue →

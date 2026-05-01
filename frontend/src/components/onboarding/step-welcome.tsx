@@ -15,7 +15,7 @@ export function StepWelcome() {
 
   return (
     <div className="min-h-[80vh] flex flex-col items-center justify-center text-center relative">
-      <Spotlight className="top-0 left-1/4" fill="rgba(0,212,255,0.08)" />
+      <Spotlight className="top-0 left-1/4" fill="rgba(17,17,17,0.06)" />
 
       <div className="relative z-10 space-y-6 max-w-lg">
         <motion.div
@@ -25,7 +25,7 @@ export function StepWelcome() {
         >
           <span className="text-[15px] font-semibold tracking-tight text-white/80">
             <Image
-              src="/Brandvertise-Light-Logo.webp"
+              src="/Brandvertise-Dark-Logo.webp"
               alt="Brandvertise"
               width={130}
               height={30}

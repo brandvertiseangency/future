@@ -6,7 +6,7 @@ import { IconCheck } from '@tabler/icons-react'
 import { useOnboardingStore, type Industry } from '@/stores/onboarding'
 import { INDUSTRY_LABELS } from '@/lib/industry-questions'
 import { cn } from '@/lib/utils'
-import { AIButton } from '@/components/ui/ai-button'
+import { Button } from '@/components/ui/button'
 
 const INDUSTRIES: { id: Industry; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; desc: string }[] = [
   { id: 'real_estate', label: 'Real Estate', icon: Home, desc: 'Properties, projects, developers' },
@@ -32,8 +32,8 @@ export function StepIndustry() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">What industry are you in?</h2>
-        <p className="text-white/40 text-sm mt-2">
+        <h2 className="text-[#111111] font-bold text-3xl tracking-tight">What industry are you in?</h2>
+        <p className="text-[#6B7280] text-sm mt-2">
           This unlocks industry-specific questions and content strategies.
         </p>
       </div>
@@ -50,19 +50,19 @@ export function StepIndustry() {
               className={cn(
                 'relative flex flex-col items-start gap-2 p-4 rounded-2xl border text-left transition-all',
                 selected
-                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.1]'
-                  : 'border-white/[0.08] bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                  ? 'border-[#111111] bg-[#F3F4F6]'
+                  : 'border-[#E5E7EB] bg-white hover:border-[#D1D5DB] hover:bg-[#F7F7F8]'
               )}
             >
               {selected && (
-                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[var(--ai-color)] flex items-center justify-center">
-                  <IconCheck size={11} className="text-black" />
+                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#111111] flex items-center justify-center">
+                  <IconCheck size={11} className="text-white" />
                 </span>
               )}
-              <Icon size={22} className={selected ? 'text-[var(--ai-color)]' : 'text-white/50'} />
+              <Icon size={22} className={selected ? 'text-[#111111]' : 'text-[#6B7280]'} />
               <div>
-                <p className={cn('font-semibold text-sm', selected ? 'text-[var(--ai-color)]' : 'text-white')}>{ind.label}</p>
-                <p className="text-white/35 text-[11px] mt-0.5 leading-tight">{ind.desc}</p>
+                <p className={cn('font-semibold text-sm', selected ? 'text-[#111111]' : 'text-[#111111]')}>{ind.label}</p>
+                <p className="text-[#6B7280] text-[11px] mt-0.5 leading-tight">{ind.desc}</p>
               </div>
             </motion.button>
           )
@@ -70,14 +70,14 @@ export function StepIndustry() {
       </div>
 
       <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(1)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
-        <AIButton
-          onClick={() => setStep(3)}
+        <button onClick={() => setStep(2)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">← Back</button>
+        <Button
+          onClick={() => setStep(4)}
           disabled={!data.industry}
-          className="px-6 py-2.5 rounded-xl text-sm font-semibold"
+          className="px-6 py-2.5 text-sm font-semibold"
         >
           Continue →
-        </AIButton>
+        </Button>
       </div>
     </div>
   )

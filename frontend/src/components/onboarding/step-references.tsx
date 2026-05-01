@@ -192,10 +192,10 @@ export function StepReferences() {
       )}
 
       <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(6)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
+        <button onClick={() => setStep(8)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
         <div className="flex items-center gap-4">
-          <button onClick={() => setStep(8)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip →</button>
-          <AIButton onClick={() => setStep(8)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
+          <button onClick={() => setStep(10)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip →</button>
+          <AIButton onClick={() => setStep(10)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
             Continue →
           </AIButton>
         </div>

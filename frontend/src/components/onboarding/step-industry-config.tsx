@@ -12,7 +12,7 @@ function QuestionField({ q, value, onChange }: {
   value: string | string[] | boolean | number | undefined
   onChange: (v: string | string[] | boolean | number) => void
 }) {
-  const inputClass = 'w-full bg-white/[0.03] border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[var(--ai-border)]/50 transition-all'
+  const inputClass = 'w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#111111]/30 transition-all'
 
   if (q.type === 'select') {
     return (
@@ -45,8 +45,8 @@ function QuestionField({ q, value, onChange }: {
               className={cn(
                 'px-3 py-1.5 rounded-full text-xs font-medium border transition-all',
                 sel
-                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/15 text-[var(--ai-color)]'
-                  : 'border-white/[0.1] bg-white/[0.03] text-white/50 hover:border-white/30 hover:text-white/80'
+                  ? 'border-[#111111] bg-[#111111] text-white'
+                  : 'border-[#E5E7EB] bg-white text-[#111111] hover:border-[#D1D5DB]'
               )}
             >
               {opt}
@@ -65,7 +65,7 @@ function QuestionField({ q, value, onChange }: {
         onClick={() => onChange(!checked)}
         className={cn(
           'relative w-12 h-6 rounded-full transition-all',
-          checked ? 'bg-[var(--ai-color)]' : 'bg-white/[0.12]'
+          checked ? 'bg-[#111111]' : 'bg-[#D1D5DB]'
         )}
       >
         <span className={cn(
@@ -91,6 +91,15 @@ export function StepIndustryConfig() {
   const { data, setIndustryAnswer, updateData, setStep } = useOnboardingStore()
   const industry = data.industry as string
   const questions = INDUSTRY_QUESTIONS[industry] || INDUSTRY_QUESTIONS['other']
+  const missingRequired = questions
+    .filter((q) => q.required)
+    .filter((q) => {
+      const value = data.industryAnswers?.[q.key]
+      if (Array.isArray(value)) return value.length === 0
+      if (typeof value === 'string') return !value.trim()
+      return value === undefined || value === null
+    })
+    .map((q) => q.label)
 
   const [uspInput, setUspInput] = useState('')
 
@@ -104,15 +113,15 @@ export function StepIndustryConfig() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Tell us more about your brand</h2>
-        <p className="text-white/40 text-sm mt-2">
-          These details power industry-specific content — your AI will sound like an expert.
+        <h2 className="text-[#111111] font-semibold text-2xl tracking-tight">Industry intelligence module</h2>
+        <p className="text-[#6B7280] text-sm mt-1">
+          We adapt this section to your industry so generated content sounds domain-specific, not generic.
         </p>
       </div>
 
       {/* Price segment */}
       <div>
-        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-3">Price positioning</p>
+        <p className="text-[#6B7280] text-xs uppercase tracking-wider font-medium mb-3">Price positioning</p>
         <div className="grid grid-cols-4 gap-2">
           {['budget', 'mid', 'premium', 'luxury'].map((seg) => (
             <button
@@ -121,8 +130,8 @@ export function StepIndustryConfig() {
               className={cn(
                 'py-2 rounded-xl border text-sm font-medium transition-all capitalize',
                 data.priceSegment === seg
-                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.1] text-[var(--ai-color)]'
-                  : 'border-white/[0.08] text-white/50 hover:border-white/20'
+                  ? 'border-[#111111] bg-[#111111] text-white'
+                  : 'border-[#E5E7EB] text-[#111111] hover:border-[#D1D5DB]'
               )}
             >
               {seg === 'mid' ? 'Mid-range' : seg.charAt(0).toUpperCase() + seg.slice(1)}
@@ -136,10 +145,10 @@ export function StepIndustryConfig() {
         {questions.map((q) => (
           <div key={q.key}>
             <div className="flex items-baseline gap-2 mb-2">
-              <label className="text-white/70 text-sm font-medium">{q.label}</label>
-              {q.required && <span className="text-[var(--ai-color)] text-[10px]">required</span>}
+              <label className="text-[#111111] text-sm font-medium">{q.label}</label>
+              {q.required && <span className="text-[#6B7280] text-[10px]">required</span>}
             </div>
-            {q.helpText && <p className="text-white/35 text-xs mb-2">{q.helpText}</p>}
+            {q.helpText && <p className="text-[#6B7280] text-xs mb-2">{q.helpText}</p>}
             <QuestionField
               q={q}
               value={data.industryAnswers?.[q.key] as string | string[] | boolean | number | undefined}
@@ -151,8 +160,8 @@ export function StepIndustryConfig() {
 
       {/* USP Keywords */}
       <div>
-        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-2">Your USP keywords</p>
-        <p className="text-white/30 text-xs mb-3">Short phrases that make you unique (max 5)</p>
+        <p className="text-[#6B7280] text-xs uppercase tracking-wider font-medium mb-2">Your USP keywords</p>
+        <p className="text-[#6B7280] text-xs mb-3">Short phrases that make you unique (max 5)</p>
         <div className="flex gap-2 mb-3">
           <input
             type="text"
@@ -160,11 +169,11 @@ export function StepIndustryConfig() {
             onChange={(e) => setUspInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addUsp() } }}
             placeholder='e.g. "15 years experience" or "RERA certified"'
-            className="flex-1 bg-white/[0.03] border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder:text-white/25 text-sm focus:outline-none focus:border-[var(--ai-border)]/50 transition-all"
+            className="flex-1 bg-white border border-[#E5E7EB] rounded-xl px-4 py-2.5 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#111111]/30 transition-all"
           />
           <button
             onClick={addUsp}
-            className="px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 text-white/60 text-sm hover:bg-white/[0.1] transition-all"
+            className="px-4 py-2.5 rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] text-[#111111] text-sm hover:bg-[#EFEFF1] transition-all"
           >
             Add
           </button>
@@ -172,7 +181,7 @@ export function StepIndustryConfig() {
         {(data.uspKeywords || []).length > 0 && (
           <div className="flex flex-wrap gap-2">
             {(data.uspKeywords || []).map((kw, i) => (
-              <span key={i} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[var(--ai-color)]/10 border border-[var(--ai-border)]/40 text-[var(--ai-color)] text-xs font-medium">
+              <span key={i} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#F3F4F6] border border-[#E5E7EB] text-[#111111] text-xs font-medium">
                 {kw}
                 <button onClick={() => updateData({ uspKeywords: (data.uspKeywords || []).filter((_, j) => j !== i) })}>
                   <IconX size={10} />
@@ -183,11 +192,19 @@ export function StepIndustryConfig() {
         )}
       </div>
 
+      {missingRequired.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5">
+          <p className="text-xs text-amber-800">
+            Required for your industry: {missingRequired.join(', ')}
+          </p>
+        </div>
+      )}
+
       <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(5)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
+        <button onClick={() => setStep(7)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">← Back</button>
         <div className="flex items-center gap-4">
-          <button onClick={() => setStep(7)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip →</button>
-          <AIButton onClick={() => setStep(7)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
+          <button onClick={() => setStep(9)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">Skip →</button>
+          <AIButton onClick={() => setStep(9)} disabled={missingRequired.length > 0} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
             Continue →
           </AIButton>
         </div>

@@ -2,52 +2,49 @@
 
 import { useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import useSWR from 'swr'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
+import { PageContainer } from '@/components/ui/page-primitives'
+import { Button } from '@/components/ui/button'
+import { ONBOARDING_SECTIONS, getOnboardingProgress } from '@/lib/onboarding-flow'
+import { getSectionValidity } from '@/lib/onboarding-schemas'
+import { MotionSection, ProgressScore, SectionRail, StickyPreviewPanel } from '@/components/onboarding/primitives/onboarding-shell'
 
 // Step 1: reuse existing welcome
 import { StepWelcome } from '@/components/onboarding/step-welcome'
-// Step 2: new industry grid
+// Step 2: brand identity and brief
+import { StepBrandIdentity } from '@/components/onboarding/step-brand-identity'
+// Step 3: industry grid
 import { StepIndustry } from '@/components/onboarding/step-industry'
-// Step 3: personality (replaces old brand-voice)
+// Step 4: personality
 import { StepPersonality } from '@/components/onboarding/step-personality'
-// Step 4: visual identity (new)
+// Step 5: visual identity
 import { StepVisualIdentity } from '@/components/onboarding/step-visual-identity'
-// Step 5: audience (existing)
+// Step 6: audience
 import { StepAudience } from '@/components/onboarding/step-audience'
-// Step 6: industry-specific adaptive questions (new)
+// Step 7: goals
+import { StepGoals } from '@/components/onboarding/step-goals'
+// Step 8: industry-specific adaptive questions
 import { StepIndustryConfig } from '@/components/onboarding/step-industry-config'
-// Step 7: reference image upload + vision AI (new)
+// Step 9: reference image upload + vision AI
 import { StepReferences } from '@/components/onboarding/step-references'
-// Step 7.5: product library (new)
+// Step 10: product library
 import { StepProductLibrary } from '@/components/onboarding/step-product-library'
-// Step 8: calendar prefs (new)
+// Step 11: calendar prefs
 import { StepCalendarPrefs } from '@/components/onboarding/step-calendar-prefs'
-// Step 9: first post (existing — completion step)
+// Step 12: first post
 import { StepFirstPost } from '@/components/onboarding/step-first-post'
-
-const STEP_NAMES = [
-  'Welcome',
-  'Industry',
-  'Personality',
-  'Visual Style',
-  'Audience',
-  'Your Brand',
-  'References',
-  'Products',
-  'Content Plan',
-  'Generate',
-]
 
 const STEPS = [
   StepWelcome,
+  StepBrandIdentity,
   StepIndustry,
   StepPersonality,
   StepVisualIdentity,
   StepAudience,
+  StepGoals,
   StepIndustryConfig,
   StepReferences,
   StepProductLibrary,
@@ -55,17 +52,23 @@ const STEPS = [
   StepFirstPost,
 ]
 
-const variants = {
-  enter: { x: 40, opacity: 0 },
-  center: { x: 0, opacity: 1 },
-  exit: { x: -40, opacity: 0 },
-}
-
 export default function OnboardingPage() {
-  const { step, setStep } = useOnboardingStore()
+  const { step, setStep, data: onboardingData } = useOnboardingStore()
   const router = useRouter()
   const StepComponent = STEPS[step - 1] || StepWelcome
-  const progress = ((step - 1) / (STEPS.length - 1)) * 100
+  const progress = getOnboardingProgress(step)
+  const validity = getSectionValidity(onboardingData)
+  const completedSteps = new Set<number>([
+    validity.brand ? 2 : -1,
+    validity.industry ? 3 : -1,
+    validity.personality ? 4 : -1,
+    validity.visual ? 5 : -1,
+    validity.audience ? 6 : -1,
+    validity.goals ? 7 : -1,
+    validity.industryConfig ? 8 : -1,
+    validity.calendar ? 11 : -1,
+  ].filter((s) => s > 0))
+  const profileScore = Math.round((completedSteps.size / 8) * 100)
 
   const { data, isLoading } = useSWR(
     '/api/users/me',
@@ -93,60 +96,131 @@ export default function OnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#080809] flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-[var(--ai-color)]" />
+      <div className="min-h-screen bg-[#F7F7F8] flex items-center justify-center">
+        <Loader2 size={28} className="animate-spin text-[#111111]" />
       </div>
     )
   }
 
-  const showProgressBar = step > 1
+  const activeSection = ONBOARDING_SECTIONS[step - 1] ?? ONBOARDING_SECTIONS[0]
+  const missingCritical = [
+    !validity.brand ? 'Brand brief' : '',
+    !validity.industry ? 'Industry' : '',
+    !validity.audience ? 'Audience' : '',
+    !validity.goals ? 'Goals' : '',
+    !validity.calendar ? 'Publishing plan' : '',
+  ].filter(Boolean)
 
   return (
-    <div className="min-h-screen bg-[#080809] flex flex-col">
-      {/* Violet progress bar */}
-      {showProgressBar && (
-        <div className="h-[2px] bg-white/[0.05] w-full fixed top-0 left-0 z-50">
-          <motion.div
-            className="h-full bg-[var(--ai-color)]"
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
-          />
+    <div className="min-h-screen bg-[#F7F7F8] py-6">
+      <PageContainer className="max-w-[1400px]">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">
+              Brand <span className="text-highlight">Onboarding</span>
+            </h1>
+            <p className="mt-1 text-sm text-[#6B7280]">
+              Fullscreen setup flow that powers strategy, generation quality, and publishing relevance.
+            </p>
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => router.push('/dashboard')}>
+            Exit
+          </Button>
         </div>
-      )}
-
-      {/* Step indicator + skip */}
-      {showProgressBar && (
-        <div className="pt-6 pb-4 flex items-center justify-between px-6 max-w-[640px] mx-auto w-full">
-          <span className="text-[12px] text-white/40 font-medium tracking-wide">
-            Step {step} of {STEPS.length} —{' '}
-            <span className="text-white/60">{STEP_NAMES[step - 1]}</span>
-          </span>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="text-[11px] text-white/25 hover:text-white/50 transition-colors"
-          >
-            Skip for now
-          </button>
+        <div className="grid grid-cols-12 gap-5">
+          <div className="col-span-12 lg:col-span-3">
+            <div className="sticky top-6 space-y-4">
+              <ProgressScore value={profileScore || progress} />
+              <SectionRail
+                sections={ONBOARDING_SECTIONS}
+                activeStep={step}
+                completedSteps={completedSteps}
+                onGoStep={(nextStep) => {
+                  if (nextStep <= step || completedSteps.has(nextStep - 1)) {
+                    setStep(nextStep)
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="col-span-12 lg:col-span-6">
+            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 min-h-[72vh]">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280]">Step {step} of {STEPS.length}</p>
+                  <h2 className="text-xl font-semibold text-[#111111]">{activeSection.title}</h2>
+                </div>
+                <p className="text-xs text-[#6B7280]">{Math.round(progress)}% complete</p>
+              </div>
+              <div className="onboarding-step-light">
+                <MotionSection motionKey={step}>
+                  <StepComponent />
+                </MotionSection>
+              </div>
+            </div>
+          </div>
+          <div className="col-span-12 lg:col-span-3">
+            <StickyPreviewPanel title="Brand Intelligence">
+              <div className="rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] p-3">
+                <p className="text-xs text-[#6B7280]">Brand</p>
+                <p className="text-sm font-medium text-[#111111]">{onboardingData.brandName || 'Unnamed brand'}</p>
+                <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">{onboardingData.description || 'Add positioning to improve relevance.'}</p>
+              </div>
+              <div className="rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] p-3">
+                <p className="text-xs text-[#6B7280]">Audience snapshot</p>
+                <p className="text-sm text-[#111111]">
+                  {onboardingData.audienceAgeMin}-{onboardingData.audienceAgeMax}, {onboardingData.audienceGender.replace('_', ' ')}
+                </p>
+                <p className="text-xs text-[#6B7280]">{onboardingData.audienceCity || 'No location yet'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280] mb-2">Missing critical</p>
+                {missingCritical.length ? (
+                  <div className="space-y-1.5">
+                    {missingCritical.map((item) => (
+                      <p key={item} className="text-xs text-[#111111]">- {item}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-emerald-700">All critical sections complete.</p>
+                )}
+              </div>
+            </StickyPreviewPanel>
+          </div>
         </div>
-      )}
-
-      {/* Content */}
-      <div className="flex-1 flex items-start justify-center px-6 py-8 overflow-y-auto">
-        <div className="w-full max-w-[640px]">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={step}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            >
-              <StepComponent />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      </div>
+      </PageContainer>
+      <style jsx global>{`
+        .onboarding-step-light .text-white,
+        .onboarding-step-light [class*="text-white/"] {
+          color: #111111 !important;
+        }
+        .onboarding-step-light [class*="text-white/2"],
+        .onboarding-step-light [class*="text-white/3"],
+        .onboarding-step-light [class*="text-white/4"],
+        .onboarding-step-light [class*="text-white/5"],
+        .onboarding-step-light [class*="text-white/6"] {
+          color: #6b7280 !important;
+        }
+        .onboarding-step-light [class*="border-white/"],
+        .onboarding-step-light [class*="border-[var(--ai-border)]"] {
+          border-color: #e5e7eb !important;
+        }
+        .onboarding-step-light [class*="bg-white/"] {
+          background-color: #f7f7f8 !important;
+        }
+        .onboarding-step-light [class*="text-[var(--ai-color)]"] {
+          color: #111111 !important;
+        }
+        .onboarding-step-light [class*="bg-[var(--ai-color)]"] {
+          background-color: #111111 !important;
+          color: #ffffff !important;
+        }
+        .onboarding-step-light input,
+        .onboarding-step-light textarea,
+        .onboarding-step-light select {
+          color: #111111;
+        }
+      `}</style>
     </div>
   )
 }
