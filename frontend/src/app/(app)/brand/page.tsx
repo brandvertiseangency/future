@@ -74,6 +74,20 @@ function toneToNumber(tone: FormValues['tone']): number {
   return 85
 }
 
+function parseApiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Something went wrong'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.details === 'string' && parsed.details.trim()) return parsed.details
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    // ignore parse errors
+  }
+  if (raw.includes('<!doctype html') || raw.includes('<html')) return 'Server returned an unexpected response. Please try again.'
+  return raw
+}
+
 export default function BrandDetailsPage() {
   const { setBrand } = useBrandStore()
   const [saving, setSaving] = useState(false)
@@ -179,6 +193,9 @@ export default function BrandDetailsPage() {
 
   const watchedGoals = form.watch('goals')
   const goalOptions = useMemo(() => Array.from(new Set([...(watchedGoals || []), ...goalLibrary])), [watchedGoals])
+  const { errors, isSubmitted } = form.formState
+  const fieldWithError = (name: keyof FormValues) =>
+    cn(field, isSubmitted && errors[name] ? 'border-red-300 focus:border-red-500' : '')
 
   const toggleGoal = (goal: string) => {
     const current = form.getValues('goals')
@@ -228,8 +245,8 @@ export default function BrandDetailsPage() {
       })
       await mutateBrandMe()
       toast.success('Brand profile updated')
-    } catch {
-      toast.error('Unable to update brand profile')
+    } catch (error) {
+      toast.error(parseApiError(error) || 'Unable to update brand profile')
     } finally {
       setSaving(false)
     }
@@ -273,7 +290,8 @@ export default function BrandDetailsPage() {
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
-              <input className={field} {...form.register('name')} />
+              <input className={fieldWithError('name')} {...form.register('name')} />
+              {isSubmitted && errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message as string}</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Tagline</label>
@@ -281,7 +299,8 @@ export default function BrandDetailsPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Industry</label>
-              <input className={field} {...form.register('industry')} />
+              <input className={fieldWithError('industry')} {...form.register('industry')} />
+              {isSubmitted && errors.industry ? <p className="mt-1 text-xs text-red-600">{errors.industry.message as string}</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Industry subtype</label>
@@ -289,11 +308,13 @@ export default function BrandDetailsPage() {
             </div>
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs text-[#6B7280]">Brand description</label>
-              <textarea className="min-h-24 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('description')} />
+              <textarea className={cn('min-h-24 w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]', isSubmitted && errors.description ? 'border-red-300 focus:border-red-500' : 'border-[#E5E7EB]')} {...form.register('description')} />
+              {isSubmitted && errors.description ? <p className="mt-1 text-xs text-red-600">{errors.description.message as string}</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Audience location</label>
-              <input className={field} {...form.register('audienceLocation')} />
+              <input className={fieldWithError('audienceLocation')} {...form.register('audienceLocation')} />
+              {isSubmitted && errors.audienceLocation ? <p className="mt-1 text-xs text-red-600">{errors.audienceLocation.message as string}</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Audience interests (comma separated)</label>

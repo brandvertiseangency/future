@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import useSWR from 'swr'
+import { useRouter } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { Download, ImageIcon, RefreshCcw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,7 @@ import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
 
 interface Post {
   id: string
@@ -23,10 +25,17 @@ interface Post {
   content_type?: string
 }
 
+function getEffectiveStatus(post: Post): string {
+  if (post.status === 'published' || post.status === 'scheduled') return post.status
+  if (post.approval_status === 'approved' || post.status === 'approved') return 'approved'
+  return post.status || 'draft'
+}
+
 const PLATFORM_FILTERS = ['all', 'instagram', 'linkedin', 'twitter', 'tiktok', 'facebook']
 const STATUS_FILTERS = ['all', 'draft', 'approved', 'scheduled']
 
 export default function OutputsPage() {
+  const router = useRouter()
   const [platform, setPlatform] = useState('all')
   const [status, setStatus] = useState('all')
   const [search, setSearch] = useState('')
@@ -55,10 +64,9 @@ export default function OutputsPage() {
   if (status !== 'all') query.set('status', status)
 
   const swrKey = `/api/posts?${query}`
-  const { data } = useSWR(swrKey, (u: string) => apiCall<{ posts: Post[] }>(u), { revalidateOnFocus: false })
-  const posts: Post[] = (data?.posts ?? []).filter((post) =>
-    !search || post.caption?.toLowerCase().includes(search.toLowerCase())
-  )
+  const { data, error, isLoading } = useSWR(swrKey, (u: string) => apiCall<{ posts: Post[] }>(u), { revalidateOnFocus: false })
+  const posts: Post[] = (data?.posts ?? [])
+    .filter((post) => !search || post.caption?.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <PageContainer className="max-w-[1100px] pb-20">
@@ -68,10 +76,21 @@ export default function OutputsPage() {
         description="Use quick actions, compare versions, and schedule the best results."
       />
       <PageHeader title={<>Outputs <span className="text-highlight">Library</span></>} description={`${posts.length} creatives generated`} />
+      {error ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Could not refresh outputs right now. Showing last available results.
+        </div>
+      ) : null}
       {selectedIds.length > 0 ? (
         <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm">
           <span className="text-[#6B7280]">{selectedIds.length} selected</span>
-          <Button size="sm" className="ml-3" onClick={() => window.location.assign('/scheduler')}>Schedule Selected</Button>
+          <Button
+            size="sm"
+            className="ml-3"
+            onClick={() => router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)}
+          >
+            Schedule Selected
+          </Button>
         </div>
       ) : null}
 
@@ -105,6 +124,12 @@ export default function OutputsPage() {
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <div>
+        {isLoading ? (
+          <div className="space-y-3">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={4} />
+          </div>
+        ) : null}
         {posts.length === 0 ? (
           <EmptyState
             title="No outputs yet"
@@ -133,7 +158,9 @@ export default function OutputsPage() {
                   </div>
                   <p className="line-clamp-2 text-sm text-[#111111]">{post.caption || 'Untitled output'}</p>
                   <div className="flex items-center justify-between">
-                    <StatusBadge tone={post.status === 'approved' ? 'success' : 'neutral'}>{post.status}</StatusBadge>
+                    <StatusBadge tone={getEffectiveStatus(post) === 'approved' ? 'success' : 'neutral'}>
+                      {getEffectiveStatus(post)}
+                    </StatusBadge>
                     <span className="text-xs text-[#6B7280] capitalize">{post.platform}</span>
                   </div>
                   <label className="inline-flex items-center gap-2 text-xs text-[#6B7280]">

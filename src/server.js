@@ -47,19 +47,28 @@ const allowedOrigins = [
   "http://localhost:4000",
   "http://127.0.0.1:3000",
   "http://127.0.0.1:4000",
+  process.env.FRONTEND_URL,
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.CORS_ORIGIN,
+].filter(Boolean);
+const allowedOriginPatterns = [
+  /^https:\/\/.*\.vercel\.app$/,
 ];
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
-    // Allow server-to-server (no origin) and listed origins
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow server-to-server (no origin), listed origins, and Vercel preview URLs.
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOriginPatterns.some((pattern) => pattern.test(origin))) return callback(null, true);
     callback(new Error(`CORS: origin ${origin} not allowed`));
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
-}));
+};
+app.use(cors(corsOptions));
 // Handle preflight for all routes
-app.options("*", cors());
+app.options("*", cors(corsOptions));
 app.use("/api/payment/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));

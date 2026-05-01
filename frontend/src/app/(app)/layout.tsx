@@ -1,9 +1,10 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ThemeProvider } from 'next-themes'
+import useSWR from 'swr'
 import { Sidebar } from '@/components/app/sidebar'
 import { Topbar } from '@/components/app/topbar'
 import { BottomTabBar } from '@/components/app/bottom-tab-bar'
@@ -12,10 +13,33 @@ import { Toaster } from 'sonner'
 import { AuthGuard } from '@/components/AuthGuard'
 import { PageErrorBoundary } from '@/components/ErrorBoundary'
 import { CommandPalette } from '@/components/command-palette'
+import { useBrandStore } from '@/stores/brand'
+import { apiCall } from '@/lib/api'
+import { MOTION_TRANSITIONS } from '@/lib/motion'
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isOnboardingRoute = pathname.startsWith('/onboarding')
+  const { setBrand } = useBrandStore()
+  const { data: brandData } = useSWR(
+    '/api/brands/current',
+    (url: string) => apiCall<{ brand?: { id?: string; name?: string; website?: string; industry?: string; description?: string; goals?: string[] } }>(url),
+    { revalidateOnFocus: false }
+  )
+
+  useEffect(() => {
+    const brand = brandData?.brand
+    if (!brand?.name) return
+    setBrand({
+      id: String(brand.id ?? 'default'),
+      name: brand.name,
+      website: brand.website ?? '',
+      industry: brand.industry ?? '',
+      voice: brand.description ?? '',
+      goals: Array.isArray(brand.goals) ? brand.goals : [],
+    })
+  }, [brandData?.brand, setBrand])
+
   return (
     <div className="min-h-screen bg-[#F7F7F8]">
       {!isOnboardingRoute ? (
@@ -29,7 +53,7 @@ function AppShell({ children }: { children: ReactNode }) {
         key={pathname}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        transition={MOTION_TRANSITIONS.page}
         className={isOnboardingRoute ? 'min-h-screen' : 'md:ml-[240px] pt-[96px] pb-20 md:pb-0 min-h-screen'}
       >
         <PageErrorBoundary>{children}</PageErrorBoundary>

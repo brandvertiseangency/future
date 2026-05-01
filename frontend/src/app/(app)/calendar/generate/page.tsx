@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
@@ -70,6 +70,13 @@ function parseApiError(error: unknown): string {
   const raw = error instanceof Error ? error.message : 'Something went wrong'
   try {
     const parsed = JSON.parse(raw)
+    if (parsed?.error === 'ONBOARDING_INCOMPLETE') {
+      return 'Onboarding is incomplete. Please complete your brand profile and publishing preferences first.'
+    }
+    if (parsed?.error === 'insufficient_credits') {
+      return `Not enough credits. Need ${parsed?.creditsRequired ?? 'more'} credits, available ${parsed?.creditsAvailable ?? 0}.`
+    }
+    if (parsed?.message && typeof parsed.message === 'string') return parsed.message
     if (parsed?.error && typeof parsed.error === 'string') return parsed.error
   } catch {
     // ignore parse errors
@@ -78,19 +85,39 @@ function parseApiError(error: unknown): string {
   return raw
 }
 
+function getOnboardingMissingFromBrand(brand: any): string[] {
+  if (!brand) return ['brand profile']
+  const mix = brand.content_type_mix && typeof brand.content_type_mix === 'object'
+    ? brand.content_type_mix
+    : {}
+  const mixTotal = (Object.values(mix) as unknown[]).reduce((sum: number, value) => sum + (Number(value) || 0), 0)
+
+  return [
+    !brand.name ? 'brand name' : '',
+    !brand.description ? 'brand description' : '',
+    !brand.industry ? 'industry' : '',
+    !Array.isArray(brand.goals) || brand.goals.length === 0 ? 'goals' : '',
+    !Array.isArray(brand.styles) || brand.styles.length === 0 ? 'styles' : '',
+    !brand.audience_location ? 'audience location' : '',
+    !Array.isArray(brand.audience_interests) || brand.audience_interests.length === 0 ? 'audience interests' : '',
+    !Array.isArray(brand.active_platforms) || brand.active_platforms.length === 0 ? 'active platforms' : '',
+    mixTotal !== 100 ? 'content mix (must total 100)' : '',
+  ].filter(Boolean)
+}
+
 function CalendarGenerateInner() {
   const router = useRouter()
-  const params = useSearchParams()
 
   const { data: brandData } = useSWR('/api/brands/current', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
+  const { data: brandMeData } = useSWR('/api/brand/me', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
   const { data: creditsData } = useSWR('/api/credits/balance', (u: string) => apiCall<{ balance: number }>(u), { revalidateOnFocus: false })
   const { data: latestPlanData } = useSWR('/api/calendar/plans/latest', (u: string) => apiCall<any>(u), { revalidateOnFocus: false })
 
-  const brand = brandData?.brand ?? brandData
+  const brand = brandMeData?.brand ?? brandData?.brand ?? brandData
   const credits = creditsData?.balance ?? 0
 
   const [month, setMonth] = useState(getCurrentMonth())
-  const [postCount, setPostCount] = useState(16)
+  const [postCount, setPostCount] = useState(12)
   const [mix, setMix] = useState({ promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 })
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
@@ -100,7 +127,9 @@ function CalendarGenerateInner() {
   const creditsNeeded = postCount * 2
   const hasCredits = credits >= creditsNeeded
   const mixTotal = Object.values(mix).reduce((a, b) => a + b, 0)
-  const canGenerate = hasCredits && mixTotal === 100 && !generating
+  const missingOnboarding = getOnboardingMissingFromBrand(brand)
+  const onboardingReady = missingOnboarding.length === 0
+  const canGenerate = hasCredits && mixTotal === 100 && onboardingReady && !generating
   const latestPlanId = latestPlanData?.plan?.id
 
   const handleGenerate = async () => {
@@ -197,6 +226,11 @@ function CalendarGenerateInner() {
             <div className={cn('rounded-lg border px-3 py-2 text-xs', hasCredits ? 'border-[#E5E7EB] bg-[#F7F7F8] text-[#6B7280]' : 'border-red-200 bg-red-50 text-red-600')}>
               {hasCredits ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after.` : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
             </div>
+            {!onboardingReady ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Complete onboarding before generating a plan. Missing: {missingOnboarding.join(', ')}.
+              </div>
+            ) : null}
 
             {error ? (
               <div className="rounded-lg border border-red-200 bg-red-50 p-3">

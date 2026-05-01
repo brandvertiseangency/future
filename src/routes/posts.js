@@ -48,7 +48,12 @@ router.get('/', authMiddleware, async (req, res) => {
     const status = req.query.status; // optional filter
 
     let query, params;
-    if (status) {
+    if (status === 'approved') {
+      query = `SELECT * FROM posts
+               WHERE user_id=$1 AND (status='approved' OR approval_status='approved')
+               ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+      params = [userId, limit, offset];
+    } else if (status) {
       query = `SELECT * FROM posts WHERE user_id=$1 AND status=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`;
       params = [userId, status, limit, offset];
     } else {
@@ -74,6 +79,10 @@ router.get('/stats', authMiddleware, async (req, res) => {
       `SELECT status, COUNT(*) AS count FROM posts WHERE user_id=$1 GROUP BY status`,
       [userId]
     );
+    const approvedRes = await pool.query(
+      `SELECT COUNT(*) AS count FROM posts WHERE user_id=$1 AND (status='approved' OR approval_status='approved')`,
+      [userId]
+    );
     const counts = {};
     let total = 0;
     for (const r of rows) { counts[r.status] = parseInt(r.count); total += parseInt(r.count); }
@@ -82,7 +91,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
       draft: counts.draft || 0,
       scheduled: counts.scheduled || 0,
       published: counts.published || 0,
-      approved: counts.approved || 0,
+      approved: parseInt(approvedRes.rows[0]?.count || 0, 10),
     });
   } catch (err) {
     logger.error('Posts stats failed', { error: err.message });

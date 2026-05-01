@@ -1,17 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-// TEMPORARY: demo bypass to share app without login.
-const DEMO_AUTH_BYPASS = true
-
 // Public routes that don't require authentication
 const PUBLIC_PATHS = ['/', '/auth', '/pricing']
-const PUBLIC_PREFIXES = ['/api/webhooks', '/_next', '/favicon', '/outputs']
+const PUBLIC_PREFIXES = ['/api/webhooks', '/_next', '/favicon']
 
 export function middleware(request: NextRequest) {
-  if (DEMO_AUTH_BYPASS) {
-    return NextResponse.next()
-  }
-
   const { pathname } = request.nextUrl
 
   // Always allow public paths and static assets
@@ -31,6 +24,10 @@ export function middleware(request: NextRequest) {
   if (pathname.startsWith('/dashboard') ||
       pathname.startsWith('/generate') ||
       pathname.startsWith('/calendar') ||
+      pathname.startsWith('/outputs') ||
+      pathname.startsWith('/scheduler') ||
+      pathname.startsWith('/agents') ||
+      pathname.startsWith('/brand') ||
       pathname.startsWith('/assets') ||
       pathname.startsWith('/settings') ||
       pathname.startsWith('/onboarding')) {

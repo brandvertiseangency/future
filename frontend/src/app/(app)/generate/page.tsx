@@ -13,6 +13,19 @@ import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok']
 
+function parseApiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Something went wrong'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    // ignore parse errors
+  }
+  if (raw.includes('<!doctype html') || raw.includes('<html')) return 'Server returned an unexpected response. Please try again.'
+  return raw
+}
+
 export default function GeneratePage() {
   const router = useRouter()
   const [brief, setBrief] = useState('')
@@ -20,6 +33,8 @@ export default function GeneratePage() {
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<{ caption?: string; image_url?: string; platform?: string }[]>([])
   const [stage, setStage] = useState('Idle')
+  const [completedCount, setCompletedCount] = useState(0)
+  const [failedPlatforms, setFailedPlatforms] = useState<string[]>([])
 
   const { data: creditsData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number }>(url), { revalidateOnFocus: false })
   const credits = creditsData?.balance ?? 0
@@ -35,7 +50,10 @@ export default function GeneratePage() {
     }
     setLoading(true)
     setStage('Analyzing brand...')
+    setCompletedCount(0)
+    setFailedPlatforms([])
     const generated: { caption?: string; image_url?: string; platform?: string }[] = []
+    const failures: string[] = []
     for (const platform of platforms) {
       try {
         setStage(`Writing prompts for ${platform}...`)
@@ -44,24 +62,25 @@ export default function GeneratePage() {
           body: JSON.stringify({ platform, contentType: 'post', brief }),
         })
         generated.push(result.post)
-        setStage(`Generating visuals (${generated.length}/${platforms.length})...`)
-      } catch {
-        // continue
+        setCompletedCount((count) => count + 1)
+        setStage(`Generated ${generated.length}/${platforms.length} platform outputs...`)
+      } catch (error) {
+        failures.push(`${platform}: ${parseApiError(error)}`)
+        setFailedPlatforms((prev) => [...prev, platform])
       }
     }
     setPreview(generated)
+    setStage(`Completed: ${generated.length} succeeded, ${failures.length} failed`)
     setLoading(false)
     if (generated.length > 0) {
       toast.success('Generation complete')
-      try {
-        const recent = await apiCall<{ jobs?: { id: string }[] }>('/api/calendar/jobs/recent?limit=1')
-        const recentJobId = recent?.jobs?.[0]?.id
-        router.push(recentJobId ? `/generate/queue?jobId=${recentJobId}` : '/generate/queue')
-      } catch {
-        router.push('/generate/queue')
+      if (failures.length) {
+        toast.error(`Some platforms failed: ${failures.slice(0, 2).join(' | ')}`)
       }
+      // This route generates posts directly, not calendar jobs.
+      router.push('/outputs')
     } else {
-      toast.error('Generation failed')
+      toast.error(failures[0] ?? 'Generation failed')
     }
   }
 
@@ -114,8 +133,16 @@ export default function GeneratePage() {
 
         <SectionCard title="Preview" subtitle="Latest generated posts.">
           {loading ? (
-            <div className="flex min-h-[260px] items-center justify-center text-[#6B7280]">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {stage}
+            <div className="min-h-[260px] space-y-3">
+              <div className="flex items-center justify-center pt-12 text-[#6B7280]">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {stage}
+              </div>
+              <div className="mx-auto max-w-md rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">
+                Progress: <span className="font-medium text-[#111111]">{completedCount}</span> / {platforms.length} completed
+                {failedPlatforms.length > 0 ? (
+                  <p className="mt-1 text-red-600">Failed: {failedPlatforms.join(', ')}</p>
+                ) : null}
+              </div>
             </div>
           ) : preview.length === 0 ? (
             <div className="flex min-h-[260px] flex-col items-center justify-center text-sm text-[#6B7280]">

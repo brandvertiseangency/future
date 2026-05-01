@@ -151,6 +151,19 @@ const MIX_LABELS: Record<string, string> = {
 }
 const PLAN_LIMITS: Record<string, number> = { free: 12, pro: 30, agency: 60 }
 
+function parseApiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Failed to generate plan. Please try again.'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    // ignore parse errors
+  }
+  if (raw.includes('<!doctype html') || raw.includes('<html')) return 'Server returned an unexpected response. Please try again.'
+  return raw
+}
+
 function getNextMonth() {
   const d = new Date()
   const next = new Date(d.getFullYear(), d.getMonth() + 1, 1)
@@ -269,9 +282,8 @@ export function StepFirstPost() {
       clearTimeout(timeout)
       const msg = e?.name === 'AbortError'
         ? 'Generation timed out. The AI is busy — please try again.'
-        : (e?.message ?? 'Failed to generate plan. Please try again.')
+        : parseApiError(e)
       setError(msg)
-      setGenerating(false)
     }
   }
 
@@ -308,11 +320,11 @@ export function StepFirstPost() {
 
   return (
     <>
-      {generating && (
+      {(generating || Boolean(error)) && (
         <GeneratingOverlay
           postCount={postCount}
           error={error}
-          onRetry={() => { setError(''); setGenerating(false); setTimeout(handleGenerate, 50) }}
+          onRetry={() => { setError(''); setGenerating(true); setTimeout(handleGenerate, 50) }}
           onSkip={handleSkip}
         />
       )}

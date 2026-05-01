@@ -5,16 +5,11 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import { Loader2 } from 'lucide-react'
 
-// TEMPORARY: demo bypass to share app without login.
-const DEMO_AUTH_BYPASS = true
-
 /**
  * Client-side auth guard. Redirects to /auth?redirect=<current path> when not authenticated.
  * Also skips onboarding if already complete when landing on /onboarding.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  if (DEMO_AUTH_BYPASS) return <>{children}</>
-
   const { user, loading } = useAuth()
   const router = useRouter()
   const pathname = usePathname()

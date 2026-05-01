@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { CheckCircle2, Circle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { OnboardingSection } from '@/lib/onboarding-flow'
+import { MOTION_TRANSITIONS } from '@/lib/motion'
 
 export function MotionSection({
   children,
@@ -19,7 +20,7 @@ export function MotionSection({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
-        transition={{ duration: 0.22, ease: 'easeOut' }}
+        transition={MOTION_TRANSITIONS.section}
         className="h-full"
       >
         {children}
@@ -40,7 +41,7 @@ export function ProgressScore({ value }: { value: number }) {
         <motion.div
           className="h-full rounded-full bg-[#111111]"
           animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
+          transition={MOTION_TRANSITIONS.micro}
         />
       </div>
     </div>

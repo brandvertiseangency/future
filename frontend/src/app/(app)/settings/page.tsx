@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { CreditCard, User } from 'lucide-react'
 import useSWR from 'swr'
 import { useAuth } from '@/lib/auth-context'
@@ -12,22 +13,56 @@ import { toast } from 'sonner'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 
+function parseApiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Failed to update profile'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.details === 'string' && parsed.details.trim()) return parsed.details
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    // ignore parse errors
+  }
+  return raw
+}
+
 export default function SettingsPage() {
   const { user } = useAuth()
   const [name, setName] = useState(user?.displayName ?? '')
-  const [email] = useState(user?.email ?? '')
+  const [email, setEmail] = useState(user?.email ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
+  const { data: meData, mutate: mutateMe } = useSWR('/api/users/me', (url: string) => apiCall<{ user?: { display_name?: string; email?: string } }>(url), { revalidateOnFocus: false })
   const { data: billingData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number; plan: string }>(url), { revalidateOnFocus: false })
   const credits = billingData?.balance ?? 0
   const plan = billingData?.plan ?? 'trial'
+  const baselineName = meData?.user?.display_name ?? user?.displayName ?? ''
+  const nameTooShort = name.trim().length > 0 && name.trim().length < 2
+  const canSave = name.trim().length >= 2 && name.trim() !== baselineName.trim() && !savingProfile
+
+  useEffect(() => {
+    const dbName = meData?.user?.display_name
+    const dbEmail = meData?.user?.email
+    if (dbName) {
+      setName(dbName)
+    } else if (user?.displayName) {
+      setName(user.displayName)
+    }
+    if (dbEmail) {
+      setEmail(dbEmail)
+    } else if (user?.email) {
+      setEmail(user.email)
+    }
+  }, [meData?.user?.display_name, meData?.user?.email, user?.displayName, user?.email])
 
   const saveProfile = async () => {
+    if (!canSave) return
     setSavingProfile(true)
     try {
-      await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name }) })
+      await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name.trim() }) })
+      await mutateMe()
       toast.success('Profile updated')
-    } catch {
-      toast.error('Failed to update profile')
+    } catch (error) {
+      toast.error(parseApiError(error))
     } finally {
       setSavingProfile(false)
     }
@@ -57,25 +92,26 @@ export default function SettingsPage() {
               <label className="mb-1 block text-xs text-[#6B7280]">Name</label>
               <div className="relative">
                 <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
-                <input value={name} onChange={(e) => setName(e.target.value)} className="h-10 w-full rounded-lg border border-[#E5E7EB] pl-9 pr-3 text-sm outline-none focus:border-[#111111]" />
+                <input value={name} onChange={(e) => setName(e.target.value)} className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none ${nameTooShort ? 'border-red-300 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#111111]'}`} />
               </div>
+              {nameTooShort ? <p className="mt-1 text-xs text-red-600">Name must be at least 2 characters.</p> : null}
             </div>
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Email</label>
               <input value={email} readOnly className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 text-sm text-[#6B7280]" />
             </div>
           </div>
-          <Button className="mt-4" onClick={saveProfile} disabled={savingProfile}>
-            {savingProfile ? 'Saving...' : 'Save Profile'}
+          <Button className="mt-4" onClick={saveProfile} disabled={!canSave}>
+            {savingProfile ? 'Saving...' : canSave ? 'Save Profile' : 'Saved'}
           </Button>
         </SectionCard>
         </TabsContent>
 
         <TabsContent value="brand">
         <SectionCard title="Brand Settings" subtitle="Update brand profile and design preferences.">
-          <a href="/brand">
+          <Link href="/brand">
             <Button variant="secondary">Edit Brand</Button>
-          </a>
+          </Link>
         </SectionCard>
         </TabsContent>
 

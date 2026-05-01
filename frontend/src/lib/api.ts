@@ -22,32 +22,79 @@ async function getFirebaseToken(): Promise<string | null> {
   }
 }
 
+const DEFAULT_TIMEOUT_MS = 15000
+
+async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController()
+  let didTimeout = false
+  const timeoutId = setTimeout(() => {
+    didTimeout = true
+    controller.abort()
+  }, timeoutMs)
+  const externalSignal = init.signal
+  const onExternalAbort = () => controller.abort()
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort()
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true })
+    }
+  }
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } catch (error) {
+    if (didTimeout && error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Request timed out after ${timeoutMs}ms`)
+    }
+    throw error
+  } finally {
+    if (externalSignal) {
+      externalSignal.removeEventListener('abort', onExternalAbort)
+    }
+    clearTimeout(timeoutId)
+  }
+}
+
 export async function apiCall<T = unknown>(
   path: string,
   options?: RequestInit
 ): Promise<T> {
   const token = await getFirebaseToken()
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options?.headers,
-    },
-  })
+  let res: Response
+  try {
+    res = await fetchWithTimeout(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options?.headers,
+      },
+    })
+  } catch (error) {
+    throw error
+  }
+
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }
 
 export async function apiUpload(path: string, formData: FormData): Promise<unknown> {
   const token = await getFirebaseToken()
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    body: formData,
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  })
+  let res: Response
+  try {
+    res = await fetchWithTimeout(`${API_BASE}${path}`, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+  } catch (error) {
+    throw error
+  }
+
   if (!res.ok) throw new Error(await res.text())
   return res.json()
 }

@@ -12,11 +12,11 @@ import { PageIntroModal } from '@/components/app/page-intro-modal'
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
 export default function DashboardPage() {
-  const { data: brandData } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
-  const { data: creditsData } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
-  const { data: statsData } = useSWR('/api/posts/stats', fetcher, { revalidateOnFocus: false })
-  const { data: scheduledData } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
-  const { data: outputsData } = useSWR('/api/posts?limit=4', fetcher, { revalidateOnFocus: false })
+  const { data: brandData, error: brandError } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
+  const { data: creditsData, error: creditsError } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
+  const { data: statsData, error: statsError } = useSWR('/api/posts/stats', fetcher, { revalidateOnFocus: false })
+  const { data: scheduledData, error: scheduledError } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
+  const { data: outputsData, error: outputsError } = useSWR('/api/posts?limit=4', fetcher, { revalidateOnFocus: false })
 
   const brand = (brandData as { brand?: { name?: string } })?.brand
   const credits = (creditsData as { balance?: number })?.balance ?? 0
@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const brandName = brand?.name ?? 'My Brand'
   const usedPercent = Math.min(Math.round((totalPosts / 30) * 100), 100)
   const nextAction = scheduledPosts > 0 ? { label: 'Generate Creatives', href: '/generate' } : { label: 'Approve Content Calendar', href: '/calendar' }
+  const hasDataError = Boolean(brandError || creditsError || statsError || scheduledError || outputsError)
 
   return (
     <PageContainer className="space-y-6">
@@ -40,6 +41,11 @@ export default function DashboardPage() {
         title={<>Dashboard <span className="text-highlight">Overview</span></>}
         description={`Welcome back. Here's what's happening for ${brandName}.`}
       />
+      {hasDataError ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Some dashboard metrics could not be refreshed. Values may be stale; please retry in a moment.
+        </div>
+      ) : null}
 
       <SectionCard title="Next Step" subtitle={`You're ${usedPercent}% through this month's workflow.`}>
         <div className="flex items-center justify-between gap-3">
@@ -63,7 +69,7 @@ export default function DashboardPage() {
             <Button className="h-10"><WandSparkles className="mr-2 h-4 w-4" />Generate Content</Button>
           </Link>
           <Link href="/brand">
-            <Button variant="secondary" className="h-10">Create Brand</Button>
+            <Button variant="secondary" className="h-10">Edit Brand</Button>
           </Link>
         </div>
       </SectionCard>

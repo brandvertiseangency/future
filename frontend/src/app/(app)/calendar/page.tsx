@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { toast } from 'sonner'
 
 type CalendarRow = {
   id: string
@@ -24,14 +25,21 @@ type CalendarRow = {
   type: string
   idea: string
   caption: string
-  status: 'draft' | 'scheduled' | 'published' | 'failed'
+  status: 'draft' | 'approved' | 'scheduled' | 'published' | 'failed'
+  approvalStatus?: 'pending' | 'approved'
   platform: string
 }
 
-const fetcher = (url: string) => apiCall<{ posts?: Array<{ id: string; title?: string; content_type?: string; caption?: string; status?: CalendarRow['status']; platform?: string; scheduled_at?: string }> }>(url)
+const fetcher = (url: string) => apiCall<{ posts?: Array<{ id: string; title?: string; content_type?: string; caption?: string; status?: CalendarRow['status']; approval_status?: CalendarRow['approvalStatus']; platform?: string; scheduled_at?: string }> }>(url)
+
+function getEffectiveStatus(status?: CalendarRow['status'], approvalStatus?: CalendarRow['approvalStatus']): CalendarRow['status'] {
+  if (status === 'published' || status === 'scheduled') return status
+  if (approvalStatus === 'approved' || status === 'approved') return 'approved'
+  return status ?? 'draft'
+}
 
 export default function CalendarPage() {
-  const { data } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
+  const { data, mutate } = useSWR('/api/posts?limit=100', fetcher, { revalidateOnFocus: false })
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [selected, setSelected] = useState<CalendarRow | null>(null)
   const [editedIdea, setEditedIdea] = useState('')
@@ -47,7 +55,8 @@ export default function CalendarPage() {
       type: post.content_type ?? 'post',
       idea: post.title ?? 'Untitled idea',
       caption: post.caption ?? '',
-      status: post.status ?? 'draft',
+      status: getEffectiveStatus(post.status, post.approval_status),
+      approvalStatus: post.approval_status ?? 'pending',
       platform: post.platform ?? 'instagram',
     }))
   }, [data?.posts])
@@ -61,7 +70,7 @@ export default function CalendarPage() {
     columnHelper.accessor('status', {
       header: 'Status',
       cell: (info) => (
-        <StatusBadge tone={info.getValue() === 'published' ? 'success' : 'neutral'}>
+        <StatusBadge tone={info.getValue() === 'published' || info.getValue() === 'approved' ? 'success' : 'neutral'}>
           {info.getValue()}
         </StatusBadge>
       ),
@@ -79,7 +88,7 @@ export default function CalendarPage() {
           </button>
           <button
             className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
-            onClick={(e) => { e.stopPropagation(); setSelected(row.original); void approve() }}
+            onClick={(e) => { e.stopPropagation(); void approveById(row.original) }}
           >
             <Check className="h-3 w-3" />
           </button>
@@ -109,12 +118,34 @@ export default function CalendarPage() {
       await apiCall(`/api/posts/${selected.id}`, {
         method: 'PATCH',
         body: JSON.stringify({
-          title: editedIdea,
           caption: editedCaption,
-          status: 'approved',
+          approval_status: 'approved',
         }),
       })
-      setSelected((prev) => prev ? { ...prev, idea: editedIdea, caption: editedCaption, status: 'published' } : prev)
+      setSelected((prev) => prev ? { ...prev, caption: editedCaption, status: 'approved', approvalStatus: 'approved' } : prev)
+      await mutate()
+      toast.success('Post approved')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to approve post')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const approveById = async (row: CalendarRow) => {
+    setSaving(true)
+    try {
+      await apiCall(`/api/posts/${row.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ approval_status: 'approved' }),
+      })
+      if (selected?.id === row.id) {
+        setSelected((prev) => prev ? { ...prev, status: 'approved', approvalStatus: 'approved' } : prev)
+      }
+      await mutate()
+      toast.success('Post approved')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to approve post')
     } finally {
       setSaving(false)
     }
@@ -128,10 +159,14 @@ export default function CalendarPage() {
         rows.map((row) =>
           apiCall(`/api/posts/${row.id}`, {
             method: 'PATCH',
-            body: JSON.stringify({ status: 'approved' }),
+            body: JSON.stringify({ approval_status: 'approved' }),
           })
         )
       )
+      await mutate()
+      toast.success('All posts approved')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to approve all posts')
     } finally {
       setBulkSaving(false)
     }
@@ -223,7 +258,7 @@ export default function CalendarPage() {
               <p className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">Editing Post #{rows.findIndex((r) => r.id === selected.id) + 1}</p>
               <div>
                 <label className="mb-1 block text-xs text-[#6B7280]">Idea</label>
-                <input value={editedIdea} onChange={(e) => setEditedIdea(e.target.value)} className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm outline-none focus:border-[#111111]" />
+                <input value={editedIdea} disabled className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 text-sm text-[#6B7280]" />
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#6B7280]">Caption</label>
