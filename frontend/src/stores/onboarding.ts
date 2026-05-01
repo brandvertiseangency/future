@@ -186,8 +186,8 @@ const defaultData: OnboardingData = {
   products: [],
   weeklyPostCount: 4,
   contentMix: { promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 },
-  activePlatforms: ['instagram'],
-  preferredPostingTimes: ['09:00', '18:00'],
+  activePlatforms: [],
+  preferredPostingTimes: [],
   autoSchedule: false,
 }
 

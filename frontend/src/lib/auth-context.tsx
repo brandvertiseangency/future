@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -16,6 +16,8 @@ import {
 import { useRouter } from 'next/navigation'
 import { getFirebaseAuth } from './firebase'
 import { apiCall } from './api'
+import { useOnboardingStore } from '@/stores/onboarding'
+import { useAgentsStore } from '@/stores/agents'
 
 interface AuthContextType {
   user: User | null
@@ -46,6 +48,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
+  const lastUidRef = useRef<string | null>(null)
+  const clearClientScopedState = () => {
+    try {
+      useOnboardingStore.getState().reset()
+      useAgentsStore.getState().reset()
+      if (typeof window !== 'undefined') {
+        window.localStorage.removeItem('brandvertise_onboarding_v2')
+        window.localStorage.removeItem('brandvertise-agents')
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+  }
 
   const registerWithBackend = async (_u: User) => {
     try {
@@ -79,13 +94,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!auth) { setLoading(false); return }
 
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      const previousUid = lastUidRef.current
       setUser(firebaseUser)
+      // Prevent cross-account persisted data leakage on account switch.
+      if (previousUid && firebaseUser?.uid && previousUid !== firebaseUser.uid) {
+        clearClientScopedState()
+      }
       if (firebaseUser) {
         // Refresh session cookie on every auth state change (token may have rotated)
         await setSessionCookie(firebaseUser)
       } else {
+        clearClientScopedState()
         clearSessionCookie()
       }
+      lastUidRef.current = firebaseUser?.uid ?? null
       setLoading(false)
     })
     return unsub
@@ -127,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const auth = getFirebaseAuth()
     if (!auth) return
     await firebaseSignOut(auth)
+    clearClientScopedState()
     clearSessionCookie()
     router.push('/auth')
   }

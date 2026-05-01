@@ -15,25 +15,30 @@ import { CommandPalette } from '@/components/command-palette'
 
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const isOnboardingRoute = pathname.startsWith('/onboarding')
   return (
     <div className="min-h-screen bg-[#F7F7F8]">
-      <div className="hidden md:block">
-        <Sidebar />
-      </div>
-      <Topbar />
-      <WorkflowProgress />
+      {!isOnboardingRoute ? (
+        <div className="hidden md:block">
+          <Sidebar />
+        </div>
+      ) : null}
+      {!isOnboardingRoute ? <Topbar /> : null}
+      {!isOnboardingRoute ? <WorkflowProgress /> : null}
       <motion.main
         key={pathname}
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="md:ml-[240px] pt-[96px] pb-20 md:pb-0 min-h-screen"
+        className={isOnboardingRoute ? 'min-h-screen' : 'md:ml-[240px] pt-[96px] pb-20 md:pb-0 min-h-screen'}
       >
         <PageErrorBoundary>{children}</PageErrorBoundary>
       </motion.main>
-      <div className="md:hidden">
-        <BottomTabBar />
-      </div>
+      {!isOnboardingRoute ? (
+        <div className="md:hidden">
+          <BottomTabBar />
+        </div>
+      ) : null}
       <Toaster theme="light" position="bottom-right" />
       <CommandPalette />
     </div>

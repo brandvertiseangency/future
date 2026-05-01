@@ -25,7 +25,6 @@ type NavIcon = React.ComponentType<{ size?: number; className?: string }>
 
 const NAV_ITEMS: { href: string; label: string; icon: NavIcon }[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/brand', label: 'Brand Setup', icon: BriefcaseBusiness },
   { href: '/calendar', label: 'Content Calendar', icon: CalendarDays },
   { href: '/generate', label: 'Generation', icon: Sparkles },
   { href: '/outputs', label: 'Outputs', icon: ImageIcon },
@@ -100,7 +99,7 @@ export function Sidebar() {
       <div className="space-y-3 border-t border-[#E5E7EB] px-3 py-3">
         <div
           className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-[#E5E7EB] px-2.5 py-2.5 transition-colors hover:bg-[#F7F7F8]"
-          onClick={() => router.push('/brand')}
+          onClick={() => router.push('/settings')}
         >
           <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[#111111] text-[10px] font-bold text-white">
             {initials}
@@ -110,6 +109,13 @@ export function Sidebar() {
             <p className="mt-0.5 text-[10px] leading-tight text-[#6B7280]">{planLabel} plan</p>
           </div>
         </div>
+        <button
+          onClick={() => router.push('/brand')}
+          className="flex w-full items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-2 text-left text-[12px] text-[#111111] hover:bg-[#F7F7F8]"
+        >
+          <BriefcaseBusiness size={14} />
+          Edit brand
+        </button>
 
         <button className="px-1 text-left" onClick={() => router.push('/settings#billing')}>
           <div className="mb-1.5 flex items-center justify-between">

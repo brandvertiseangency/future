@@ -5,7 +5,15 @@
 const { auth, initialized } = require("../config/firebase");
 const logger = require("../utils/logger");
 
+// TEMPORARY: demo bypass to share app without login.
+const DEMO_AUTH_BYPASS = true;
+
 async function authMiddleware(req, res, next) {
+  if (DEMO_AUTH_BYPASS) {
+    req.user = { uid: "demo-user", email: "demo@brandvertise.ai" };
+    return next();
+  }
+
   // Skip auth in development if Firebase is not configured
   if (!initialized) {
     if (process.env.NODE_ENV === "development") {

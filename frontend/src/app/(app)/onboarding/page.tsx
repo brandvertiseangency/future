@@ -58,16 +58,18 @@ export default function OnboardingPage() {
   const StepComponent = STEPS[step - 1] || StepWelcome
   const progress = getOnboardingProgress(step)
   const validity = getSectionValidity(onboardingData)
-  const completedSteps = new Set<number>([
-    validity.brand ? 2 : -1,
-    validity.industry ? 3 : -1,
-    validity.personality ? 4 : -1,
-    validity.visual ? 5 : -1,
-    validity.audience ? 6 : -1,
-    validity.goals ? 7 : -1,
-    validity.industryConfig ? 8 : -1,
-    validity.calendar ? 11 : -1,
-  ].filter((s) => s > 0))
+  const completedSteps = new Set<number>()
+  if (step > 1) completedSteps.add(1) // Welcome becomes complete once user proceeds.
+  if (step > 2 && validity.brand) completedSteps.add(2)
+  if (step > 3 && validity.industry) completedSteps.add(3)
+  if (step > 4 && validity.personality) completedSteps.add(4)
+  if (step > 5 && validity.visual) completedSteps.add(5)
+  if (step > 6 && validity.audience) completedSteps.add(6)
+  if (step > 7 && validity.goals) completedSteps.add(7)
+  if (step > 8 && validity.industryConfig) completedSteps.add(8)
+  if (step > 9) completedSteps.add(9) // Optional step
+  if (step > 10) completedSteps.add(10) // Optional step
+  if (step > 11 && validity.calendar) completedSteps.add(11)
   const profileScore = Math.round((completedSteps.size / 8) * 100)
 
   const { data, isLoading } = useSWR(

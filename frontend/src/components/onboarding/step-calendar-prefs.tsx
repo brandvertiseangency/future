@@ -45,6 +45,8 @@ export function StepCalendarPrefs() {
   }
 
   const mixTotal = Object.values(data.contentMix || {}).reduce((a, b) => a + b, 0)
+  const hasPlatform = (data.activePlatforms || []).length > 0
+  const canFinish = hasPlatform && mixTotal === 100 && !submitting
 
   return (
     <div className="space-y-8">
@@ -159,12 +161,17 @@ export function StepCalendarPrefs() {
         <button onClick={() => setStep(10)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
         <AIButton
           onClick={() => setStep(12)}
-          disabled={submitting}
+          disabled={!canFinish}
           className="px-8 py-2.5 rounded-xl text-sm font-semibold"
         >
           Finish setup →
         </AIButton>
       </div>
+      {!hasPlatform || mixTotal !== 100 ? (
+        <p className="text-xs text-red-400">
+          Select at least one platform and make content mix total 100% to continue.
+        </p>
+      ) : null}
     </div>
   )
 }

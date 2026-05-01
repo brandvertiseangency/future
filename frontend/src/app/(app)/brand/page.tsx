@@ -1,65 +1,192 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { ChevronLeft, ChevronRight, Upload, X } from 'lucide-react'
 import useSWR from 'swr'
+import { Loader2 } from 'lucide-react'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useBrandStore } from '@/stores/brand'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 
-const goals = ['Increase Brand Awareness', 'Drive Sales', 'Engagement', 'Product Launch']
-const styles = ['minimal', 'luxury', 'bold'] as const
-const tones = ['Neutral', 'Warm', 'Professional', 'Friendly']
+const styleOptions = ['minimal', 'luxury', 'bold'] as const
+const toneOptions = ['Neutral', 'Warm', 'Professional', 'Friendly'] as const
+const goalLibrary = ['Increase Brand Awareness', 'Drive Sales', 'Engagement', 'Product Launch']
 
-const brandSchema = z.object({
+const schema = z.object({
   name: z.string().min(2, 'Brand name is required'),
+  tagline: z.string().optional(),
   industry: z.string().min(2, 'Industry is required'),
-  audience: z.string().min(5, 'Audience details are required'),
+  description: z.string().min(5, 'Brand description is required'),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  audienceLocation: z.string().min(2, 'Audience location is required'),
+  audienceAgeMin: z.coerce.number().min(18).max(100),
+  audienceAgeMax: z.coerce.number().min(18).max(100),
+  audienceGender: z.enum(['mixed', 'mostly_male', 'mostly_female']),
+  audienceInterests: z.string().optional(),
   goals: z.array(z.string()).min(1, 'Select at least one goal'),
-  style: z.enum(styles),
-  tone: z.string().min(1, 'Select a tone'),
-  visualBalance: z.enum(['text', 'balanced', 'visual']),
-  competitorLinks: z.string().optional(),
+  styleKeywords: z.string().optional(),
+  style: z.enum(styleOptions),
+  colorPrimary: z.string().optional(),
+  colorSecondary: z.string().optional(),
+  colorAccent: z.string().optional(),
+  fontMood: z.string().optional(),
+  tone: z.enum(toneOptions),
+  industrySubtype: z.string().optional(),
+  priceSegment: z.string().optional(),
+  uspKeywords: z.string().optional(),
+  weeklyPostCount: z.coerce.number().min(1).max(50),
+  activePlatforms: z.string().optional(),
+  contentMix: z.string().optional(),
+  autoSchedule: z.boolean().default(false),
+  website: z.string().optional(),
 })
 
-type BrandSetupForm = z.infer<typeof brandSchema>
+type FormValues = z.infer<typeof schema>
 
 const field = 'h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#111111]'
 
+function styleFromFontMood(fontMood?: string): FormValues['style'] {
+  if (!fontMood) return 'minimal'
+  if (fontMood.includes('serif')) return 'luxury'
+  if (fontMood.includes('display')) return 'bold'
+  return 'minimal'
+}
+
+function toneFromNumber(tone?: number): FormValues['tone'] {
+  const t = Number(tone ?? 50)
+  if (t <= 25) return 'Friendly'
+  if (t <= 50) return 'Neutral'
+  if (t <= 75) return 'Warm'
+  return 'Professional'
+}
+
+function toneToNumber(tone: FormValues['tone']): number {
+  if (tone === 'Friendly') return 25
+  if (tone === 'Neutral') return 50
+  if (tone === 'Warm') return 65
+  return 85
+}
+
 export default function BrandDetailsPage() {
-  const [step, setStep] = useState(1)
-  const [assets, setAssets] = useState<string[]>([])
+  const { setBrand } = useBrandStore()
   const [saving, setSaving] = useState(false)
 
-  const { data: brandRes } = useSWR('/api/brand/me', (url: string) => apiCall<{ brand?: { name?: string; industry?: string; description?: string } }>(url), { revalidateOnFocus: false })
-  const defaults = useMemo(
-    () => ({
-      name: brandRes?.brand?.name ?? '',
-      industry: brandRes?.brand?.industry ?? '',
-      audience: '',
-      goals: [] as string[],
-      style: 'minimal' as const,
-      tone: '',
-      visualBalance: 'balanced' as const,
-      competitorLinks: '',
-    }),
-    [brandRes]
+  const { data: brandMeRes, isLoading: loadingBrandMe, mutate: mutateBrandMe } = useSWR(
+    '/api/brand/me',
+    (url: string) => apiCall<{ brand?: Record<string, any> }>(url),
+    { revalidateOnFocus: false }
+  )
+  const { data: brandCurrentRes, isLoading: loadingCurrent } = useSWR(
+    '/api/brands/current',
+    (url: string) => apiCall<{ brand?: Record<string, any> }>(url),
+    { revalidateOnFocus: false }
   )
 
-  const form = useForm<BrandSetupForm>({
-    defaultValues: defaults,
-    values: defaults,
+  const brand = brandMeRes?.brand ?? brandCurrentRes?.brand ?? null
+
+  const form = useForm<FormValues>({
+    defaultValues: {
+      name: '',
+      tagline: '',
+      industry: '',
+      description: '',
+      phone: '',
+      address: '',
+      audienceLocation: '',
+      audienceAgeMin: 22,
+      audienceAgeMax: 45,
+      audienceGender: 'mixed',
+      audienceInterests: '',
+      goals: [],
+      styleKeywords: '',
+      style: 'minimal',
+      colorPrimary: '#111111',
+      colorSecondary: '#ffffff',
+      colorAccent: '#9CA3AF',
+      fontMood: 'sans_modern',
+      tone: 'Neutral',
+      industrySubtype: '',
+      priceSegment: '',
+      uspKeywords: '',
+      weeklyPostCount: 4,
+      activePlatforms: '',
+      contentMix: '',
+      autoSchedule: false,
+      website: '',
+    },
     mode: 'onChange',
   })
 
-  const onSubmit = async (values: BrandSetupForm) => {
-    const parsed = brandSchema.safeParse(values)
+  useEffect(() => {
+    if (!brand) return
+    form.reset({
+      name: brand.name ?? '',
+      tagline: brand.tagline ?? '',
+      industry: brand.industry ?? '',
+      description: brand.description ?? '',
+      phone: brand.phone ?? '',
+      address: brand.address ?? '',
+      audienceLocation: brand.audience_location ?? '',
+      audienceAgeMin: Number(brand.audience_age_min ?? 22),
+      audienceAgeMax: Number(brand.audience_age_max ?? 45),
+      audienceGender: (brand.audience_gender ?? 'mixed') as 'mixed' | 'mostly_male' | 'mostly_female',
+      audienceInterests: Array.isArray(brand.audience_interests) ? brand.audience_interests.join(', ') : '',
+      goals: Array.isArray(brand.goals) ? brand.goals : [],
+      styleKeywords: Array.isArray(brand.styles) ? brand.styles.join(', ') : '',
+      style: styleFromFontMood(brand.font_mood),
+      colorPrimary: brand.color_primary ?? '#111111',
+      colorSecondary: brand.color_secondary ?? '#ffffff',
+      colorAccent: brand.color_accent ?? '#9CA3AF',
+      fontMood: brand.font_mood ?? '',
+      tone: toneFromNumber(brand.tone),
+      industrySubtype: brand.industry_subtype ?? '',
+      priceSegment: brand.price_segment ?? '',
+      uspKeywords: Array.isArray(brand.industry_usp) ? brand.industry_usp.join(', ') : '',
+      weeklyPostCount: Number(brand.weekly_post_count ?? 4),
+      activePlatforms: Array.isArray(brand.active_platforms) ? brand.active_platforms.join(', ') : '',
+      contentMix: brand.content_type_mix ? JSON.stringify(brand.content_type_mix) : '',
+      autoSchedule: Boolean(brand.auto_schedule),
+      website: brand.website ?? '',
+    })
+    setBrand({
+      id: String(brand.id ?? 'default'),
+      name: brand.name ?? 'My Brand',
+      website: brand.website ?? '',
+      industry: brand.industry ?? '',
+      voice: brand.description ?? '',
+      goals: Array.isArray(brand.goals) ? brand.goals : [],
+      audience: {
+        ageMin: brand.audience_age_min,
+        ageMax: brand.audience_age_max,
+        location: brand.audience_location,
+        interests: brand.audience_interests,
+      },
+      designPrefs: {
+        colorPrimary: brand.color_primary,
+        colorSecondary: brand.color_secondary,
+        colorAccent: brand.color_accent,
+        fontMood: brand.font_mood,
+      },
+    })
+  }, [brand, form, setBrand])
+
+  const watchedGoals = form.watch('goals')
+  const goalOptions = useMemo(() => Array.from(new Set([...(watchedGoals || []), ...goalLibrary])), [watchedGoals])
+
+  const toggleGoal = (goal: string) => {
+    const current = form.getValues('goals')
+    form.setValue('goals', current.includes(goal) ? current.filter((g) => g !== goal) : [...current, goal], { shouldValidate: true })
+  }
+
+  const onSubmit = async (values: FormValues) => {
+    const parsed = schema.safeParse(values)
     if (!parsed.success) {
       toast.error(parsed.error.issues[0]?.message ?? 'Please complete all required fields')
       return
@@ -69,225 +196,234 @@ export default function BrandDetailsPage() {
       await apiCall('/api/brand/me', {
         method: 'PATCH',
         body: JSON.stringify({
-          name: values.name,
-          industry: values.industry,
-          description: values.audience,
+          name: values.name.trim(),
+          tagline: (values.tagline ?? '').trim(),
+          industry: values.industry.trim(),
+          description: values.description.trim(),
+          phone: (values.phone ?? '').trim(),
+          address: (values.address ?? '').trim(),
           goals: values.goals,
-          tone: 50,
-          font_mood: values.style,
-          audience_location: values.audience,
-          website: values.competitorLinks ?? '',
+          tone: toneToNumber(values.tone),
+          styles: (values.styleKeywords ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+          font_mood: values.style === 'luxury' ? 'serif_elegant' : values.style === 'bold' ? 'display_bold' : 'sans_modern',
+          color_primary: (values.colorPrimary ?? '').trim() || null,
+          color_secondary: (values.colorSecondary ?? '').trim() || null,
+          color_accent: (values.colorAccent ?? '').trim() || null,
+          audience_location: values.audienceLocation.trim(),
+          audience_age_min: values.audienceAgeMin,
+          audience_age_max: values.audienceAgeMax,
+          audience_gender: values.audienceGender,
+          audience_interests: (values.audienceInterests ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+          industry_subtype: (values.industrySubtype ?? '').trim() || null,
+          price_segment: (values.priceSegment ?? '').trim() || null,
+          usp_keywords: (values.uspKeywords ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+          weekly_post_count: values.weeklyPostCount,
+          active_platforms: (values.activePlatforms ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+          content_type_mix: (() => {
+            try { return values.contentMix ? JSON.parse(values.contentMix) : undefined } catch { return undefined }
+          })(),
+          auto_schedule: values.autoSchedule,
+          website: (values.website ?? '').trim(),
         }),
       })
-      toast.success('Brand setup saved')
+      await mutateBrandMe()
+      toast.success('Brand profile updated')
     } catch {
-      toast.error('Unable to save brand setup')
+      toast.error('Unable to update brand profile')
     } finally {
       setSaving(false)
     }
   }
 
-  const toggleGoal = (goal: string) => {
-    const current = form.getValues('goals')
-    form.setValue(
-      'goals',
-      current.includes(goal) ? current.filter((g) => g !== goal) : [...current, goal],
-      { shouldValidate: true }
-    )
-  }
-
-  const onAssetUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? [])
-    const urls = files.map((file) => URL.createObjectURL(file))
-    setAssets((prev) => [...prev, ...urls].slice(0, 8))
-  }
   const qualityParts = [
     form.watch('name')?.trim(),
+    form.watch('tagline')?.trim(),
     form.watch('industry')?.trim(),
-    form.watch('audience')?.trim(),
-    form.watch('tone')?.trim(),
+    form.watch('description')?.trim(),
+    form.watch('audienceLocation')?.trim(),
     form.watch('goals')?.length ? 'goals' : '',
-    assets.length ? 'assets' : '',
+    form.watch('styleKeywords')?.trim(),
+    form.watch('colorPrimary')?.trim(),
+    form.watch('website')?.trim(),
   ].filter(Boolean).length
-  const qualityScore = Math.round((qualityParts / 6) * 100)
+  const qualityScore = Math.round((qualityParts / 9) * 100)
+
+  if (loadingBrandMe || loadingCurrent) {
+    return (
+      <PageContainer className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#111111]" />
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer className="space-y-6">
       <PageIntroModal
         pageKey="brand"
-        title="Define your brand clearly"
-        description="Better input creates better AI output. Complete each step before generating content."
+        title="Keep your brand profile fresh"
+        description="These edits directly improve generated calendars, captions, and visual prompts."
       />
       <PageHeader
-        title={<>Create New <span className="text-highlight">Brand</span></>}
-        description="Set up your brand details, style and assets for high-quality generation."
+        title={<>Edit <span className="text-highlight">Brand</span></>}
+        description="Update the brand profile created during onboarding."
       />
 
-      <div className="app-card p-4">
-        <div className="flex items-center justify-between text-xs text-[#6B7280]">
-          <span className={cn(step >= 1 && 'text-[#111111]')}>1. Brand Details</span>
-          <span className={cn(step >= 2 && 'text-[#111111]')}>2. Brand Assets</span>
-          <span className={cn(step >= 3 && 'text-[#111111]')}>3. Review</span>
-        </div>
-        <div className="mt-2 h-1 rounded-full bg-[#EFEFF1]">
-          <div className="h-1 rounded-full bg-[#111111] transition-all" style={{ width: `${(step / 3) * 100}%` }} />
-        </div>
-      </div>
-
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
-        <div className="space-y-4">
-        {step === 1 && (
-          <SectionCard title="Brand Details" subtitle="Tell us about your brand and audience.">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
-                <input className={field} {...form.register('name')} />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Industry</label>
-                <input className={field} {...form.register('industry')} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-xs text-[#6B7280]">Target audience</label>
-                <textarea className="min-h-24 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('audience')} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="mb-2 block text-xs text-[#6B7280]">Goals</label>
-                <div className="flex flex-wrap gap-2">
-                  {goals.map((goal) => (
-                    <button
-                      type="button"
-                      key={goal}
-                      onClick={() => toggleGoal(goal)}
-                      className={cn(
-                        'rounded-full border px-3 py-1 text-xs',
-                        form.watch('goals').includes(goal) ? 'border-[#111111] bg-[#111111] text-white' : 'border-[#E5E7EB] bg-white text-[#6B7280]'
-                      )}
-                    >
-                      {goal}
-                    </button>
-                  ))}
-                </div>
+        <SectionCard title="Brand Profile" subtitle="This data is pulled from onboarding and remains editable.">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
+              <input className={field} {...form.register('name')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Tagline</label>
+              <input className={field} {...form.register('tagline')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Industry</label>
+              <input className={field} {...form.register('industry')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Industry subtype</label>
+              <input className={field} {...form.register('industrySubtype')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-[#6B7280]">Brand description</label>
+              <textarea className="min-h-24 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('description')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Audience location</label>
+              <input className={field} {...form.register('audienceLocation')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Audience interests (comma separated)</label>
+              <input className={field} {...form.register('audienceInterests')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Audience age min</label>
+              <input type="number" className={field} {...form.register('audienceAgeMin')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Audience age max</label>
+              <input type="number" className={field} {...form.register('audienceAgeMax')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Audience gender</label>
+              <select className={field} {...form.register('audienceGender')}>
+                <option value="mixed">Mixed</option>
+                <option value="mostly_male">Mostly male</option>
+                <option value="mostly_female">Mostly female</option>
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Website / competitor link</label>
+              <input className={field} {...form.register('website')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Phone</label>
+              <input className={field} {...form.register('phone')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Address</label>
+              <input className={field} {...form.register('address')} />
+            </div>
+            <div>
+              <label className="mb-2 block text-xs text-[#6B7280]">Style</label>
+              <div className="grid grid-cols-3 gap-2">
+                {styleOptions.map((style) => (
+                  <button
+                    type="button"
+                    key={style}
+                    onClick={() => form.setValue('style', style)}
+                    className={cn(
+                      'h-10 rounded-lg border text-sm capitalize',
+                      form.watch('style') === style ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
+                    )}
+                  >
+                    {style}
+                  </button>
+                ))}
               </div>
             </div>
-          </SectionCard>
-        )}
-
-        {step === 2 && (
-          <SectionCard title="Style Preferences and Assets" subtitle="Select visual direction and upload references.">
-            <div className="space-y-5">
-              <div>
-                <label className="mb-2 block text-xs text-[#6B7280]">Style</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {styles.map((style) => (
-                    <button
-                      type="button"
-                      key={style}
-                      onClick={() => form.setValue('style', style)}
-                      className={cn(
-                        'h-10 rounded-lg border text-sm capitalize',
-                        form.watch('style') === style ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
-                      )}
-                    >
-                      {style}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs text-[#6B7280]">Tone</label>
-                <select className={field} {...form.register('tone')}>
-                  <option value="">Select tone</option>
-                  {tones.map((tone) => (
-                    <option key={tone} value={tone}>{tone}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs text-[#6B7280]">Visual vs text balance</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['text', 'balanced', 'visual'].map((balance) => (
-                    <button
-                      type="button"
-                      key={balance}
-                      onClick={() => form.setValue('visualBalance', balance as 'text' | 'balanced' | 'visual')}
-                      className={cn(
-                        'h-10 rounded-lg border text-sm capitalize',
-                        form.watch('visualBalance') === balance ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
-                      )}
-                    >
-                      {balance}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs text-[#6B7280]">Upload assets</label>
-                <label className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-[#E5E7EB] bg-[#F7F7F8] text-sm text-[#6B7280]">
-                  <Upload className="mr-2 h-4 w-4" />
-                  Drag & drop or browse
-                  <input type="file" multiple accept="image/*" className="hidden" onChange={onAssetUpload} />
-                </label>
-                {assets.length > 0 && (
-                  <div className="mt-3 grid grid-cols-4 gap-2">
-                    {assets.map((asset, index) => (
-                      <div key={asset} className="relative overflow-hidden rounded-lg border border-[#E5E7EB]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={asset} alt={`Asset ${index + 1}`} className="h-16 w-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() => setAssets((prev) => prev.filter((_, i) => i !== index))}
-                          className="absolute right-1 top-1 rounded bg-white p-0.5 text-[#6B7280]"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            <div>
+              <label className="mb-2 block text-xs text-[#6B7280]">Tone</label>
+              <select className={field} {...form.register('tone')}>
+                {toneOptions.map((tone) => (
+                  <option key={tone} value={tone}>{tone}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-[#6B7280]">Style keywords (comma separated)</label>
+              <input className={field} {...form.register('styleKeywords')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Primary color</label>
+              <input className={field} {...form.register('colorPrimary')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Secondary color</label>
+              <input className={field} {...form.register('colorSecondary')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Accent color</label>
+              <input className={field} {...form.register('colorAccent')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Font mood</label>
+              <input className={field} {...form.register('fontMood')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Price segment</label>
+              <input className={field} {...form.register('priceSegment')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-[#6B7280]">USP keywords (comma separated)</label>
+              <input className={field} {...form.register('uspKeywords')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Weekly post count</label>
+              <input type="number" className={field} {...form.register('weeklyPostCount')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#6B7280]">Active platforms (comma separated)</label>
+              <input className={field} {...form.register('activePlatforms')} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-xs text-[#6B7280]">Content mix JSON</label>
+              <textarea className="min-h-20 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('contentMix')} />
+            </div>
+            <div className="md:col-span-2 flex items-center gap-2">
+              <input id="auto-schedule" type="checkbox" {...form.register('autoSchedule')} />
+              <label htmlFor="auto-schedule" className="text-sm text-[#111111]">Auto schedule enabled</label>
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-2 block text-xs text-[#6B7280]">Goals</label>
+              <div className="flex flex-wrap gap-2">
+                {goalOptions.map((goal) => (
+                  <button
+                    type="button"
+                    key={goal}
+                    onClick={() => toggleGoal(goal)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs',
+                      watchedGoals.includes(goal) ? 'border-[#111111] bg-[#111111] text-white' : 'border-[#E5E7EB] bg-white text-[#6B7280]'
+                    )}
+                  >
+                    {goal}
+                  </button>
+                ))}
               </div>
             </div>
-          </SectionCard>
-        )}
-
-        {step === 3 && (
-          <SectionCard title="Competitor Input and Review" subtitle="Add competitor links and review before saving.">
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Competitor links</label>
-                <input className={field} placeholder="https://example.com, https://instagram.com/example" {...form.register('competitorLinks')} />
-              </div>
-              <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-sm">
-                <p className="font-medium text-[#111111]">{form.watch('name') || 'Brand name'}</p>
-                <p className="mt-1 text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>
-                <p className="mt-2 text-[#6B7280]">Goals: {form.watch('goals').join(', ') || 'None selected'}</p>
-              </div>
-            </div>
-          </SectionCard>
-        )}
-
-        <div className="flex items-center justify-between">
-          <Button type="button" variant="secondary" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
-            <ChevronLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
-          {step < 3 ? (
-            <Button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))}>
-              Continue
-              <ChevronRight className="ml-1 h-4 w-4" />
-            </Button>
-          ) : (
+          </div>
+          <div className="mt-5 flex justify-end">
             <Button type="submit" disabled={saving}>
-              {saving ? 'Saving...' : 'Save & Continue'}
+              {saving ? 'Saving...' : 'Save Brand Changes'}
             </Button>
-          )}
-        </div>
-        </div>
+          </div>
+        </SectionCard>
 
-        <SectionCard title="Brand Preview" subtitle="Live preview of configured identity." className="xl:sticky xl:top-20 h-fit">
+        <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="xl:sticky xl:top-20 h-fit">
           <div className="space-y-4">
             <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-center">
               <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-lg font-semibold text-[#111111]">
@@ -297,20 +433,12 @@ export default function BrandDetailsPage() {
               <p className="text-xs text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>
             </div>
             <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
-              <p className="mb-2 text-xs font-medium text-[#6B7280]">Keywords</p>
+              <p className="mb-2 text-xs font-medium text-[#6B7280]">Goals</p>
               <div className="flex flex-wrap gap-2">
-                {(form.watch('goals').length ? form.watch('goals') : ['Natural', 'Premium', 'Clean']).slice(0, 4).map((goal) => (
+                {(watchedGoals.length ? watchedGoals : ['No goals selected']).slice(0, 4).map((goal) => (
                   <span key={goal} className="rounded-full border border-[#E5E7EB] bg-[#F7F7F8] px-2 py-1 text-[11px] text-[#6B7280]">{goal}</span>
                 ))}
               </div>
-            </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
-              <p className="text-xs font-medium text-[#6B7280]">Tips for better results</p>
-              <ul className="mt-2 space-y-1 text-xs text-[#6B7280]">
-                <li>- Upload clear logo and product images</li>
-                <li>- Add competitor links for direction</li>
-                <li>- Define audience and goals clearly</li>
-              </ul>
             </div>
             <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
               <div className="mb-1 flex items-center justify-between">
@@ -320,9 +448,6 @@ export default function BrandDetailsPage() {
               <div className="h-2 rounded-full bg-[#EFEFF1]">
                 <div className="h-2 rounded-full bg-[#111111] transition-all" style={{ width: `${qualityScore}%` }} />
               </div>
-            </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3 text-xs text-[#6B7280]">
-              Next step: Generate a content calendar using this brand profile.
             </div>
           </div>
         </SectionCard>

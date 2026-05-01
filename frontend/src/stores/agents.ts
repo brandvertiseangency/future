@@ -7,6 +7,7 @@ interface AgentsStore {
   unlockedAgents: AgentId[]
   unlockAgent: (id: AgentId) => void
   isUnlocked: (id: AgentId) => boolean
+  reset: () => void
 }
 
 export const useAgentsStore = create<AgentsStore>()(
@@ -20,6 +21,7 @@ export const useAgentsStore = create<AgentsStore>()(
             : [...state.unlockedAgents, id],
         })),
       isUnlocked: (id) => get().unlockedAgents.includes(id),
+      reset: () => set({ unlockedAgents: [] }),
     }),
     { name: 'brandvertise-agents' }
   )

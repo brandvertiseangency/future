@@ -17,7 +17,7 @@ const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/generate': { title: 'Generation', sub: 'Create content' },
   '/generate/queue': { title: 'Generation Queue', sub: 'Live progress' },
   '/outputs': { title: 'Outputs', sub: 'Generated creatives' },
-  '/brand': { title: 'Brand Setup', sub: 'Identity and style' },
+  '/brand': { title: 'Edit Brand', sub: 'Profile and preferences' },
   '/scheduler': { title: 'Scheduler', sub: 'Schedule and publish' },
   '/settings': { title: 'Settings', sub: 'Account and billing' },
   '/agents': { title: 'Agents', sub: 'Automation tools' },

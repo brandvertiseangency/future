@@ -8,6 +8,7 @@ import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 const GENERATION_STEPS = [
   { label: 'Analysing your Brand DNA…',        duration: 2200 },
@@ -275,10 +276,34 @@ export function StepFirstPost() {
   }
 
   const handleSkip = async () => {
-    await completeOnboarding()
-    await syncProducts()
-    reset()
-    router.push('/dashboard')
+    setError('')
+    setGenerating(true)
+    const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+    try {
+      let lastError: unknown = null
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          await completeOnboarding()
+          lastError = null
+          break
+        } catch (err) {
+          lastError = err
+          if (attempt < 2) await sleep(500 * (attempt + 1))
+        }
+      }
+      if (lastError) throw lastError
+
+      await syncProducts()
+      reset()
+      router.push('/dashboard')
+    } catch (e: any) {
+      const message = 'Could not save onboarding yet. Please check your connection and try again.'
+      console.warn('Onboarding skip save failed', e)
+      setError(message)
+      toast.error(message)
+    } finally {
+      setGenerating(false)
+    }
   }
 
   return (
