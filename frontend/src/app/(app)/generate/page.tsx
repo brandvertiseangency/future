@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok']
 
@@ -18,6 +19,7 @@ export default function GeneratePage() {
   const [platforms, setPlatforms] = useState<string[]>(['instagram'])
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<{ caption?: string; image_url?: string; platform?: string }[]>([])
+  const [stage, setStage] = useState('Idle')
 
   const { data: creditsData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number }>(url), { revalidateOnFocus: false })
   const credits = creditsData?.balance ?? 0
@@ -32,14 +34,17 @@ export default function GeneratePage() {
       return
     }
     setLoading(true)
+    setStage('Analyzing brand...')
     const generated: { caption?: string; image_url?: string; platform?: string }[] = []
     for (const platform of platforms) {
       try {
+        setStage(`Writing prompts for ${platform}...`)
         const result = await apiCall<{ post: { caption?: string; image_url?: string; platform?: string } }>('/api/generate-content', {
           method: 'POST',
           body: JSON.stringify({ platform, contentType: 'post', brief }),
         })
         generated.push(result.post)
+        setStage(`Generating visuals (${generated.length}/${platforms.length})...`)
       } catch {
         // continue
       }
@@ -62,6 +67,11 @@ export default function GeneratePage() {
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="generate"
+        title="AI is creating your creatives"
+        description="The system analyzes your brand context, writes prompts, and generates visuals you can refine."
+      />
       <PageHeader
         title={<>Generate <span className="text-highlight">Creatives</span></>}
         description="Create content aligned to your brand style."
@@ -105,10 +115,13 @@ export default function GeneratePage() {
         <SectionCard title="Preview" subtitle="Latest generated posts.">
           {loading ? (
             <div className="flex min-h-[260px] items-center justify-center text-[#6B7280]">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {stage}
             </div>
           ) : preview.length === 0 ? (
-            <div className="flex min-h-[260px] items-center justify-center text-sm text-[#6B7280]">No output yet</div>
+            <div className="flex min-h-[260px] flex-col items-center justify-center text-sm text-[#6B7280]">
+              <p>No output yet.</p>
+              <p className="mt-1">Add a brief and click Generate to begin.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {preview.map((item, idx) => (

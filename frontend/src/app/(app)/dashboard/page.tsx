@@ -7,6 +7,7 @@ import { apiCall } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
@@ -26,13 +27,28 @@ export default function DashboardPage() {
   const recentOutputs = ((outputsData as { posts?: { id: string; caption?: string; image_url?: string; created_at?: string }[] })?.posts ?? []).slice(0, 4)
   const brandName = brand?.name ?? 'My Brand'
   const usedPercent = Math.min(Math.round((totalPosts / 30) * 100), 100)
+  const nextAction = scheduledPosts > 0 ? { label: 'Generate Creatives', href: '/generate' } : { label: 'Approve Content Calendar', href: '/calendar' }
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="dashboard"
+        title="Welcome to your AI Design Hub"
+        description="This is your control center where you track progress and generate content."
+      />
       <PageHeader
         title={<>Dashboard <span className="text-highlight">Overview</span></>}
         description={`Welcome back. Here's what's happening for ${brandName}.`}
       />
+
+      <SectionCard title="Next Step" subtitle={`You're ${usedPercent}% through this month's workflow.`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-[#6B7280]">Next: {nextAction.label}</p>
+          <Link href={nextAction.href}>
+            <Button>Continue →</Button>
+          </Link>
+        </div>
+      </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Posts Remaining" value={postsLeft} />
@@ -119,6 +135,22 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+        </SectionCard>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <SectionCard title="Activity Timeline" subtitle="Recent workflow events">
+          <ul className="space-y-2 text-sm text-[#6B7280]">
+            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Brand profile configured</li>
+            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Calendar plan generated</li>
+            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Posts approved and ready for creatives</li>
+          </ul>
+        </SectionCard>
+        <SectionCard title="Smart Suggestion" subtitle="AI recommendation based on your activity">
+          <p className="text-sm text-[#6B7280]">Try generating reels this week to improve engagement variety.</p>
+          <Link href="/generate" className="mt-3 inline-block">
+            <Button variant="secondary">Generate Reels</Button>
+          </Link>
         </SectionCard>
       </div>
     </PageContainer>

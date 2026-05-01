@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 const goals = ['Increase Brand Awareness', 'Drive Sales', 'Engagement', 'Product Launch']
 const styles = ['minimal', 'luxury', 'bold'] as const
@@ -100,9 +101,23 @@ export default function BrandDetailsPage() {
     const urls = files.map((file) => URL.createObjectURL(file))
     setAssets((prev) => [...prev, ...urls].slice(0, 8))
   }
+  const qualityParts = [
+    form.watch('name')?.trim(),
+    form.watch('industry')?.trim(),
+    form.watch('audience')?.trim(),
+    form.watch('tone')?.trim(),
+    form.watch('goals')?.length ? 'goals' : '',
+    assets.length ? 'assets' : '',
+  ].filter(Boolean).length
+  const qualityScore = Math.round((qualityParts / 6) * 100)
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="brand"
+        title="Define your brand clearly"
+        description="Better input creates better AI output. Complete each step before generating content."
+      />
       <PageHeader
         title={<>Create New <span className="text-highlight">Brand</span></>}
         description="Set up your brand details, style and assets for high-quality generation."
@@ -296,6 +311,15 @@ export default function BrandDetailsPage() {
                 <li>- Add competitor links for direction</li>
                 <li>- Define audience and goals clearly</li>
               </ul>
+            </div>
+            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+              <div className="mb-1 flex items-center justify-between">
+                <p className="text-xs font-medium text-[#6B7280]">Brand Quality Score</p>
+                <p className="text-xs font-semibold text-[#111111]">{qualityScore}%</p>
+              </div>
+              <div className="h-2 rounded-full bg-[#EFEFF1]">
+                <div className="h-2 rounded-full bg-[#111111] transition-all" style={{ width: `${qualityScore}%` }} />
+              </div>
             </div>
             <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3 text-xs text-[#6B7280]">
               Next step: Generate a content calendar using this brand profile.

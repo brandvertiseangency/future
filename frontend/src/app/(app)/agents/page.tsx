@@ -3,6 +3,7 @@
 import { Lock } from 'lucide-react'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 const AGENTS = [
   { id: 'website', title: 'Website Agent', description: 'Build and optimize your website pages.' },
@@ -14,6 +15,11 @@ const AGENTS = [
 export default function AgentsPage() {
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="agents"
+        title="Meet your AI agent workspace"
+        description="Each agent is built for a focused workflow, from websites to analytics."
+      />
       <PageHeader title={<>AI <span className="text-highlight">Agents</span></>} description="Explore AI assistants for brand workflows." />
       <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
         <p className="text-sm font-medium text-[#111111]">Unlock all AI agents</p>
@@ -30,6 +36,7 @@ export default function AgentsPage() {
               <li>- Guided workflow templates</li>
               <li>- Brand-aware outputs</li>
               <li>- Export-ready assets</li>
+              <li>- Use case: launch a campaign in minutes</li>
             </ul>
             <div className="absolute inset-0 flex items-center justify-center bg-white/70">
               <Button variant="secondary"><Lock className="mr-2 h-4 w-4" />Unlock</Button>

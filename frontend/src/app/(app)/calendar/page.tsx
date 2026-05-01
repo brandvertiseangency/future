@@ -7,7 +7,7 @@ import {
   flexRender,
   createColumnHelper,
 } from '@tanstack/react-table'
-import { Check, Sparkles } from 'lucide-react'
+import { Check, Sparkles, RefreshCcw, Pencil } from 'lucide-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
@@ -15,6 +15,8 @@ import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { SkeletonCard } from '@/components/ui/skeleton-card'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 type CalendarRow = {
   id: string
@@ -64,6 +66,32 @@ export default function CalendarPage() {
         </StatusBadge>
       ),
     }),
+    columnHelper.display({
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <button
+            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            onClick={(e) => { e.stopPropagation(); selectRow(row.original) }}
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
+          <button
+            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            onClick={(e) => { e.stopPropagation(); setSelected(row.original); void approve() }}
+          >
+            <Check className="h-3 w-3" />
+          </button>
+          <button
+            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            onClick={(e) => { e.stopPropagation(); }}
+          >
+            <RefreshCcw className="h-3 w-3" />
+          </button>
+        </div>
+      ),
+    }),
   ]
   const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() })
 
@@ -111,6 +139,11 @@ export default function CalendarPage() {
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="calendar"
+        title="Review and approve your content"
+        description="Review each planned post, edit captions, and approve items before creative generation."
+      />
       <PageHeader
         title={<>Content <span className="text-highlight">Calendar</span></>}
         description="Review ideas, edit captions, and approve content before generation."
@@ -128,8 +161,21 @@ export default function CalendarPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
-        <SectionCard title="Weekly Plan" subtitle="Click a row to edit details on the right panel.">
+        <SectionCard title="Weekly Plan" subtitle="Click a row to edit details on the right panel." className="xl:sticky xl:top-20">
+          {!data ? (
+            <div className="space-y-2">
+              <SkeletonCard lines={4} />
+              <SkeletonCard lines={4} />
+            </div>
+          ) : null}
           {viewMode === 'table' ? <div className="overflow-x-auto">
+            {rows.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-[#E5E7EB] p-8 text-center">
+                <p className="text-sm font-medium text-[#111111]">No content yet</p>
+                <p className="mt-1 text-xs text-[#6B7280]">Generate your first calendar to begin approvals.</p>
+                <Link href="/calendar/generate" className="mt-3 inline-block"><Button size="sm">Generate Calendar</Button></Link>
+              </div>
+            ) : null}
             <table className="w-full min-w-[720px] border-separate border-spacing-0">
               <thead>
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -174,6 +220,7 @@ export default function CalendarPage() {
         <SectionCard title="Post Editor" subtitle="Update and approve selected item." className="xl:sticky xl:top-20 h-fit">
           {selected ? (
             <div className="space-y-3">
+              <p className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">Editing Post #{rows.findIndex((r) => r.id === selected.id) + 1}</p>
               <div>
                 <label className="mb-1 block text-xs text-[#6B7280]">Idea</label>
                 <input value={editedIdea} onChange={(e) => setEditedIdea(e.target.value)} className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm outline-none focus:border-[#111111]" />

@@ -8,6 +8,7 @@ import { useAuth } from '@/lib/auth-context'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { useBrandStore } from '@/stores/brand'
+import { getBreadcrumb, getNextWorkflowAction, getWorkflowProgress } from '@/lib/workflow'
 
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview' },
@@ -55,10 +56,14 @@ export function Topbar() {
 
   const initials = (user?.displayName ?? user?.email ?? 'U').charAt(0).toUpperCase()
   const brandName = currentBrand?.name ?? null
+  const breadcrumbs = getBreadcrumb(pathname)
+  const nextAction = getNextWorkflowAction(pathname)
+  const progress = getWorkflowProgress(pathname)
 
   return (
     <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between border-b border-[#E5E7EB] bg-white px-4 md:left-[240px] md:px-6">
       <div className="min-w-0">
+        <p className="truncate text-[11px] text-[#9CA3AF]">{breadcrumbs.join(' / ')}</p>
         <p className="truncate text-sm font-semibold text-[#111111]">{meta.title}</p>
         <p className="truncate text-xs text-[#6B7280]">{brandName ? `${brandName} · ${meta.sub ?? ''}` : meta.sub}</p>
       </div>
@@ -93,8 +98,16 @@ export function Topbar() {
         </Link>
 
         <div className="hidden rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-1 text-xs font-medium text-[#111111] md:block">
-          Credits {credits}
+          {progress}% · Credits {credits}
         </div>
+
+        {nextAction ? (
+          <Link href={nextAction.href} className="hidden md:block">
+            <button className="h-9 rounded-lg border border-[#E5E7EB] bg-white px-3 text-xs font-semibold text-[#111111] hover:bg-[#F3F4F6]">
+              Next: {nextAction.label}
+            </button>
+          </Link>
+        ) : null}
 
         <Link href="/generate">
           <button className="flex h-9 items-center gap-1.5 rounded-lg bg-[#111111] px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90">

@@ -40,8 +40,8 @@ function NavItem({
     <Link
       href={href}
       className={cn(
-        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors',
-        active ? 'bg-[#F3F4F6] text-[#111111]' : 'text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111111]',
+        'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150 hover:scale-[1.01]',
+        active ? 'bg-[#F3F4F6] text-[#111111] border border-[#E5E7EB]' : 'text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111111]',
       )}
     >
       <Icon size={16} />

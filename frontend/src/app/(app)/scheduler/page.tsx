@@ -7,6 +7,7 @@ import { apiCall } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 type PostItem = {
   id: string
@@ -67,6 +68,7 @@ export default function SchedulerPage() {
   const [selectedPostId, setSelectedPostId] = useState<string | null>(posts[0]?.id ?? null)
   const [scheduling, setScheduling] = useState(false)
   const [comment, setComment] = useState('')
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   const postMap = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts])
   const selectedPost = selectedPostId ? postMap.get(selectedPostId) : undefined
@@ -97,7 +99,15 @@ export default function SchedulerPage() {
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="scheduler"
+        title="Plan and automate your posting"
+        description="Drag content into time slots and use AI timing suggestions for better performance."
+      />
       <PageHeader title={<>Content <span className="text-highlight">Scheduler</span></>} description="Drag and drop posts into calendar slots and publish confidently." />
+      <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
+        Timezone: <span className="font-medium text-[#111111]">{timezone}</span> · Best time suggestion: 10:00 AM to 12:00 PM
+      </div>
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">

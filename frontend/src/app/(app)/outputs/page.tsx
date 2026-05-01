@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
-import { ImageIcon, RefreshCcw, Search } from 'lucide-react'
+import { Download, ImageIcon, RefreshCcw, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader, EmptyState } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 interface Post {
   id: string
@@ -32,6 +33,7 @@ export default function OutputsPage() {
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid')
   const [selected, setSelected] = useState<Post | null>(null)
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const regeneratePost = async (postId: string) => {
     setRegeneratingId(postId)
     try {
@@ -60,7 +62,18 @@ export default function OutputsPage() {
 
   return (
     <PageContainer className="max-w-[1100px] pb-20">
+      <PageIntroModal
+        pageKey="outputs"
+        title="View, refine, and finalize your creatives"
+        description="Use quick actions, compare versions, and schedule the best results."
+      />
       <PageHeader title={<>Outputs <span className="text-highlight">Library</span></>} description={`${posts.length} creatives generated`} />
+      {selectedIds.length > 0 ? (
+        <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm">
+          <span className="text-[#6B7280]">{selectedIds.length} selected</span>
+          <Button size="sm" className="ml-3" onClick={() => window.location.assign('/scheduler')}>Schedule Selected</Button>
+        </div>
+      ) : null}
 
       <SectionCard title="Filters" subtitle="Find outputs quickly by platform, status, or keyword.">
         <div className="flex flex-wrap items-center gap-2">
@@ -93,11 +106,15 @@ export default function OutputsPage() {
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <div>
         {posts.length === 0 ? (
-          <EmptyState title="No outputs yet" subtitle="Generate your first content to see it here." />
+          <EmptyState
+            title="No outputs yet"
+            subtitle="Generate your first creatives to begin reviewing and scheduling."
+            action={<Button onClick={() => window.location.assign('/generate')}>Generate Content</Button>}
+          />
         ) : (
           <div className={cn(layoutMode === 'grid' ? 'grid gap-3' : 'space-y-3')} style={layoutMode === 'grid' ? { gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' } : undefined}>
             {posts.map((post) => (
-              <button key={post.id} onClick={() => setSelected(post)} className={cn('app-card overflow-hidden text-left transition hover:border-[#111111]', layoutMode === 'list' && 'flex items-center')}>
+              <button key={post.id} onClick={() => setSelected(post)} className={cn('group app-card overflow-hidden text-left transition hover:border-[#111111]', layoutMode === 'list' && 'flex items-center')}>
                 <div className={cn('bg-[#F3F4F6]', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -107,11 +124,29 @@ export default function OutputsPage() {
                   )}
                 </div>
                 <div className="space-y-2 p-3">
+                  <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="mb-2 flex items-center gap-1">
+                      <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelected(post) }}>Preview</Button>
+                      <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); regeneratePost(post.id) }}>Regenerate</Button>
+                      <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); }}><Download className="h-3 w-3" /></Button>
+                    </div>
+                  </div>
                   <p className="line-clamp-2 text-sm text-[#111111]">{post.caption || 'Untitled output'}</p>
                   <div className="flex items-center justify-between">
                     <StatusBadge tone={post.status === 'approved' ? 'success' : 'neutral'}>{post.status}</StatusBadge>
                     <span className="text-xs text-[#6B7280] capitalize">{post.platform}</span>
                   </div>
+                  <label className="inline-flex items-center gap-2 text-xs text-[#6B7280]">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(post.id)}
+                      onChange={(e) => {
+                        e.stopPropagation()
+                        setSelectedIds((prev) => e.target.checked ? [...prev, post.id] : prev.filter((id) => id !== post.id))
+                      }}
+                    />
+                    Select
+                  </label>
                   <div className="flex gap-2">
                     <Button size="sm" className="h-8 flex-1" onClick={(e) => { e.stopPropagation(); setSelected(post) }}>View</Button>
                     <Button size="sm" variant="secondary" className="h-8 flex-1" onClick={(e) => { e.stopPropagation(); regeneratePost(post.id) }}>

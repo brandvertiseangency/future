@@ -491,10 +491,20 @@ Return ONLY JSON.`;
       slots = parsed.posts || parsed.slots || [];
     } catch {
       logger.error('AI plan parse failed', { raw: raw.slice(0, 300) });
-      return res.status(500).json({ error: 'AI returned invalid response. Please try again.' });
+      return res.status(500).json({
+        error: 'AI returned invalid response. Please try again.',
+        code: 'AI_INVALID_RESPONSE',
+        retryable: true,
+        nextAction: 'retry_generate_plan',
+      });
     }
 
-    if (!slots.length) return res.status(500).json({ error: 'AI returned no slots.' });
+    if (!slots.length) return res.status(500).json({
+      error: 'AI returned no slots.',
+      code: 'AI_EMPTY_SLOTS',
+      retryable: true,
+      nextAction: 'retry_generate_plan',
+    });
     slots = slots.slice(0, resolvedPostCount);
 
     // 2. Assign dates
@@ -605,8 +615,21 @@ Return ONLY JSON.`;
     }
   } catch (err) {
     logger.error('generate-plan failed', { error: err.message });
-    if (err.message === 'AI_TIMEOUT') return res.status(503).json({ error: 'Generation timed out. The AI is busy — please try again.' });
-    res.status(500).json({ error: 'Failed to generate plan.', details: err.message });
+    if (err.message === 'AI_TIMEOUT') {
+      return res.status(503).json({
+        error: 'Generation timed out. The AI is busy — please try again.',
+        code: 'AI_TIMEOUT',
+        retryable: true,
+        nextAction: 'retry_generate_plan',
+      });
+    }
+    res.status(500).json({
+      error: 'Failed to generate plan.',
+      code: 'PLAN_GENERATION_FAILED',
+      retryable: true,
+      nextAction: 'retry_generate_plan',
+      details: err.message,
+    });
   }
 });
 

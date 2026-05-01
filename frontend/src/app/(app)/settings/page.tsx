@@ -9,6 +9,8 @@ import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -33,9 +35,22 @@ export default function SettingsPage() {
 
   return (
     <PageContainer className="space-y-6">
+      <PageIntroModal
+        pageKey="settings"
+        title="Configure your workspace settings"
+        description="Manage profile, billing, and integrations from one organized hub."
+      />
       <PageHeader title="Settings" description="Manage profile, brand, billing, and integrations." />
 
-      <div className="grid grid-cols-1 gap-4">
+      <Tabs defaultValue="profile" className="space-y-4">
+        <TabsList className="grid grid-cols-4 max-w-[520px]">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="brand">Brand</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="api">API</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="profile">
         <SectionCard title="Profile" subtitle="Update your account information.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
@@ -54,13 +69,17 @@ export default function SettingsPage() {
             {savingProfile ? 'Saving...' : 'Save Profile'}
           </Button>
         </SectionCard>
+        </TabsContent>
 
+        <TabsContent value="brand">
         <SectionCard title="Brand Settings" subtitle="Update brand profile and design preferences.">
           <a href="/brand">
             <Button variant="secondary">Edit Brand</Button>
           </a>
         </SectionCard>
+        </TabsContent>
 
+        <TabsContent value="billing">
         <div id="billing" className="scroll-mt-20">
         <SectionCard title="Billing" subtitle="Manage your plan and credits.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
@@ -79,11 +98,14 @@ export default function SettingsPage() {
           </Button>
         </SectionCard>
         </div>
+        </TabsContent>
 
+        <TabsContent value="api">
         <SectionCard title="API / Integrations" subtitle="Reserved for future integrations and developer setup.">
           <p className="text-sm text-[#6B7280]">Coming soon: API keys, webhooks, and third-party integrations.</p>
         </SectionCard>
-      </div>
+        </TabsContent>
+      </Tabs>
     </PageContainer>
   )
 }

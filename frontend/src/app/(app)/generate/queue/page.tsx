@@ -8,6 +8,8 @@ import { Loader2, CheckCircle2 } from 'lucide-react'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { mapJobStatusToWorkflow } from '@/lib/workflow-status'
 
 interface Job {
   id: string
@@ -64,9 +66,15 @@ function GenerationQueueInner() {
   const isDone = job.status === 'complete' || computedDone
   const etaMinutes = Math.max(1, Math.ceil((job.total_slots - job.completed_slots) * 0.6))
   const currentItem = slots.find((slot) => slot.status === 'generating') ?? slots.find((slot) => slot.status === 'pending')
+  const canonicalState = mapJobStatusToWorkflow(job?.status)
 
   return (
     <PageContainer className="max-w-4xl">
+      <PageIntroModal
+        pageKey="generate-queue"
+        title="Generation is in progress"
+        description="Track each AI step in real-time while creatives are being produced."
+      />
 
       {/* Header */}
       <PageHeader
@@ -106,6 +114,9 @@ function GenerationQueueInner() {
                 Estimated time remaining: <span className="font-medium text-[#111111]">{etaMinutes}m</span>
               </div>
             )}
+            <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
+              Workflow state: <span className="font-medium text-[#111111]">{canonicalState.replace(/_/g, ' ')}</span>
+            </div>
 
             {isDone && (
               <Button onClick={() => router.push('/outputs')} className="w-full">

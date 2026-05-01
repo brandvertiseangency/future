@@ -2,21 +2,18 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Calendar, Sparkles, Loader2, ChevronLeft } from 'lucide-react'
+import { Calendar, Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
-import { getFirebaseAuth } from '@/lib/firebase'
-import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
-
-async function getToken() {
-  try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null }
-}
+import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { PageIntroModal } from '@/components/app/page-intro-modal'
 
 function getCurrentMonth() {
   const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 2).padStart(2, '0')}`
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
 
 const PLAN_LIMITS: Record<string, number> = { free: 12, pro: 30, agency: 60 }
@@ -43,24 +40,24 @@ function ContentMixSliders({
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-        <label style={labelStyle}>Content Mix</label>
-        <span style={{ fontSize: 11, color: total === 100 ? 'rgba(200,255,200,0.6)' : 'rgba(244,100,100,0.8)' }}>
-          {total}% {total === 100 ? '✓' : `(must = 100%)`}
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Content Mix</label>
+        <span className={cn('text-xs', total === 100 ? 'text-emerald-700' : 'text-red-600')}>
+          {total}% {total === 100 ? 'OK' : '(must be 100%)'}
         </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="space-y-3">
         {Object.entries(mix).map(([key, val]) => (
           <div key={key}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>{MIX_LABELS[key] ?? key}</span>
-              <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontVariantNumeric: 'tabular-nums' }}>{val}%</span>
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-sm text-[#111111]">{MIX_LABELS[key] ?? key}</span>
+              <span className="text-sm text-[#6B7280]">{val}%</span>
             </div>
             <input
               type="range" min={0} max={100} step={5} value={val}
               onChange={e => update(key, Number(e.target.value))}
-              style={{ width: '100%', accentColor: 'rgba(255,255,255,0.7)' }}
+              className="w-full accent-[#111111]"
             />
           </div>
         ))}
@@ -69,17 +66,16 @@ function ContentMixSliders({
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 11, fontWeight: 500, color: 'rgba(255,255,255,0.35)',
-  letterSpacing: '0.08em', textTransform: 'uppercase', display: 'block', marginBottom: 8,
-}
-
-const inputStyle: React.CSSProperties = {
-  padding: '10px 14px', borderRadius: 10,
-  background: 'rgba(255,255,255,0.03)',
-  border: '1px solid rgba(255,255,255,0.09)',
-  color: 'rgba(255,255,255,0.85)', fontSize: 13, width: '100%',
-  outline: 'none', transition: 'border-color 0.15s',
+function parseApiError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Something went wrong'
+  try {
+    const parsed = JSON.parse(raw)
+    if (parsed?.error && typeof parsed.error === 'string') return parsed.error
+  } catch {
+    // ignore parse errors
+  }
+  if (raw.includes('<!doctype html') || raw.includes('<html')) return 'Server returned an unexpected response. Please try again.'
+  return raw
 }
 
 function CalendarGenerateInner() {
@@ -112,151 +108,135 @@ function CalendarGenerateInner() {
     setGenerating(true)
     setError('')
     try {
-      const token = await getToken()
-      const res = await fetch(`${API_BASE}/api/calendar/generate-plan`, {
+      const response = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ month, postCount, mixPreferences: mix }),
       })
-      if (!res.ok) throw new Error(await res.text())
-      const { planId } = await res.json()
-      router.push(`/calendar/review?planId=${planId}`)
-    } catch (e: any) {
-      setError(e.message ?? 'Something went wrong')
+      router.push(`/calendar/review?planId=${response.planId}`)
+    } catch (e: unknown) {
+      setError(parseApiError(e))
     } finally {
       setGenerating(false)
     }
   }
 
   return (
-    <PageContainer className="max-w-3xl">
-
-      {/* Header */}
-      <button
-        onClick={() => router.back()}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'rgba(255,255,255,0.35)', cursor: 'pointer', marginBottom: 24, fontSize: 13 }}
-      >
-        <ChevronLeft size={15} /> Back
+    <PageContainer className="max-w-5xl space-y-6">
+      <PageIntroModal
+        pageKey="calendar-generate"
+        title="Plan your content with AI"
+        description="Set your monthly content mix and generate a review-ready calendar."
+      />
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-[#6B7280] hover:text-[#111111]">
+        <ChevronLeft className="h-4 w-4" /> Back
       </button>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Calendar size={13} color="rgba(255,255,255,0.6)" />
+      <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-1">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#F3F4F6]">
+          <Calendar className="h-3.5 w-3.5 text-[#111111]" />
         </div>
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Content Calendar
-        </span>
+        <span className="text-xs uppercase tracking-wide text-[#6B7280]">Content Calendar</span>
       </div>
+
       <PageHeader
-        title="Plan your content"
+        title={<>Plan your <span className="text-highlight">content</span></>}
         description="AI creates a full month of post ideas using your Brand DNA. You review and approve before generation."
       />
 
-      {/* Form card */}
-      <SurfaceCard className="p-6">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
+        <SectionCard title="Plan Configuration" subtitle="Define month, volume, and mix before generation.">
+          <div className="space-y-5">
+            <div>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">Month</label>
+              <input
+                type="month"
+                value={month}
+                onChange={e => setMonth(e.target.value)}
+                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#111111]"
+              />
+            </div>
 
-        {/* Month */}
-        <div style={{ marginBottom: 24 }}>
-          <label style={labelStyle}>Month</label>
-          <input
-            type="month" value={month}
-            onChange={e => setMonth(e.target.value)}
-            style={inputStyle}
-            onFocus={e => (e.target.style.borderColor = 'rgba(255,255,255,0.2)')}
-            onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
-          />
-        </div>
+            <div>
+              <div className="mb-1 flex items-center justify-between">
+                <label className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">How many posts?</label>
+                <span className="text-sm font-semibold text-[#111111]">{postCount}</span>
+              </div>
+              <input
+                type="range"
+                min={4}
+                max={maxPosts}
+                step={1}
+                value={postCount}
+                onChange={e => setPostCount(Number(e.target.value))}
+                className="w-full accent-[#111111]"
+              />
+              <div className="mt-1 flex items-center justify-between text-xs text-[#6B7280]">
+                <span>4 min</span>
+                <span>{maxPosts} max ({plan})</span>
+              </div>
+            </div>
 
-        {/* Post count slider */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <label style={labelStyle}>How many posts?</label>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', fontVariantNumeric: 'tabular-nums' }}>
-              {postCount}
-            </span>
+            <ContentMixSliders mix={mix} onChange={(m) => setMix(m as typeof mix)} />
           </div>
-          <input
-            type="range" min={4} max={maxPosts} step={1} value={postCount}
-            onChange={e => setPostCount(Number(e.target.value))}
-            style={{ width: '100%', accentColor: 'rgba(255,255,255,0.7)' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 5 }}>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>4 min</span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{maxPosts} max ({plan})</span>
+        </SectionCard>
+
+        <SectionCard title="Summary" subtitle="Credits and quick actions" className="xl:sticky xl:top-20 h-fit">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#6B7280]">Plan</span>
+              <StatusBadge tone="neutral">{String(plan).toUpperCase()}</StatusBadge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#6B7280]">Credits needed</span>
+              <span className="text-sm font-semibold text-[#111111]">{creditsNeeded}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#6B7280]">Balance</span>
+              <span className="text-sm font-semibold text-[#111111]">{credits}</span>
+            </div>
+            <div className={cn('rounded-lg border px-3 py-2 text-xs', hasCredits ? 'border-[#E5E7EB] bg-[#F7F7F8] text-[#6B7280]' : 'border-red-200 bg-red-50 text-red-600')}>
+              {hasCredits ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after.` : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
+            </div>
+
+            {error ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                <div className="flex items-start gap-2 text-red-700">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Generation failed</p>
+                    <p className="mt-1 text-xs">{error}</p>
+                  </div>
+                </div>
+                <Button variant="secondary" className="mt-3 w-full" onClick={handleGenerate} disabled={generating}>
+                  <RefreshCcw className="mr-2 h-4 w-4" />
+                  Try again
+                </Button>
+              </div>
+            ) : null}
+
+            {latestPlanId ? (
+              <div className="grid grid-cols-1 gap-2">
+                <Button variant="secondary" onClick={() => router.push(`/calendar/review?planId=${latestPlanId}`)}>
+                  Open latest plan
+                </Button>
+                <Button variant="secondary" onClick={() => router.push('/calendar/content')}>
+                  Open Content Studio
+                </Button>
+              </div>
+            ) : null}
           </div>
-        </div>
-
-        {/* Content mix */}
-        <ContentMixSliders mix={mix} onChange={(m) => setMix(m as typeof mix)} />
-      </SurfaceCard>
-
-      {/* Credits summary */}
-      <div style={{
-        marginTop: 16, padding: '13px 16px', borderRadius: 12,
-        background: hasCredits ? 'rgba(255,255,255,0.03)' : 'rgba(244,63,94,0.06)',
-        border: `1px solid ${hasCredits ? 'rgba(255,255,255,0.08)' : 'rgba(244,63,94,0.25)'}`,
-      }}>
-        <p style={{ fontSize: 13, color: hasCredits ? 'rgba(255,255,255,0.5)' : 'rgba(244,100,100,0.9)' }}>
-          {hasCredits
-            ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after`
-            : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
-        </p>
+        </SectionCard>
       </div>
 
-      {error && (
-        <p style={{ marginTop: 10, fontSize: 12, color: 'rgba(244,100,100,0.8)' }}>{error}</p>
-      )}
-
-      {latestPlanId && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-          <button
-            onClick={() => router.push(`/calendar/review?planId=${latestPlanId}`)}
-            style={{
-              width: '100%', padding: '11px',
-              borderRadius: 10, border: '1px solid rgba(255,255,255,0.14)',
-              background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.7)',
-              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Open latest plan
-          </button>
-          <button
-            onClick={() => router.push('/calendar/content')}
-            style={{
-              width: '100%', padding: '11px',
-              borderRadius: 10, border: '1px solid rgba(255,255,255,0.18)',
-              background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.84)',
-              fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            Open Content Studio
-          </button>
-        </div>
-      )}
-
-      {/* CTA */}
-      <button
-        onClick={handleGenerate}
-        disabled={!canGenerate}
-        className={canGenerate ? 'btn-silver' : ''}
-        style={{
-          marginTop: 16, width: '100%', padding: '14px',
-          borderRadius: 12, border: 'none',
-          background: canGenerate ? undefined : 'rgba(255,255,255,0.05)',
-          color: canGenerate ? '#000' : 'rgba(255,255,255,0.2)',
-          fontSize: 14, fontWeight: 600,
-          cursor: canGenerate ? 'pointer' : 'not-allowed',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        }}
-      >
-        {generating
-          ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Planning calendar...</>
-          : <><Sparkles size={15} /> Generate Content Plan</>
-        }
-      </button>
-      <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(255,255,255,0.2)', marginTop: 8 }}>
-        Credits charged only after you approve & confirm
-      </p>
+      <div className="space-y-2">
+        <Button onClick={handleGenerate} disabled={!canGenerate} className="h-11 w-full">
+          {generating
+            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Planning calendar...</>
+            : <><Sparkles className="mr-2 h-4 w-4" />Generate Content Plan</>
+          }
+        </Button>
+        <p className="text-center text-xs text-[#6B7280]">Credits are charged only after you approve and confirm.</p>
+      </div>
     </PageContainer>
   )
 }

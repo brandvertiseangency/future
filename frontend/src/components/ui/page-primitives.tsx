@@ -38,16 +38,18 @@ export function EmptyState({
   title,
   subtitle,
   action,
+  secondaryAction,
 }: {
   title: ReactNode
   subtitle?: ReactNode
   action?: ReactNode
+  secondaryAction?: ReactNode
 }) {
   return (
     <SurfaceCard className="p-10 text-center">
       <p className="text-[15px] font-semibold text-[#111111]">{title}</p>
       {subtitle && <p className="mt-1 text-[12px] text-[#6B7280]">{subtitle}</p>}
-      {action && <div className="mt-4 flex items-center justify-center">{action}</div>}
+      {action && <div className="mt-4 flex items-center justify-center gap-2">{action}{secondaryAction}</div>}
     </SurfaceCard>
   )
 }
