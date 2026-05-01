@@ -19,6 +19,7 @@ import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
+import { Button } from '@/components/ui/button'
 
 type NavIcon = React.ComponentType<{ size?: number; className?: string }>
 
@@ -127,12 +128,7 @@ export function Sidebar() {
         </button>
 
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => router.push('/pricing')}
-            className="flex-1 rounded-lg bg-[#111111] py-2 text-[11px] font-semibold text-white transition-opacity hover:opacity-90"
-          >
-            Upgrade
-          </button>
+          <Button onClick={() => router.push('/pricing')} className="w-full flex-1 text-[11px]">Upgrade</Button>
           <button
             onClick={signOut}
             title="Sign out"

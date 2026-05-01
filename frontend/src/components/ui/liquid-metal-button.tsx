@@ -3,19 +3,28 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface LiquidMetalButtonProps {
+  children?: React.ReactNode
   label?: string
-  onClick?: () => void
   viewMode?: 'text' | 'icon'
   fullWidth?: boolean
+  className?: string
+  disabled?: boolean
+  type?: 'button' | 'submit' | 'reset'
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
 }
 
 export function LiquidMetalButton({
+  children,
   label = 'Get Started',
   onClick,
   viewMode = 'text',
   fullWidth = false,
+  className,
+  disabled = false,
+  type = 'button',
 }: LiquidMetalButtonProps) {
   const [ripples, setRipples] = useState<Array<{ x: number; y: number; id: number }>>([])
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -64,12 +73,12 @@ export function LiquidMetalButton({
       setRipples(p => [...p, rpl])
       setTimeout(() => setRipples(p => p.filter(x => x.id !== rpl.id)), 700)
     }
-    onClick?.()
+    onClick?.(e)
   }
 
-  const content = viewMode === 'icon'
+  const content = children ?? (viewMode === 'icon'
     ? <Sparkles size={16} className="text-white/70" />
-    : <span style={{ fontSize: 14, fontWeight: 600, color: '#ccc', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{label}</span>
+    : <span style={{ fontSize: 14, fontWeight: 600, color: '#ccc', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{label}</span>)
 
   const sizeStyle: React.CSSProperties = fullWidth
     ? { width: '100%', height: 46 }
@@ -77,6 +86,7 @@ export function LiquidMetalButton({
 
   return (
     <div
+      className={cn('align-middle', className)}
       style={{
         ...sizeStyle,
         position: 'relative',
@@ -85,6 +95,7 @@ export function LiquidMetalButton({
         overflow: 'hidden',
         display: fullWidth ? 'block' : 'inline-block',
         flexShrink: 0,
+        opacity: disabled ? 0.6 : 1,
       }}
     >
       {/* Spinning conic gradient border */}
@@ -108,11 +119,13 @@ export function LiquidMetalButton({
         {/* Clickable surface with ripple */}
         <button
           ref={buttonRef}
+          type={type}
           onClick={handleClick}
+          disabled={disabled}
           style={{
             position: 'absolute', inset: 0,
             background: 'transparent', border: 'none',
-            cursor: 'pointer', borderRadius: 100, overflow: 'hidden',
+            cursor: disabled ? 'not-allowed' : 'pointer', borderRadius: 100, overflow: 'hidden',
           }}
           aria-label={typeof label === 'string' ? label : undefined}
         >

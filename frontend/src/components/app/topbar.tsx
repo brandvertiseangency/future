@@ -9,6 +9,7 @@ import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { useBrandStore } from '@/stores/brand'
 import { getBreadcrumb, getNextWorkflowAction, getWorkflowProgress } from '@/lib/workflow'
+import { Button } from '@/components/ui/button'
 
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview' },
@@ -110,10 +111,10 @@ export function Topbar() {
         ) : null}
 
         <Link href="/generate">
-          <button className="flex h-9 items-center gap-1.5 rounded-lg bg-[#111111] px-3 text-xs font-semibold text-white transition-opacity hover:opacity-90">
+          <Button size="lg" className="h-9 px-3 text-xs">
             <Sparkles size={12} />
             Generate
-          </button>
+          </Button>
         </Link>
       </div>
     </header>
