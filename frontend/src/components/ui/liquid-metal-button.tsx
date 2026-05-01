@@ -82,7 +82,7 @@ export function LiquidMetalButton({
 
   const sizeStyle: React.CSSProperties = fullWidth
     ? { width: '100%', height: 46 }
-    : { width: viewMode === 'icon' ? 46 : 142, height: 46 }
+    : { minHeight: 46, minWidth: viewMode === 'icon' ? 46 : 46, width: 'fit-content' }
 
   return (
     <div
@@ -106,15 +106,20 @@ export function LiquidMetalButton({
         position: 'relative',
         width: '100%',
         height: '100%',
+        minHeight: 46,
         borderRadius: 100,
         background: 'linear-gradient(180deg, #1c1c1c 0%, #0a0a0a 100%)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        paddingInline: fullWidth ? 0 : 20,
+        color: '#f5f5f5',
         zIndex: 1,
         overflow: 'hidden',
       }}>
-        {content}
+        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#f5f5f5', fontWeight: 600, fontSize: 14, lineHeight: 1, whiteSpace: 'nowrap' }}>
+          {content}
+        </span>
 
         {/* Clickable surface with ripple */}
         <button
