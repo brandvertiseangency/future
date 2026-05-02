@@ -1147,6 +1147,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
         const imageResult = await generateImageDetailed(fullImagePrompt, {
           aspectRatio,
           referenceImageUrls: fallbackReferenceImages,
+          timeoutMs: 120_000,
         });
         const rawImage = imageResult?.imageData || null;
         if (!rawImage) {

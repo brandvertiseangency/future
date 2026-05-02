@@ -380,7 +380,10 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
       if (imagePrompt) {
         const imageResult = await generateImageDetailed(
           `${imagePrompt}. Brand: ${brand?.name || 'brand'}. Professional social media image. No text/letters/numbers/logos/UI elements/watermarks.`,
-          { aspectRatio: post.content_type === 'reel' || post.content_type === 'story' ? '9:16' : '1:1' }
+          {
+            aspectRatio: post.content_type === 'reel' || post.content_type === 'story' ? '9:16' : '1:1',
+            timeoutMs: 120_000,
+          }
         );
         const newImg = imageResult?.imageData || null;
         if (newImg) {

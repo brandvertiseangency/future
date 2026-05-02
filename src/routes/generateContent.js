@@ -295,7 +295,11 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
-    const imageResult = await generateImageDetailed(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
+    const imageResult = await generateImageDetailed(enrichedImagePrompt, {
+      aspectRatio,
+      referenceImageUrls,
+      timeoutMs: 120_000,
+    });
     const rawImage = imageResult?.imageData || null;
     if (!rawImage) {
       logger.error('Image generation failed in generate-content', {

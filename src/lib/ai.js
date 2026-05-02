@@ -12,7 +12,8 @@ const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const IMAGEN_MODEL = 'imagen-4.0-fast-generate-001';
 const NANO_BANANA_MODEL = 'gemini-2.0-flash-preview-image-generation';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
-const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'chatgpt-image-2').toLowerCase();
+const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'openai').toLowerCase();
+const ENABLE_NANO_BANANA = process.env.ENABLE_NANO_BANANA === 'true';
 let nanoModelUnavailable = false;
 let googleImageRateLimitedUntil = 0;
 
@@ -260,7 +261,7 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     const { GoogleGenAI } = require('@google/genai');
     const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
 
-    const shouldUseNano = IMAGE_MODEL === 'nano-banana' && !nanoModelUnavailable;
+    const shouldUseNano = ENABLE_NANO_BANANA && IMAGE_MODEL === 'nano-banana' && !nanoModelUnavailable;
     if (shouldUseNano) {
       const inlineParts = [];
       const refs = Array.isArray(referenceImageUrls) ? referenceImageUrls.slice(0, 3) : [];
@@ -317,11 +318,11 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       googleImageRateLimitedUntil = Date.now() + 60_000;
     }
     // If the model is unavailable in this API/version, stop retrying Nano in this process.
-    if (IMAGE_MODEL === 'nano-banana' && /not found|not supported for generatecontent/i.test(lastError)) {
+    if (ENABLE_NANO_BANANA && IMAGE_MODEL === 'nano-banana' && /not found|not supported for generatecontent/i.test(lastError)) {
       nanoModelUnavailable = true;
       logger.warn('Nano Banana unavailable; disabling for current process and using fallbacks');
     }
-    if (IMAGE_MODEL === 'nano-banana') {
+    if (ENABLE_NANO_BANANA && IMAGE_MODEL === 'nano-banana') {
       const openAiFallbackFirst = await generateImageWithOpenAI(imagePrompt, timeoutMs, aspectRatio);
       if (openAiFallbackFirst) return { imageData: openAiFallbackFirst, error: null, provider: 'openai-fallback', model: OPENAI_IMAGE_MODEL };
       // Fallback for resilience.
