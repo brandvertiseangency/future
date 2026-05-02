@@ -2,19 +2,13 @@
  * Creative Generation Engine — Image/Video Service
  * Generates images via Google AI Studio and manages local + cloud storage.
  */
-const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const config = require("../config");
 const logger = require("../utils/logger");
 const storageService = require("./storageService");
+const { generateImageDetailed } = require("../lib/ai");
 
-const IMAGE_MODEL = config.googleAI.imageModel;
-
-const IMAGEN_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-fast-generate-001:predict";
-const NANO_BANANA_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent";
+const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
 
 const OUTPUT_DIR = path.join(__dirname, "../../outputs");
 
@@ -77,55 +71,19 @@ async function generateImage(prompt, userId, brandId, postId, version = 1) {
 }
 
 /**
- * Call the appropriate Google AI image generation API.
+ * Generate image via shared AI helper (OpenAI-first policy).
  */
 async function callImageAPI(prompt) {
-  const apiKey = config.googleAI.apiKey;
-
-  if (!apiKey) {
-    throw new Error("GOOGLE_AI_API_KEY is not configured");
+  const imageResult = await generateImageDetailed(prompt, {
+    aspectRatio: "1:1",
+    timeoutMs: 120_000,
+  });
+  const imageData = imageResult?.imageData || "";
+  const match = imageData.match(/^data:[^;]+;base64,(.+)$/);
+  if (!match?.[1]) {
+    throw new Error(imageResult?.error || "Image generation returned no base64 payload");
   }
-
-  let imageBase64;
-
-  if (IMAGE_MODEL === "nano-banana") {
-    const response = await axios.post(
-      `${NANO_BANANA_URL}?key=${apiKey}`,
-      {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseModalities: ["IMAGE", "TEXT"] },
-      },
-      { headers: { "Content-Type": "application/json" }, timeout: 180000 }
-    );
-
-    const parts = response.data?.candidates?.[0]?.content?.parts || [];
-    const imgPart = parts.find((p) => p.inlineData);
-    if (!imgPart) {
-      throw new Error("Google AI returned no image data");
-    }
-    imageBase64 = imgPart.inlineData.data;
-  } else {
-    // Imagen 4 Fast
-    const response = await axios.post(
-      `${IMAGEN_URL}?key=${apiKey}`,
-      {
-        instances: [{ prompt }],
-        parameters: { sampleCount: 1, aspectRatio: "1:1" },
-      },
-      { headers: { "Content-Type": "application/json" }, timeout: 180000 }
-    );
-
-    const predictions = response.data?.predictions;
-    if (!predictions || predictions.length === 0) {
-      throw new Error("Imagen returned no predictions");
-    }
-    imageBase64 = predictions[0].bytesBase64Encoded;
-    if (!imageBase64) {
-      throw new Error("Imagen prediction missing image data");
-    }
-  }
-
-  return imageBase64;
+  return match[1];
 }
 
 /**
