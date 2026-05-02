@@ -11,6 +11,15 @@ const API_BASE =
         ? ''
         : 'http://localhost:4000')
 
+if (typeof window !== 'undefined' && API_BASE === '') {
+  const host = window.location.hostname
+  if (host !== 'localhost' && host !== '127.0.0.1') {
+    console.warn(
+      '[api] NEXT_PUBLIC_API_URL is unset — API calls use same-origin /api. On Vercel, set NEXT_PUBLIC_API_URL to your backend base URL, or set BACKEND_ORIGIN for next.config rewrites.'
+    )
+  }
+}
+
 async function getFirebaseToken(): Promise<string | null> {
   try {
     const auth = getFirebaseAuth()

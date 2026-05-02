@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import useSWR from 'swr'
-import { useOnboardingStore } from '@/stores/onboarding'
+import { useOnboardingStore, type OnboardingData } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
@@ -156,6 +156,17 @@ function parseApiError(error: unknown): string {
   const raw = error instanceof Error ? error.message : 'Failed to generate plan. Please try again.'
   try {
     const parsed = JSON.parse(raw)
+    if (parsed?.error === 'ONBOARDING_INCOMPLETE' && parsed?.missingBySection && typeof parsed.missingBySection === 'object') {
+      const parts: string[] = []
+      for (const [section, fields] of Object.entries(parsed.missingBySection as Record<string, unknown>)) {
+        if (Array.isArray(fields) && fields.length) {
+          parts.push(`${section}: ${fields.join(', ')}`)
+        }
+      }
+      if (parts.length) {
+        return `Complete required onboarding fields (${parts.join(' · ')}).`
+      }
+    }
     if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
     if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
   } catch {
@@ -163,6 +174,95 @@ function parseApiError(error: unknown): string {
   }
   if (raw.includes('<!doctype html') || raw.includes('<html')) return 'Server returned an unexpected response. Please try again.'
   return raw
+}
+
+function mixTotals100(mix: OnboardingData['contentMix']): boolean {
+  if (!mix || typeof mix !== 'object') return false
+  const total =
+    (Number(mix.promotional) || 0) +
+    (Number(mix.educational) || 0) +
+    (Number(mix.testimonial) || 0) +
+    (Number(mix.bts) || 0) +
+    (Number(mix.festive) || 0)
+  return total === 100
+}
+
+/** Ensures POST /api/onboarding/complete passes server validation (incl. skip path). */
+function buildOnboardingCompletePayload(onboardingData: OnboardingData) {
+  const styles = onboardingData.vibeStyles?.length
+    ? onboardingData.vibeStyles
+    : onboardingData.styles?.length
+      ? onboardingData.styles
+      : ['minimal']
+
+  const audienceInterests =
+    onboardingData.audienceLifestyle?.length
+      ? onboardingData.audienceLifestyle
+      : onboardingData.interests?.length
+        ? onboardingData.interests
+        : ['To be refined after onboarding']
+
+  const activePlatforms =
+    onboardingData.activePlatforms?.length
+      ? onboardingData.activePlatforms
+      : onboardingData.platforms?.length
+        ? onboardingData.platforms
+        : ['instagram']
+
+  const goals = onboardingData.goals?.length ? onboardingData.goals : ['Increase Brand Awareness']
+
+  const contentMix = mixTotals100(onboardingData.contentMix)
+    ? onboardingData.contentMix
+    : { promotional: 30, educational: 25, testimonial: 20, bts: 15, festive: 10 }
+
+  const industryAnswers =
+    onboardingData.industryAnswers && Object.keys(onboardingData.industryAnswers).length > 0
+      ? onboardingData.industryAnswers
+      : { skipped: true }
+
+  const descriptionRaw = (onboardingData.description || '').trim()
+  const description =
+    descriptionRaw.length >= 10
+      ? descriptionRaw
+      : 'Brand positioning will be refined after onboarding. Premium, trustworthy, and growth-focused.'
+
+  const audienceLocation = (onboardingData.audienceCity || onboardingData.location || '').trim() || 'To be confirmed'
+
+  return {
+    brandName: onboardingData.brandName,
+    description,
+    industry: onboardingData.industry,
+    industryLabel: onboardingData.industryLabel,
+    tone: onboardingData.tone,
+    styles,
+    audienceAgeMin: onboardingData.audienceAgeMin || onboardingData.ageRange?.[0] || 22,
+    audienceAgeMax: onboardingData.audienceAgeMax || onboardingData.ageRange?.[1] || 45,
+    audienceGender: onboardingData.audienceGender || 'mixed',
+    audienceLocation,
+    audienceInterests,
+    activePlatforms,
+    platforms: activePlatforms,
+    goals,
+    colorPrimary: onboardingData.colorPrimary,
+    colorSecondary: onboardingData.colorSecondary,
+    colorAccent: onboardingData.colorAccent,
+    fontMood: onboardingData.fontMood,
+    priceSegment: onboardingData.priceSegment,
+    industrySubtype: onboardingData.industrySubtype,
+    uspKeywords: onboardingData.uspKeywords,
+    industryAnswers,
+    weeklyPostCount: onboardingData.weeklyPostCount,
+    contentMix,
+    preferredPostingTimes: onboardingData.preferredPostingTimes?.length ? onboardingData.preferredPostingTimes : ['09:00', '18:00'],
+    autoSchedule: onboardingData.autoSchedule,
+    extractedStyleProfile: onboardingData.extractedStyleProfile,
+    referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
+    tagline: onboardingData.tagline || '',
+    website: onboardingData.website || '',
+    phone: onboardingData.phone || '',
+    address: onboardingData.address || onboardingData.city || '',
+    logoUrl: onboardingData.logoUrl || '',
+  }
 }
 
 function getNextMonth() {
@@ -207,42 +307,7 @@ export function StepFirstPost() {
   const completeOnboarding = async () => {
     await apiCall('/api/onboarding/complete', {
       method: 'POST',
-      body: JSON.stringify({
-        brandName: onboardingData.brandName,
-        description: onboardingData.description,
-        industry: onboardingData.industry,
-        industryLabel: onboardingData.industryLabel,
-        tone: onboardingData.tone,
-        styles: onboardingData.vibeStyles?.length ? onboardingData.vibeStyles : (onboardingData.styles || []),
-        audienceAgeMin: onboardingData.audienceAgeMin || onboardingData.ageRange?.[0] || 22,
-        audienceAgeMax: onboardingData.audienceAgeMax || onboardingData.ageRange?.[1] || 45,
-        audienceGender: onboardingData.audienceGender || 'mixed',
-        audienceLocation: onboardingData.audienceCity || onboardingData.location || '',
-        audienceInterests: onboardingData.audienceLifestyle?.length ? onboardingData.audienceLifestyle : (onboardingData.interests || []),
-        activePlatforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
-        platforms: onboardingData.activePlatforms?.length ? onboardingData.activePlatforms : (onboardingData.platforms || []),
-        goals: onboardingData.goals || [],
-        colorPrimary: onboardingData.colorPrimary,
-        colorSecondary: onboardingData.colorSecondary,
-        colorAccent: onboardingData.colorAccent,
-        fontMood: onboardingData.fontMood,
-        priceSegment: onboardingData.priceSegment,
-        industrySubtype: onboardingData.industrySubtype,
-        uspKeywords: onboardingData.uspKeywords,
-        industryAnswers: onboardingData.industryAnswers,
-        weeklyPostCount: onboardingData.weeklyPostCount,
-        contentMix: onboardingData.contentMix,
-        preferredPostingTimes: onboardingData.preferredPostingTimes || [],
-        autoSchedule: onboardingData.autoSchedule,
-        extractedStyleProfile: onboardingData.extractedStyleProfile,
-        referenceImageUrls: (onboardingData.referenceImages || []).map((r) => r.url).slice(0, 5),
-        // Brand identity fields
-        tagline: onboardingData.tagline || '',
-        website: onboardingData.website || '',
-        phone: onboardingData.phone || '',
-        address: onboardingData.address || onboardingData.city || '',
-        logoUrl: onboardingData.logoUrl || '',
-      }),
+      body: JSON.stringify(buildOnboardingCompletePayload(onboardingData)),
     })
   }
 
@@ -312,8 +377,12 @@ export function StepFirstPost() {
       logUxEvent('onboarding_skip_completed', { hasProducts: Array.isArray(onboardingData.products) && onboardingData.products.length > 0 })
       reset()
       router.push('/dashboard')
-    } catch (e: any) {
-      const message = 'Could not save onboarding yet. Please check your connection and try again.'
+    } catch (e: unknown) {
+      const detail = parseApiError(e)
+      const message =
+        detail.startsWith('Complete required onboarding')
+          ? detail
+          : 'Could not save onboarding yet. Please check your connection and try again.'
       console.warn('Onboarding skip save failed', e)
       logUxEvent('onboarding_skip_failed', { error: message })
       setError(message)
