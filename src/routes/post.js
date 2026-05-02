@@ -197,7 +197,7 @@ router.post('/generate', authMiddleware, async (req, res) => {
         const { caption, hashtags, imagePrompt } = parseAIResponse(raw);
         const referenceImageUrls = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
 
-        // Generate image with Imagen 3 nano
+        // Generate image (Google Gemini native, Imagen fallback)
         const rawImage = await generateImage(
           `${imagePrompt}. Style: social media ${contentType} for ${platform}. Brand: ${user.brand_name || 'modern brand'}. High quality, professional, no text overlays.`,
           { referenceImageUrls }

@@ -27,7 +27,10 @@ const config = {
   // Google AI Studio / Vertex AI
   googleAI: {
     apiKey: process.env.GOOGLE_AI_API_KEY,
-    imageModel: process.env.IMAGE_MODEL || "nano-banana",
+    imageModel:
+      process.env.GOOGLE_NATIVE_IMAGE_MODEL ||
+      process.env.GOOGLE_IMAGEN_MODEL ||
+      "gemini-3-pro-image-preview",
     cloudProject: process.env.GOOGLE_CLOUD_PROJECT || "gen-lang-client-0561139131",
     cloudProjectNumber: process.env.GOOGLE_CLOUD_PROJECT_NUMBER || "457787227878",
     cloudLocation: process.env.GOOGLE_CLOUD_LOCATION || "us-central1",

@@ -1,6 +1,6 @@
 /**
  * Creative Generation Engine — Image/Video Service
- * Generates images via Google AI Studio and manages local + cloud storage.
+ * Generates images via Google Gemini / Imagen and manages local + cloud storage.
  */
 const fs = require("fs");
 const path = require("path");
@@ -8,7 +8,8 @@ const logger = require("../utils/logger");
 const storageService = require("./storageService");
 const { generateImageDetailed } = require("../lib/ai");
 
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || "gpt-image-2";
+const IMAGE_MODEL_LOG =
+  process.env.GOOGLE_NATIVE_IMAGE_MODEL || "gemini-3-pro-image-preview";
 
 const OUTPUT_DIR = path.join(__dirname, "../../outputs");
 
@@ -31,7 +32,7 @@ async function generateImage(prompt, userId, brandId, postId, version = 1) {
     fs.mkdirSync(localDir, { recursive: true });
   }
 
-  logger.info(`Generating image [${IMAGE_MODEL}]`, {
+  logger.info(`Generating image [${IMAGE_MODEL_LOG}]`, {
     postId,
     version,
     prompt_preview: prompt.substring(0, 150) + "...",
@@ -71,7 +72,7 @@ async function generateImage(prompt, userId, brandId, postId, version = 1) {
 }
 
 /**
- * Generate image via shared AI helper (OpenAI-first policy).
+ * Generate image via shared AI helper (Google Gemini / Imagen).
  */
 async function callImageAPI(prompt) {
   const imageResult = await generateImageDetailed(prompt, {
@@ -103,7 +104,7 @@ async function generateAndSaveImage(prompt, postIndex) {
   fs.writeFileSync(filePath, imageBuffer);
 
   logger.info(`Image saved: ${relativePath}`, {
-    model: IMAGE_MODEL,
+    model: IMAGE_MODEL_LOG,
     size_kb: Math.round(imageBuffer.length / 1024),
   });
 
