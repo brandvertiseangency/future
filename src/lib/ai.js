@@ -192,12 +192,23 @@ const buildInlineImagePartFromUrl = async (url) => {
   }
 };
 
-/**
- * OpenAI image fallback generator.
- * Returns data URL or null.
- */
 const aspectRatioHint = (aspectRatio = '1:1') =>
   aspectRatio && aspectRatio !== '1:1' ? ` Target composition aspect ratio: ${aspectRatio}.` : '';
+
+/** Imagen `generateImages` only allows these `config.aspectRatio` values (API rejects e.g. 4:5). */
+const IMAGEN_API_ASPECT_RATIOS = new Set(['1:1', '9:16', '16:9', '4:3', '3:4']);
+
+/**
+ * Map requested ratio to the closest Imagen-supported value; keep original intent in the text prompt.
+ * @param {string} aspectRatio
+ * @returns {string}
+ */
+const normalizeAspectRatioForImagen = (aspectRatio) => {
+  const r = String(aspectRatio || '1:1').trim();
+  if (IMAGEN_API_ASPECT_RATIOS.has(r)) return r;
+  if (r === '4:5' || r === '5:4') return '3:4';
+  return '1:1';
+};
 
 /**
  * Gemini native image (generateContent + IMAGE modality).
@@ -240,11 +251,16 @@ const generateImageWithGoogleNative = async (imagePrompt, timeoutMs, aspectRatio
 const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio) => {
   const { GoogleGenAI } = require('@google/genai');
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
+  const imagenAspect = normalizeAspectRatioForImagen(aspectRatio);
+  const ratioNote =
+    imagenAspect !== String(aspectRatio || '').trim()
+      ? ` (Output canvas is ${imagenAspect} per image API; preserve ${aspectRatio} vertical-feed composition intent.)`
+      : '';
   const response = await withTimeout(
     ai.models.generateImages({
       model: GOOGLE_IMAGEN_MODEL,
-      prompt: `${imagePrompt}${aspectRatioHint(aspectRatio)}`,
-      config: { numberOfImages: 1, aspectRatio, outputMimeType: 'image/jpeg' },
+      prompt: `${imagePrompt}${aspectRatioHint(aspectRatio)}${ratioNote}`,
+      config: { numberOfImages: 1, aspectRatio: imagenAspect, outputMimeType: 'image/jpeg' },
     }),
     timeoutMs
   );
