@@ -235,9 +235,9 @@ export default function OutputDetailPage() {
               <Check size={14} />
               {isApproved ? 'Approved' : 'Approve'}
             </button>
-            {post.image_url && (
+            {(displayVersion?.image_url || post.image_url) && (
               <a
-                href={post.image_url}
+                href={displayVersion?.image_url || post.image_url}
                 download
                 style={{
                   width: 42, height: 42, borderRadius: 10, flexShrink: 0,

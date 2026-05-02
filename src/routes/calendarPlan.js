@@ -312,6 +312,15 @@ function isWeakImagePrompt(text = '') {
     'high quality image',
     'visual for post',
     'stock photo',
+    'slot_creative',
+    'user_approved',
+    'product_context',
+    'creative_brief',
+    'generation',
+    'json',
+    'placeholder',
+    '_brief',
+    'lot_creative',
   ].some((s) => t.includes(s));
 }
 
@@ -792,44 +801,68 @@ router.post('/plans/:planId/approve', authMiddleware, async (req, res) => {
 
     await client.query('BEGIN');
 
-    // Apply any edits to slots
+    const slotCols = {
+      creative_brief: await hasColumn(pool, 'calendar_slots', 'creative_brief'),
+      topic: await hasColumn(pool, 'calendar_slots', 'topic'),
+      format: await hasColumn(pool, 'calendar_slots', 'format'),
+      creative_copy: await hasColumn(pool, 'calendar_slots', 'creative_copy'),
+      hashtags_draft: await hasColumn(pool, 'calendar_slots', 'hashtags_draft'),
+    };
+
+    // Apply any edits to slots (must match fields editable in calendar review UI)
     for (const [slotId, edits] of Object.entries(slotEdits)) {
-      const canEditCreativeBrief = await hasColumn(pool, 'calendar_slots', 'creative_brief');
-      if (
-        edits.post_idea !== undefined ||
-        edits.caption_draft !== undefined ||
-        edits.creative_brief !== undefined
-      ) {
-        if (canEditCreativeBrief) {
-          await client.query(
-            `UPDATE calendar_slots
-             SET post_idea=COALESCE($1, post_idea),
-                 caption_draft=COALESCE($2, caption_draft),
-                 creative_brief=COALESCE($3, creative_brief)
-             WHERE id=$4 AND plan_id=$5`,
-            [
-              edits.post_idea || null,
-              edits.caption_draft || null,
-              edits.creative_brief || null,
-              slotId,
-              plan.id,
-            ]
-          );
-        } else {
-          await client.query(
-            `UPDATE calendar_slots
-             SET post_idea=COALESCE($1, post_idea),
-                 caption_draft=COALESCE($2, caption_draft)
-             WHERE id=$3 AND plan_id=$4`,
-            [
-              edits.post_idea || null,
-              edits.caption_draft || null,
-              slotId,
-              plan.id,
-            ]
-          );
-        }
+      if (!edits || typeof edits !== 'object') continue;
+
+      const sets = [];
+      const vals = [];
+      let p = 1;
+
+      if (edits.post_idea !== undefined) {
+        sets.push(`post_idea=COALESCE($${p}, post_idea)`);
+        vals.push(edits.post_idea || null);
+        p += 1;
       }
+      if (edits.caption_draft !== undefined) {
+        sets.push(`caption_draft=COALESCE($${p}, caption_draft)`);
+        vals.push(edits.caption_draft || null);
+        p += 1;
+      }
+      if (slotCols.creative_brief && edits.creative_brief !== undefined) {
+        sets.push(`creative_brief=COALESCE($${p}, creative_brief)`);
+        vals.push(edits.creative_brief || null);
+        p += 1;
+      }
+      if (slotCols.topic && edits.topic !== undefined) {
+        sets.push(`topic=COALESCE($${p}, topic)`);
+        vals.push(edits.topic || null);
+        p += 1;
+      }
+      if (slotCols.format && edits.format !== undefined) {
+        sets.push(`format=COALESCE($${p}, format)`);
+        vals.push(edits.format || null);
+        p += 1;
+      }
+      if (slotCols.creative_copy && edits.creative_copy !== undefined) {
+        sets.push(`creative_copy=COALESCE($${p}, creative_copy)`);
+        vals.push(edits.creative_copy || null);
+        p += 1;
+      }
+      if (slotCols.hashtags_draft && edits.hashtags_draft !== undefined) {
+        const tags = Array.isArray(edits.hashtags_draft)
+          ? edits.hashtags_draft.map((t) => String(t || '').replace(/^#/, '').trim()).filter(Boolean)
+          : null;
+        sets.push(`hashtags_draft=COALESCE($${p}::text[], hashtags_draft)`);
+        vals.push(tags);
+        p += 1;
+      }
+
+      if (!sets.length) continue;
+
+      vals.push(slotId, plan.id);
+      await client.query(
+        `UPDATE calendar_slots SET ${sets.join(', ')} WHERE id=$${p} AND plan_id=$${p + 1}`,
+        vals
+      );
     }
 
     // Mark selected slots as approved
@@ -1058,8 +1091,12 @@ async function runGenerationJob(jobId, slotIds, pool) {
           ? `\n\nPRODUCT PLACEMENT RULE:\nIf the slot is promotional/testimonial or naturally fits, include "${primaryImageProduct.name}" in the imagePrompt with explicit placement (foreground/background, scale, angle).`
           : '';
 
+        const slotCaptionDraft = (slot.caption_draft || '').toString().trim();
         const expandedUserPrompt = [
           userPrompt,
+          slotCaptionDraft
+            ? `\n\nUSER_APPROVED_CAPTION (preserve this story in both caption and imagePrompt; do not replace with unrelated lifestyle content):\n${slotCaptionDraft}`
+            : '',
           creativeBrief ? `\n\nSLOT_CREATIVE_BRIEF (must follow):\n${creativeBrief}` : '',
           productContextBlock ? `\n\n${productContextBlock}` : '',
           productPlacementRule,
@@ -1070,15 +1107,17 @@ async function runGenerationJob(jobId, slotIds, pool) {
         let caption = '', hashtags = [], imagePrompt = '';
         try {
           const parsed = parseAiJsonLoose(raw);
-          caption = parsed.caption || slot.caption_draft || slot.post_idea;
+          caption = parsed.caption || slotCaptionDraft || slot.post_idea;
           hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
+          const sceneCaption = slotCaptionDraft || caption;
           const candidatePrompt = parsed.imagePrompt || parsed.image_prompt || '';
           imagePrompt = !isWeakImagePrompt(candidatePrompt)
             ? candidatePrompt
-            : `SCENE ANCHOR: ${caption}. Build the visual around this exact message. ${slot.post_idea}. ${creativeBrief || 'Premium product-focused composition.'}`;
+            : `SCENE ANCHOR (visual must match this story first): ${sceneCaption}. Supporting context: ${slot.post_idea}. ${creativeBrief || 'Premium product-focused composition.'}`;
         } catch {
-          caption = slot.caption_draft || slot.post_idea;
-          imagePrompt = `SCENE ANCHOR: ${caption}. Build the visual around this exact message. ${slot.post_idea}. ${creativeBrief || 'Premium social media visual, specific composition and lighting.'}`;
+          caption = slotCaptionDraft || slot.post_idea;
+          const sceneCaption = slotCaptionDraft || caption;
+          imagePrompt = `SCENE ANCHOR (visual must match this story first): ${sceneCaption}. Supporting context: ${slot.post_idea}. ${creativeBrief || 'Premium social media visual, specific composition and lighting.'}`;
         }
 
         // Generate image (art-directed using Brand DNA + slot creative brief)
@@ -1099,6 +1138,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
           primaryImageProduct || logoReferenceImages.length
             ? 'BRAND_MARK_RULE: Use only the provided official brand/product mark if naturally present on product/packaging/signage. Do not invent text or fake logos.'
             : '',
+          'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',
           'RESTRICTIONS: absolutely no extra text, random letters, fake logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',
           'AVOID: flat stock photo look, generic \"professional social media\" phrasing, malformed hands, warped faces, or distorted garment seams.',
         ].filter(Boolean).join('\n\n');

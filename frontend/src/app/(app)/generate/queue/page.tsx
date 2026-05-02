@@ -23,7 +23,12 @@ interface Job {
 interface SlotDetail {
   id: string
   post_idea: string
-  status: 'pending' | 'generating' | 'generated' | 'failed'
+  status: string
+  content_type?: string
+  platform?: string
+  post_id?: string | null
+  image_url?: string | null
+  error_message?: string | null
 }
 
 function GenerationQueueInner() {
@@ -158,8 +163,24 @@ function GenerationQueueInner() {
           <div className="space-y-2">
             {slots.slice(0, 10).map((slot) => (
               <div key={slot.id} className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm">
-                <p className="text-[#111111]">{slot.post_idea}</p>
-                <p className="text-xs text-[#6B7280]">{slot.status}</p>
+                <div className="flex gap-2">
+                  {slot.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={slot.image_url} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
+                  ) : null}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[#111111] line-clamp-2">{slot.post_idea}</p>
+                    <p className="text-xs text-[#6B7280]">
+                      {slot.status}
+                      {slot.platform ? ` · ${slot.platform}` : ''}
+                      {slot.content_type ? ` · ${slot.content_type}` : ''}
+                      {slot.post_id ? ` · post ${slot.post_id.slice(0, 8)}…` : ''}
+                    </p>
+                    {slot.error_message ? (
+                      <p className="mt-1 text-xs text-rose-600 line-clamp-3" title={slot.error_message}>{slot.error_message}</p>
+                    ) : null}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

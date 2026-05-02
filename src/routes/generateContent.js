@@ -180,6 +180,13 @@ const isWeakImagePrompt = (text = '') => {
     'post for',
     'for instagram',
     'for linkedin',
+    'slot_creative',
+    'user_approved',
+    'product_context',
+    'creative_brief',
+    'placeholder',
+    '_brief',
+    'lot_creative',
   ];
   return genericSignals.some((s) => t.includes(s));
 };
@@ -279,6 +286,7 @@ router.post('/', authMiddleware, async (req, res) => {
         ? 'Maintain exact product identity: preserve garment silhouette, embroidery pattern, cuffs/placket details, and realistic fabric drape.'
         : '',
       'High quality, professional, photorealistic output.',
+      'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',
       referenceImageUrls.length
         ? 'Brand mark rule: if a real logo/mark is present in provided references, keep it authentic and subtle only on product/packaging/signage; do not invent new text.'
         : '',

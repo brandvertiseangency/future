@@ -46,19 +46,29 @@ router.get('/', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const offset = parseInt(req.query.offset) || 0;
     const status = req.query.status; // optional filter
+    const platform = typeof req.query.platform === 'string' ? req.query.platform.trim().toLowerCase() : '';
+    const platformFilter = platform && platform !== 'all';
 
     let query, params;
     if (status === 'approved') {
-      query = `SELECT * FROM posts
+      query = platformFilter
+        ? `SELECT * FROM posts
+               WHERE user_id=$1 AND LOWER(platform)=LOWER($2) AND (status='approved' OR approval_status='approved')
+               ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+        : `SELECT * FROM posts
                WHERE user_id=$1 AND (status='approved' OR approval_status='approved')
                ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
-      params = [userId, limit, offset];
+      params = platformFilter ? [userId, platform, limit, offset] : [userId, limit, offset];
     } else if (status) {
-      query = `SELECT * FROM posts WHERE user_id=$1 AND status=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`;
-      params = [userId, status, limit, offset];
+      query = platformFilter
+        ? `SELECT * FROM posts WHERE user_id=$1 AND LOWER(platform)=LOWER($2) AND status=$3 ORDER BY created_at DESC LIMIT $4 OFFSET $5`
+        : `SELECT * FROM posts WHERE user_id=$1 AND status=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`;
+      params = platformFilter ? [userId, platform, status, limit, offset] : [userId, status, limit, offset];
     } else {
-      query = `SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
-      params = [userId, limit, offset];
+      query = platformFilter
+        ? `SELECT * FROM posts WHERE user_id=$1 AND LOWER(platform)=LOWER($2) ORDER BY created_at DESC LIMIT $3 OFFSET $4`
+        : `SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+      params = platformFilter ? [userId, platform, limit, offset] : [userId, limit, offset];
     }
 
     const { rows } = await pool.query(query, params);
