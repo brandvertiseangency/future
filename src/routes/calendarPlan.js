@@ -203,9 +203,12 @@ const getUserWithBrand = async (uid) => {
   return rows[0] || null;
 };
 
-const { callAI, generateImageDetailed } = require('../lib/ai');
+const { callAI, generateImageDetailed, parseAiJsonLoose } = require('../lib/ai');
 
 const AI_TIMEOUT_MS = 45_000;
+/** Plan JSON is large; cap aligns with Gemini-style max output; still scales up to this cap. */
+const PLAN_AI_MAX_TOKENS = 8192;
+const PLAN_AI_TIMEOUT_MS = 120_000;
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -498,21 +501,30 @@ Anti-patterns to avoid:
 
 Return ONLY JSON.`;
 
+    const planMaxTokens = Math.min(
+      PLAN_AI_MAX_TOKENS,
+      Math.max(6144, Math.round(resolvedPostCount * 480))
+    );
+    const planTimeoutMs = Math.min(
+      PLAN_AI_TIMEOUT_MS,
+      Math.max(75_000, AI_TIMEOUT_MS + resolvedPostCount * 1500)
+    );
+
     const raw = await callAI(
       systemPrompt
         ? { system: systemPrompt, user: userPrompt }
         : userPrompt,
-      { maxTokens: 4096, timeoutMs: AI_TIMEOUT_MS }
+      { maxTokens: planMaxTokens, timeoutMs: planTimeoutMs }
     );
     let slots;
     try {
-      // Strip markdown fences Gemini sometimes wraps around JSON
-      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
-      const match = cleaned.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : cleaned);
-      slots = parsed.posts || parsed.slots || [];
-    } catch {
-      logger.error('AI plan parse failed', { raw: raw.slice(0, 300) });
+      const parsed = parseAiJsonLoose(raw);
+      slots = parsed.posts || parsed.slots || (Array.isArray(parsed) ? parsed : []);
+    } catch (parseErr) {
+      logger.error('AI plan parse failed', {
+        message: parseErr?.message,
+        raw: String(raw).slice(0, 500),
+      });
       return res.status(500).json({
         error: 'AI returned invalid response. Please try again.',
         code: 'AI_INVALID_RESPONSE',

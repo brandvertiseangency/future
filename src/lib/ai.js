@@ -24,6 +24,97 @@ const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 };
 
+/** Strip BOM, markdown fences, and outer whitespace (models often wrap JSON). */
+function stripAiJsonWrappers(raw) {
+  if (typeof raw !== 'string') return '';
+  return raw
+    .replace(/^\uFEFF/, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+}
+
+/**
+ * Extract first complete top-level JSON object or array using bracket matching
+ * (respects strings). Avoids greedy /\{[\s\S]*\}/ which breaks on extra braces or preamble text.
+ */
+function extractBalancedJsonSlice(s) {
+  const trimmed = s.trim();
+  const firstBrace = trimmed.indexOf('{');
+  const firstBracket = trimmed.indexOf('[');
+  let start = -1;
+  if (firstBrace >= 0 && (firstBracket < 0 || firstBrace <= firstBracket)) start = firstBrace;
+  else if (firstBracket >= 0) start = firstBracket;
+  else return null;
+
+  const stack = [];
+  const c0 = trimmed[start];
+  if (c0 === '{') stack.push('}');
+  else if (c0 === '[') stack.push(']');
+  else return null;
+
+  let inString = false;
+  let escape = false;
+
+  for (let i = start + 1; i < trimmed.length; i += 1) {
+    const c = trimmed[i];
+    if (escape) {
+      escape = false;
+      continue;
+    }
+    if (inString) {
+      if (c === '\\') {
+        escape = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') {
+      stack.push('}');
+      continue;
+    }
+    if (c === '[') {
+      stack.push(']');
+      continue;
+    }
+    if (c === '}' || c === ']') {
+      if (stack.length && stack[stack.length - 1] === c) {
+        stack.pop();
+        if (!stack.length) return trimmed.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Parse JSON from an AI text response: full document, then first balanced object/array.
+ * @param {string} raw
+ * @returns {object|Array<unknown>}
+ */
+function parseAiJsonLoose(raw) {
+  const cleaned = stripAiJsonWrappers(String(raw || ''));
+  if (!cleaned) throw new Error('AI returned empty response');
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const slice = extractBalancedJsonSlice(cleaned);
+    if (slice) {
+      try {
+        return JSON.parse(slice);
+      } catch {
+        /* fall through */
+      }
+    }
+    throw new Error(`AI returned invalid JSON. Raw: ${String(raw).slice(0, 240)}`);
+  }
+}
+
 /**
  * Call OpenAI gpt-4o (primary) or Gemini 2.5 Flash (fallback).
  * @param {string|{system:string,user:string}} prompt
@@ -81,16 +172,7 @@ const callAI = async (prompt, opts = {}) => {
  */
 const callAIJSON = async (prompt, opts = {}) => {
   const raw = await callAI(prompt, opts);
-  const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const match = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-    if (match) {
-      try { return JSON.parse(match[0]); } catch { /* fall through */ }
-    }
-    throw new Error(`AI returned invalid JSON. Raw: ${raw.slice(0, 200)}`);
-  }
+  return parseAiJsonLoose(raw);
 };
 
 /**
@@ -275,4 +357,12 @@ const generateImage = async (imagePrompt, opts = {}) => {
   return result?.imageData || null;
 };
 
-module.exports = { callAI, callAIJSON, generateImage, generateImageDetailed, withTimeout, DEFAULT_TIMEOUT_MS };
+module.exports = {
+  callAI,
+  callAIJSON,
+  parseAiJsonLoose,
+  generateImage,
+  generateImageDetailed,
+  withTimeout,
+  DEFAULT_TIMEOUT_MS,
+};
