@@ -311,7 +311,7 @@ router.post('/', authMiddleware, async (req, res) => {
         ? `CONTACT_REQUIREMENT: Include this contact line in footer area: "${overlayContact}".`
         : '',
       'High quality, professional, photorealistic output.',
-      'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',
+      'OUTPUT_FORM: single full-bleed branded social creative image. No simulated social media app UI, no Instagram/Facebook/TikTok screenshot layouts, no phone frames, no avatar strips.',
       referenceImageUrls.length
         ? 'Brand mark rule: if a real logo/mark is present in provided references, keep it authentic and subtle only on product/packaging/signage; do not invent new text.'
         : '',

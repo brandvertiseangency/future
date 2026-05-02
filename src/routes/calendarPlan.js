@@ -1163,7 +1163,7 @@ async function runGenerationJob(jobId, slotIds, pool) {
           overlayContact
             ? `CONTACT_REQUIREMENT: Include this contact line in footer area: "${overlayContact}".`
             : '',
-          'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',
+          'OUTPUT_FORM: single full-bleed branded social creative image. No simulated social media app UI, no Instagram/Facebook/TikTok screenshot layouts, no phone frames, no avatar strips.',
           'RESTRICTIONS: absolutely no extra text, random letters, fake logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',
           'AVOID: flat stock photo look, generic \"professional social media\" phrasing, malformed hands, warped faces, or distorted garment seams.',
         ].filter(Boolean).join('\n\n');

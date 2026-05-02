@@ -14,6 +14,7 @@ const NANO_BANANA_MODEL = 'gemini-2.0-flash-preview-image-generation';
 const OPENAI_IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-2';
 const IMAGE_MODEL = (process.env.IMAGE_MODEL || 'openai').toLowerCase();
 const ENABLE_NANO_BANANA = process.env.ENABLE_NANO_BANANA === 'true';
+const ALLOW_GOOGLE_IMAGE_FALLBACK = process.env.ALLOW_GOOGLE_IMAGE_FALLBACK === 'true';
 let nanoModelUnavailable = false;
 let googleImageRateLimitedUntil = 0;
 
@@ -243,7 +244,17 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
   if (openAiImage) return { imageData: openAiImage, error: null, provider: 'openai', model: OPENAI_IMAGE_MODEL };
   lastError = `OpenAI image generation failed (model: ${OPENAI_IMAGE_MODEL})`;
 
-  // Only use Google as a temporary fallback if not currently rate-limited.
+  // If we require OpenAI-only image quality, fail fast instead of silent fallback.
+  if (!ALLOW_GOOGLE_IMAGE_FALLBACK) {
+    return {
+      imageData: null,
+      error: `${lastError}; google_fallback_disabled`,
+      provider: 'openai',
+      model: OPENAI_IMAGE_MODEL,
+    };
+  }
+
+  // Only use Google as a temporary fallback if explicitly allowed and not rate-limited.
   if (!hasGoogle) {
     return { imageData: null, error: lastError || 'Google AI key is not configured for fallback.', provider: 'openai', model: OPENAI_IMAGE_MODEL };
   }
