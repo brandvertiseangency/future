@@ -30,10 +30,10 @@ interface Slot {
 }
 
 const TYPE_STYLES: Record<string, { bg: string; border: string; text: string; label: string }> = {
-  post:     { bg: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.14)', text: 'rgba(255,255,255,0.7)', label: 'Post' },
-  reel:     { bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.10)', text: 'rgba(255,255,255,0.55)', label: 'Reel' },
-  carousel: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.08)', text: 'rgba(255,255,255,0.5)', label: 'Carousel' },
-  story:    { bg: 'rgba(255,255,255,0.03)', border: 'rgba(255,255,255,0.07)', text: 'rgba(255,255,255,0.4)', label: 'Story' },
+  post:     { bg: '#F3F4F6', border: '#E5E7EB', text: '#111111', label: 'Post' },
+  reel:     { bg: '#EEF2FF', border: '#DDE3FF', text: '#1F2937', label: 'Reel' },
+  carousel: { bg: '#F9FAFB', border: '#E5E7EB', text: '#374151', label: 'Carousel' },
+  story:    { bg: '#F9FAFB', border: '#E5E7EB', text: '#4B5563', label: 'Story' },
 }
 
 function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
@@ -81,7 +81,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
       {/* Date */}
       <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontWeight: 500 }}>{day} {dateStr}</span>
+        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 500 }}>{day} {dateStr}</span>
         <span style={{
           marginLeft: 6, fontSize: 9, padding: '2px 6px', borderRadius: 4,
           background: styles.bg, border: `1px solid ${styles.border}`, color: styles.text,
@@ -227,30 +227,30 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
       ) : (
         <div style={{ marginBottom: 8, paddingRight: 24 }}>
           {slot.topic && (
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.48)', lineHeight: 1.35, marginBottom: 6 }}>
+            <p style={{ fontSize: 11, color: '#4B5563', lineHeight: 1.35, marginBottom: 6 }}>
               Topic: {slot.topic}
             </p>
           )}
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.4, marginBottom: slot.creative_brief ? 6 : 0 }}>
+          <p style={{ fontSize: 12, color: '#111111', lineHeight: 1.4, marginBottom: slot.creative_brief ? 6 : 0 }}>
             {idea}
           </p>
           {slot.creative_copy && (
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+            <p style={{ fontSize: 11, color: '#374151', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
               Creative Copy: {slot.creative_copy}
             </p>
           )}
           {slot.caption_draft && (
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.52)', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
+            <p style={{ fontSize: 11, color: '#374151', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
               Caption: {slot.caption_draft}
             </p>
           )}
           {slot.hashtags_draft && slot.hashtags_draft.length > 0 && (
-            <p style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.38)', lineHeight: 1.3 }}>
+            <p style={{ fontSize: 10.5, color: '#6B7280', lineHeight: 1.3 }}>
               Hashtags: {slot.hashtags_draft.map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')}
             </p>
           )}
           {slot.creative_brief && (
-            <p style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.35)', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
+            <p style={{ fontSize: 10.5, color: '#6B7280', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>
               {slot.creative_brief}
             </p>
           )}
@@ -259,12 +259,12 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
       {/* Platform + category */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>{slot.platform}</span>
+        <span style={{ fontSize: 10, color: '#6B7280' }}>{slot.platform}</span>
         {slot.format && (
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.24)' }}>· {slot.format}</span>
+          <span style={{ fontSize: 10, color: '#6B7280' }}>· {slot.format}</span>
         )}
         {slot.content_category && (
-          <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>· {slot.content_category}</span>
+          <span style={{ fontSize: 10, color: '#6B7280' }}>· {slot.content_category}</span>
         )}
       </div>
 
@@ -376,7 +376,7 @@ function CalendarReviewInner() {
         <div>
           <button
             onClick={() => router.back()}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', marginBottom: 10, fontSize: 12 }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', marginBottom: 10, fontSize: 12 }}
           >
             <ChevronLeft size={14} /> Back
           </button>
@@ -405,7 +405,7 @@ function CalendarReviewInner() {
               : <><CheckCircle2 size={14} /> Approve & Generate ({creditsNeeded} credits)</>
             }
           </button>
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)', marginTop: 5 }}>
+          <p style={{ fontSize: 10, color: '#6B7280', marginTop: 5 }}>
             {selected.size === 0 ? 'All posts selected' : `${selected.size} selected`}
           </p>
         </div>
@@ -419,7 +419,7 @@ function CalendarReviewInner() {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12, color: 'rgba(255,255,255,0.4)',
+            fontSize: 12, color: '#4B5563',
           }}
         >
           <div style={{
@@ -439,7 +439,7 @@ function CalendarReviewInner() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         {Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateSlots]) => (
           <div key={date}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               {new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 8 }}>

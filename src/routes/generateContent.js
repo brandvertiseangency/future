@@ -126,7 +126,7 @@ const buildSystemPrompt = (user) => {
   return buildSystemPromptV2(brand);
 };
 
-const { callAI, generateImageDetailed } = require('../lib/ai');
+const { callAI, generateImageDetailed, parseAiJsonLoose } = require('../lib/ai');
 
 const buildUserPrompt = ({ platform, contentType, brief, mood, theme, campaign }, brand) =>
   buildUserPromptV2({ platform, contentType, brief, mood, theme, campaign }, brand || {});
@@ -137,9 +137,7 @@ const callAIWrapped = async (systemPrompt, userPrompt) => {
 
 const parseAIResponse = (raw) => {
   try {
-    const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('No JSON found');
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseAiJsonLoose(raw);
     return {
       caption: parsed.caption || parsed.caption_draft || parsed.copy || parsed.text || '',
       hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
@@ -148,6 +146,20 @@ const parseAIResponse = (raw) => {
   } catch {
     return { caption: raw.slice(0, 500), hashtags: [], imagePrompt: '' };
   }
+};
+
+const isWeakImagePrompt = (text = '') => {
+  const t = String(text || '').toLowerCase().trim();
+  if (!t || t.length < 40) return true;
+  const genericSignals = [
+    'professional social media image',
+    'create an image',
+    'high quality image',
+    'post for',
+    'for instagram',
+    'for linkedin',
+  ];
+  return genericSignals.some((s) => t.includes(s));
 };
 
 /** POST /api/generate-content */
@@ -217,7 +229,15 @@ router.post('/', authMiddleware, async (req, res) => {
       selectedProduct.price ? `Price: ${selectedProduct.price}` : '',
     ].filter(Boolean).join('\n') : '';
 
-    const baseImagePrompt = imagePrompt || `${brief} — ${contentType || 'post'} for ${user.brand_name || 'brand'} on ${platform}`;
+    const captionDrivenPrompt = [
+      `SCENE TO VISUALIZE (anchor strictly to this caption): ${caption}`,
+      'Render a concrete real-world scene that directly matches the hook, value, and CTA context.',
+      'Do not drift to unrelated lifestyle imagery.',
+    ].join(' ');
+
+    const baseImagePrompt = !isWeakImagePrompt(imagePrompt)
+      ? imagePrompt
+      : `${captionDrivenPrompt} Brief context: ${brief}. Format: ${contentType || 'post'} on ${platform}.`;
 
     const enrichedImagePrompt = [
       baseImagePrompt,

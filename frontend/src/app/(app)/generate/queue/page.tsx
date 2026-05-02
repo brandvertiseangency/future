@@ -63,10 +63,33 @@ function GenerationQueueInner() {
   if (!job) return <div className="flex min-h-[60vh] items-center justify-center text-sm text-[#6B7280]"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading job...</div>
 
   const isActive = (job.status === 'running' || job.status === 'queued') && !computedDone
-  const isDone = job.status === 'complete' || computedDone
+  const isDone = computedDone
+  const hasFailures = (job.failed_slots || 0) > 0
   const etaMinutes = Math.max(1, Math.ceil((job.total_slots - job.completed_slots) * 0.6))
   const currentItem = slots.find((slot) => slot.status === 'generating') ?? slots.find((slot) => slot.status === 'pending')
   const canonicalState = mapJobStatusToWorkflow(job?.status)
+  const queueSteps = [
+    {
+      label: 'Preparing prompts',
+      done: job.status !== 'queued' || slots.some((s) => s.status !== 'pending'),
+      active: job.status === 'queued',
+    },
+    {
+      label: 'Rendering images',
+      done: job.completed_slots > 0 || isDone,
+      active: slots.some((s) => s.status === 'generating') || (job.status === 'running' && !isDone),
+    },
+    {
+      label: 'Saving generated assets',
+      done: isDone,
+      active: !isDone && (job.status === 'running' || job.status === 'queued'),
+    },
+    {
+      label: hasFailures ? 'Completed with retries needed' : 'Ready in Outputs',
+      done: isDone,
+      active: !isDone,
+    },
+  ]
 
   return (
     <PageContainer className="max-w-4xl">
@@ -78,8 +101,8 @@ function GenerationQueueInner() {
 
       {/* Header */}
       <PageHeader
-        title={isDone ? 'Generation complete' : <>Generating <span className="text-highlight">Creatives</span></>}
-        description={`${job.completed_slots} of ${job.total_slots} completed`}
+        title={isDone ? (hasFailures ? 'Generation finished with issues' : 'Generation complete') : <>Generating <span className="text-highlight">Images</span></>}
+        description={`${job.completed_slots} of ${job.total_slots} completed${hasFailures ? ` • ${job.failed_slots} failed` : ''}`}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
@@ -98,12 +121,11 @@ function GenerationQueueInner() {
             </div>
 
             <div className="space-y-2 text-sm">
-              {['Analyzing Brand', 'Building Strategy', 'Writing Captions', 'Generating Visuals', 'Finalizing Content'].map((step, idx) => {
-                const stepDone = pct >= (idx + 1) * 20
+              {queueSteps.map((step) => {
                 return (
-                  <div key={step} className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2">
-                    <span className="text-[#111111]">{step}</span>
-                    <span className="text-xs text-[#6B7280]">{stepDone ? 'Done' : 'In progress'}</span>
+                  <div key={step.label} className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2">
+                    <span className="text-[#111111]">{step.label}</span>
+                    <span className="text-xs text-[#6B7280]">{step.done ? 'Done' : step.active ? 'In progress' : 'Pending'}</span>
                   </div>
                 )
               })}

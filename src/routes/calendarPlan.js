@@ -303,6 +303,18 @@ function buildFallbackCreativeBrief(slot, primaryProductName) {
   ].join('\n');
 }
 
+function isWeakImagePrompt(text = '') {
+  const t = String(text || '').toLowerCase().trim();
+  if (!t || t.length < 40) return true;
+  return [
+    'professional social media image',
+    'create an image',
+    'high quality image',
+    'visual for post',
+    'stock photo',
+  ].some((s) => t.includes(s));
+}
+
 // ─── POST /api/calendar/generate-plan ────────────────────────────────────────
 
 router.post('/generate-plan', authMiddleware, async (req, res) => {
@@ -1053,15 +1065,16 @@ async function runGenerationJob(jobId, slotIds, pool) {
 
         let caption = '', hashtags = [], imagePrompt = '';
         try {
-          const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
-          const match = cleaned.match(/\{[\s\S]*\}/);
-          const parsed = JSON.parse(match ? match[0] : cleaned);
+          const parsed = parseAiJsonLoose(raw);
           caption = parsed.caption || slot.caption_draft || slot.post_idea;
           hashtags = Array.isArray(parsed.hashtags) ? parsed.hashtags : [];
-          imagePrompt = parsed.imagePrompt || `${slot.post_idea}. ${creativeBrief || 'Premium product-focused composition.'}`;
+          const candidatePrompt = parsed.imagePrompt || parsed.image_prompt || '';
+          imagePrompt = !isWeakImagePrompt(candidatePrompt)
+            ? candidatePrompt
+            : `SCENE ANCHOR: ${caption}. Build the visual around this exact message. ${slot.post_idea}. ${creativeBrief || 'Premium product-focused composition.'}`;
         } catch {
           caption = slot.caption_draft || slot.post_idea;
-          imagePrompt = `${slot.post_idea}. ${creativeBrief || 'Premium social media visual, specific composition and lighting.'}`;
+          imagePrompt = `SCENE ANCHOR: ${caption}. Build the visual around this exact message. ${slot.post_idea}. ${creativeBrief || 'Premium social media visual, specific composition and lighting.'}`;
         }
 
         // Generate image (art-directed using Brand DNA + slot creative brief)

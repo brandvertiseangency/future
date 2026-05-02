@@ -40,6 +40,16 @@ export default function OutputsPage() {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const triggerDownload = (url?: string, filename = 'output-image') => {
+    if (!url) return
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    anchor.rel = 'noopener noreferrer'
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+  }
   const regeneratePost = async (postId: string) => {
     setRegeneratingId(postId)
     try {
@@ -162,7 +172,19 @@ export default function OutputsPage() {
         ) : (
           <div className={cn(layoutMode === 'grid' ? 'grid gap-3' : 'space-y-3')} style={layoutMode === 'grid' ? { gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' } : undefined}>
             {posts.map((post) => (
-              <button key={post.id} onClick={() => setSelected(post)} className={cn('group app-card overflow-hidden text-left transition hover:border-[#111111]', layoutMode === 'list' && 'flex items-center')}>
+              <div
+                key={post.id}
+                onClick={() => setSelected(post)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelected(post)
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={cn('group app-card overflow-hidden text-left transition hover:border-[#111111] cursor-pointer', layoutMode === 'list' && 'flex items-center')}
+              >
                 <div className={cn('bg-[#F3F4F6]', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -176,7 +198,17 @@ export default function OutputsPage() {
                     <div className="mb-2 flex items-center gap-1">
                       <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelected(post) }}>Preview</Button>
                       <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); regeneratePost(post.id) }}>Regenerate</Button>
-                      <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); }}><Download className="h-3 w-3" /></Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-7 px-2"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          triggerDownload(post.image_url, `output-${post.id}.png`)
+                        }}
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
                     </div>
                   </div>
                   <p className="line-clamp-2 text-sm text-[#111111]">{post.caption || 'Untitled output'}</p>
@@ -207,7 +239,7 @@ export default function OutputsPage() {
                     </Button>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
