@@ -8,6 +8,7 @@ const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
 const { analyseReferenceImages } = require('../lib/vision-analyser');
+const { sanitizeLogoUrlForDb } = require('../utils/sanitizeLogoUrl');
 
 /** POST /api/onboarding/preview-caption */
 router.post('/preview-caption', authMiddleware, async (req, res) => {
@@ -162,7 +163,7 @@ router.post('/complete', authMiddleware, async (req, res) => {
         industrySubtype || null, priceSegment || null, weeklyPostCount || 4,
         contentMix ? JSON.stringify(contentMix) : null,
         normalizedPlatforms,
-        tagline || null, website || null, phone || null, address || null, logoUrl || null,
+        tagline || null, website || null, phone || null, address || null, sanitizeLogoUrlForDb(logoUrl),
       ]
     );
     const brand = brandRows[0];

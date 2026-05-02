@@ -216,6 +216,9 @@ CREATE INDEX IF NOT EXISTS idx_assets_user_id        ON assets(user_id);
 CREATE INDEX IF NOT EXISTS idx_credit_tx_user_id     ON credit_transactions(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user    ON notifications(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_read    ON notifications(user_id, is_read);
+
+-- logo_url may contain huge base64 data URLs; btree index on that column exceeds PG index row limits.
+DROP INDEX IF EXISTS idx_brands_logo_url;
 `;
 
 async function migrate() {

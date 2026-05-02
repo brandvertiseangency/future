@@ -9,6 +9,7 @@ const schemas = require("../validators/schemas");
 const brandService = require("../services/brandService");
 const logger = require("../utils/logger");
 const { getPool } = require("../config/postgres");
+const { sanitizeLogoUrlForDb } = require("../utils/sanitizeLogoUrl");
 
 /**
  * POST /brand/create
@@ -99,6 +100,9 @@ router.patch("/me", authMiddleware, async (req, res) => {
       if (req.body[key] !== undefined) {
         updates[key] = req.body[key];
       }
+    }
+    if (updates.logo_url !== undefined) {
+      updates.logo_url = sanitizeLogoUrlForDb(updates.logo_url);
     }
 
     const industryConfigPatch = {};

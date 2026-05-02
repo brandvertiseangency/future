@@ -8,5 +8,6 @@ ALTER TABLE brands
   ADD COLUMN IF NOT EXISTS address       TEXT,
   ADD COLUMN IF NOT EXISTS logo_url      TEXT;
 
--- Index for logo_url lookups (optional but handy)
-CREATE INDEX IF NOT EXISTS idx_brands_logo_url ON brands(logo_url) WHERE logo_url IS NOT NULL;
+-- Do not index logo_url: values may be large base64 data URLs, which exceed btree index
+-- tuple size limits (~8KB) and cause INSERT/UPDATE failures.
+DROP INDEX IF EXISTS idx_brands_logo_url;
