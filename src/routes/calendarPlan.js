@@ -973,7 +973,11 @@ async function runGenerationJob(jobId, slotIds, pool) {
     const products = await getBrandProducts(pool, brand.user_id, brand.id);
     const imageProducts = (products || []).filter((p) => (Array.isArray(p.use_in) ? p.use_in : []).includes('image_generation'));
     const primaryImageProduct = pickPrimaryProduct(imageProducts, 'image_generation');
+    const styleReferenceImages = Array.isArray(brand.reference_image_urls) ? brand.reference_image_urls.filter(Boolean) : [];
+    const logoReferenceImages = brand.logo_url ? [brand.logo_url] : [];
     const fallbackReferenceImages = [
+      ...logoReferenceImages,
+      ...styleReferenceImages,
       ...(Array.isArray(primaryImageProduct?.images) ? primaryImageProduct.images : []),
       ...imageProducts.flatMap((p) => (Array.isArray(p.images) ? p.images.slice(0, 1) : [])),
     ].filter(Boolean).slice(0, 3);
@@ -1092,7 +1096,10 @@ async function runGenerationJob(jobId, slotIds, pool) {
           'COMPOSITION_RULES: specify subject, environment, camera angle, lens feel, depth-of-field, and focal point.',
           'LIGHTING_RULES: specify lighting (golden hour / softbox / moody low-key / bright airy) and shadows.',
           'QUALITY: premium, high-end, photorealistic, detailed textures.',
-          'RESTRICTIONS: absolutely no text, letters, numbers, logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',
+          primaryImageProduct || logoReferenceImages.length
+            ? 'BRAND_MARK_RULE: Use only the provided official brand/product mark if naturally present on product/packaging/signage. Do not invent text or fake logos.'
+            : '',
+          'RESTRICTIONS: absolutely no extra text, random letters, fake logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',
           'AVOID: flat stock photo look, generic \"professional social media\" phrasing, malformed hands, warped faces, or distorted garment seams.',
         ].filter(Boolean).join('\n\n');
 

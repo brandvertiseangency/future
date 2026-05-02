@@ -77,6 +77,28 @@ const getProductById = async (pool, userId, brandId, productId) => {
   }
 };
 
+const getBrandReferenceImages = async (pool, userId, brandId) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT b.logo_url, bsp.reference_image_urls
+       FROM brands b
+       LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+       WHERE b.user_id=$1 AND ($2::uuid IS NULL OR b.id=$2)
+       ORDER BY b.is_default DESC, b.created_at ASC
+       LIMIT 1`,
+      [userId, brandId || null]
+    );
+    const row = rows[0];
+    if (!row) return [];
+    const refs = [];
+    if (row.logo_url) refs.push(row.logo_url);
+    if (Array.isArray(row.reference_image_urls)) refs.push(...row.reference_image_urls.filter(Boolean));
+    return refs.slice(0, 3);
+  } catch {
+    return [];
+  }
+};
+
 const { buildSystemPrompt: buildSystemPromptV2, buildUserPrompt: buildUserPromptV2, getToneTemperature } = require('../lib/prompt-engine');
 
 const toneDescriptor = (tone) => {
@@ -239,6 +261,11 @@ router.post('/', authMiddleware, async (req, res) => {
       ? imagePrompt
       : `${captionDrivenPrompt} Brief context: ${brief}. Format: ${contentType || 'post'} on ${platform}.`;
 
+    const primaryRefs = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
+    const brandRefs = await getBrandReferenceImages(pool, user.id, user.brand_id || null);
+    const selectedRefs = Array.isArray(selectedProduct?.images) ? selectedProduct.images.filter(Boolean).slice(0, 3) : [];
+    const referenceImageUrls = [...selectedRefs, ...brandRefs, ...primaryRefs].filter(Boolean).slice(0, 3);
+
     const enrichedImagePrompt = [
       baseImagePrompt,
       visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
@@ -252,14 +279,14 @@ router.post('/', authMiddleware, async (req, res) => {
         ? 'Maintain exact product identity: preserve garment silhouette, embroidery pattern, cuffs/placket details, and realistic fabric drape.'
         : '',
       'High quality, professional, photorealistic output.',
-      'Hard restrictions: absolutely no text/letters/numbers, no logos, no UI cards, no social app frames, no watermarks.',
+      referenceImageUrls.length
+        ? 'Brand mark rule: if a real logo/mark is present in provided references, keep it authentic and subtle only on product/packaging/signage; do not invent new text.'
+        : '',
+      'Hard restrictions: absolutely no random text/letters/numbers, no fake logos, no UI cards, no social app frames, no watermarks.',
     ].filter(Boolean).join(' ');
 
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
-    const primaryRefs = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
-    const selectedRefs = Array.isArray(selectedProduct?.images) ? selectedProduct.images.filter(Boolean).slice(0, 3) : [];
-    const referenceImageUrls = [...selectedRefs, ...primaryRefs].filter(Boolean).slice(0, 3);
     const imageResult = await generateImageDetailed(enrichedImagePrompt, { aspectRatio, referenceImageUrls });
     const rawImage = imageResult?.imageData || null;
     if (!rawImage) {
