@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
 import useSWR from 'swr'
 import Link from 'next/link'
-import { apiCall } from '@/lib/api'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
@@ -141,6 +141,7 @@ function CalendarGenerateInner() {
       const response = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
         method: 'POST',
         body: JSON.stringify({ month, postCount, mixPreferences: mix }),
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
       })
       router.push(`/calendar/review?planId=${response.planId}`)
     } catch (e: unknown) {

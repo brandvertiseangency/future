@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Calendar, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import useSWR from 'swr'
 import { useOnboardingStore, type OnboardingData } from '@/stores/onboarding'
-import { apiCall } from '@/lib/api'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -114,7 +114,7 @@ function GeneratingOverlay({
         </div>
 
         <p className="text-center text-[11px] text-white/20">
-          This usually takes 10–15 seconds
+          This can take up to a couple of minutes when the AI is busy
         </p>
 
         {/* Error state */}
@@ -329,8 +329,6 @@ export function StepFirstPost() {
     setGenerating(true)
     setError('')
 
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 60_000) // 60s timeout
     try {
       // Ensure onboarding data + products are persisted before generating plan
       await completeOnboarding()
@@ -339,19 +337,20 @@ export function StepFirstPost() {
       const res = await apiCall<{ planId: string }>('/api/calendar/generate-plan', {
         method: 'POST',
         body: JSON.stringify({ month, postCount, mixPreferences: mix }),
-        signal: controller.signal,
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
       })
-      clearTimeout(timeout)
       logUxEvent('onboarding_generate_plan_success', { postCount, planId: res.planId })
       reset()
       router.push(`/calendar/review?planId=${res.planId}`)
     } catch (e: any) {
-      clearTimeout(timeout)
-      const msg = e?.name === 'AbortError'
-        ? 'Generation timed out. The AI is busy — please try again.'
-        : parseApiError(e)
+      const raw = e instanceof Error ? e.message : ''
+      const msg =
+        e?.name === 'AbortError' || raw.includes('timed out after')
+          ? 'Generation timed out. The AI is busy — please try again.'
+          : parseApiError(e)
       logUxEvent('onboarding_generate_plan_failed', { postCount, error: msg })
       setError(msg)
+      setGenerating(false)
     }
   }
 
@@ -398,7 +397,13 @@ export function StepFirstPost() {
         <GeneratingOverlay
           postCount={postCount}
           error={error}
-          onRetry={() => { setError(''); setGenerating(true); setTimeout(handleGenerate, 50) }}
+          onRetry={() => {
+            setError('')
+            setGenerating(false)
+            setTimeout(() => {
+              void handleGenerate()
+            }, 50)
+          }}
           onSkip={handleSkip}
         />
       )}

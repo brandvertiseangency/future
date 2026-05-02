@@ -4,7 +4,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { ImageIcon, Loader2, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { apiCall } from '@/lib/api'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { toast } from 'sonner'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
@@ -61,6 +61,7 @@ export default function GeneratePage() {
         const result = await apiCall<{ post: { caption?: string; image_url?: string; platform?: string } }>('/api/generate-content', {
           method: 'POST',
           body: JSON.stringify({ platform, contentType: 'post', brief }),
+          timeoutMs: AI_REQUEST_TIMEOUT_MS,
         })
         generated.push(result.post)
         logUxEvent('generate_platform_success', { platform })

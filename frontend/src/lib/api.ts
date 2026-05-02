@@ -33,6 +33,18 @@ async function getFirebaseToken(): Promise<string | null> {
 
 const DEFAULT_TIMEOUT_MS = 15000
 
+/** AI-heavy routes (calendar plan, image generation) often exceed 15s; use this for those calls. */
+export const AI_REQUEST_TIMEOUT_MS = 120_000
+
+export type ApiCallOptions = RequestInit & { timeoutMs?: number }
+
+function requestInitWithoutTimeout(options?: ApiCallOptions): RequestInit {
+  if (!options) return {}
+  const copy: RequestInit & { timeoutMs?: number } = { ...options }
+  delete copy.timeoutMs
+  return copy
+}
+
 async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController()
   let didTimeout = false
@@ -68,19 +80,25 @@ async function fetchWithTimeout(input: string, init: RequestInit, timeoutMs = DE
 
 export async function apiCall<T = unknown>(
   path: string,
-  options?: RequestInit
+  options?: ApiCallOptions
 ): Promise<T> {
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  const init = requestInitWithoutTimeout(options)
   const token = await getFirebaseToken()
   let res: Response
   try {
-    res = await fetchWithTimeout(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...options?.headers,
+    res = await fetchWithTimeout(
+      `${API_BASE}${path}`,
+      {
+        ...init,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...init.headers,
+        },
       },
-    })
+      timeoutMs
+    )
   } catch (error) {
     throw error
   }
@@ -89,17 +107,21 @@ export async function apiCall<T = unknown>(
   return res.json()
 }
 
-export async function apiUpload(path: string, formData: FormData): Promise<unknown> {
+export async function apiUpload(path: string, formData: FormData, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<unknown> {
   const token = await getFirebaseToken()
   let res: Response
   try {
-    res = await fetchWithTimeout(`${API_BASE}${path}`, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    res = await fetchWithTimeout(
+      `${API_BASE}${path}`,
+      {
+        method: 'POST',
+        body: formData,
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
       },
-    })
+      timeoutMs
+    )
   } catch (error) {
     throw error
   }
