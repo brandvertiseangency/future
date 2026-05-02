@@ -25,6 +25,10 @@ interface Post {
   created_at: string
   approval_status?: string
   content_type?: string
+  slot_topic?: string
+  slot_creative_copy?: string
+  slot_hashtags_draft?: string[]
+  slot_content_type?: string
 }
 
 const PLATFORM_FILTERS = ['all', 'instagram', 'linkedin', 'twitter', 'tiktok', 'facebook']
@@ -73,7 +77,16 @@ export default function OutputsPage() {
   const swrKey = `/api/posts?${query}`
   const { data, error, isLoading } = useSWR(swrKey, (u: string) => apiCall<{ posts: Post[] }>(u), { revalidateOnFocus: false })
   const posts: Post[] = (data?.posts ?? [])
-    .filter((post) => !search || post.caption?.toLowerCase().includes(search.toLowerCase()))
+    .filter((post) => {
+      if (!search) return true
+      const q = search.toLowerCase()
+      return [
+        post.caption,
+        post.slot_topic,
+        post.slot_creative_copy,
+        ...(post.slot_hashtags_draft || []),
+      ].filter(Boolean).join(' ').toLowerCase().includes(q)
+    })
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -211,14 +224,21 @@ export default function OutputsPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="line-clamp-2 text-sm text-[#111111]">{post.caption || 'Untitled output'}</p>
+                  <p className="line-clamp-2 text-sm font-medium text-[#111111]">{post.slot_topic || 'Untitled output'}</p>
+                  {post.slot_creative_copy ? <p className="line-clamp-2 text-xs text-[#4B5563]">{post.slot_creative_copy}</p> : null}
+                  <p className="line-clamp-3 text-xs text-[#6B7280]">{post.caption || 'No caption'}</p>
+                  {post.slot_hashtags_draft?.length ? (
+                    <p className="line-clamp-1 text-[11px] text-[#6B7280]">
+                      {post.slot_hashtags_draft.map((h) => h.startsWith('#') ? h : `#${h}`).join(' ')}
+                    </p>
+                  ) : null}
                   <div className="flex items-center justify-between">
                     <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(post.status, post.approval_status))}>
                       <span title={getPostStatusHint(getEffectivePostStatus(post.status, post.approval_status))}>
                         {getEffectivePostStatus(post.status, post.approval_status)}
                       </span>
                     </StatusBadge>
-                    <span className="text-xs text-[#6B7280] capitalize">{post.platform}</span>
+                    <span className="text-xs text-[#6B7280] capitalize">{post.slot_content_type || post.content_type || 'post'}</span>
                   </div>
                   <label className="inline-flex items-center gap-2 text-xs text-[#6B7280]">
                     <input

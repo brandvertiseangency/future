@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import useSWR from 'swr'
-import { Loader2 } from 'lucide-react'
-import { apiCall } from '@/lib/api'
+import { Loader2, Upload } from 'lucide-react'
+import { apiCall, apiUpload } from '@/lib/api'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { useBrandStore } from '@/stores/brand'
@@ -96,6 +96,8 @@ export default function BrandDetailsPage() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [logoUrl, setLogoUrl] = useState('')
+  const [uploadingLogo, setUploadingLogo] = useState(false)
 
   const { data: brandMeRes, isLoading: loadingBrandMe, mutate: mutateBrandMe } = useSWR(
     '/api/brand/me',
@@ -145,6 +147,7 @@ export default function BrandDetailsPage() {
 
   useEffect(() => {
     if (!brand) return
+    setLogoUrl(brand.logo_url ?? '')
     form.reset({
       name: brand.name ?? '',
       tagline: brand.tagline ?? '',
@@ -248,6 +251,7 @@ export default function BrandDetailsPage() {
           })(),
           auto_schedule: values.autoSchedule,
           website: (values.website ?? '').trim(),
+          logo_url: logoUrl || null,
         }),
       })
       await mutateBrandMe()
@@ -259,6 +263,24 @@ export default function BrandDetailsPage() {
       toast.error(parseApiError(error) || 'Unable to update brand profile')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleLogoUpload = async (file: File) => {
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    setUploadingLogo(true)
+    try {
+      const res = await apiUpload('/api/brand/me/logo', formData) as { logoUrl?: string }
+      const nextLogoUrl = res?.logoUrl || ''
+      setLogoUrl(nextLogoUrl)
+      await mutateBrandMe()
+      toast.success('Logo uploaded')
+    } catch (error) {
+      toast.error(parseApiError(error) || 'Logo upload failed')
+    } finally {
+      setUploadingLogo(false)
     }
   }
 
@@ -302,6 +324,34 @@ export default function BrandDetailsPage() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
         <SectionCard title="Brand Profile" subtitle="This data is pulled from onboarding and remains editable.">
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3">
+            <div className="h-16 w-16 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+              {logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xs text-[#9CA3AF]">No logo</div>
+              )}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-[#111111]">Brand logo</p>
+              <p className="text-xs text-[#6B7280]">Uploaded to cloud storage and used during content generation.</p>
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#111111] hover:bg-[#F3F4F6]">
+              <Upload className="h-3.5 w-3.5" />
+              {uploadingLogo ? 'Uploading...' : 'Upload'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void handleLogoUpload(file)
+                  e.currentTarget.value = ''
+                }}
+              />
+            </label>
+          </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
@@ -478,8 +528,13 @@ export default function BrandDetailsPage() {
         <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="xl:sticky xl:top-20 h-fit">
           <div className="space-y-4">
             <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-center">
-              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full border border-[#E5E7EB] bg-white text-lg font-semibold text-[#111111]">
-                {(form.watch('name') || 'BV').slice(0, 2).toUpperCase()}
+              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#E5E7EB] bg-white text-lg font-semibold text-[#111111]">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
+                ) : (
+                  (form.watch('name') || 'BV').slice(0, 2).toUpperCase()
+                )}
               </div>
               <p className="text-sm font-semibold text-[#111111]">{form.watch('name') || 'Brand Name'}</p>
               <p className="text-xs text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>

@@ -10,6 +10,14 @@ const brandService = require("../services/brandService");
 const logger = require("../utils/logger");
 const { getPool } = require("../config/postgres");
 const { sanitizeLogoUrlForDb } = require("../utils/sanitizeLogoUrl");
+const multer = require("multer");
+const path = require("path");
+const { uploadBuffer, buildPath } = require("../services/storageService");
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024 },
+});
 
 /**
  * POST /brand/create
@@ -226,6 +234,55 @@ router.patch("/me", authMiddleware, async (req, res) => {
   } catch (err) {
     logger.error("PATCH brand/me failed", { error: err.message });
     res.status(500).json({ error: "Failed to update brand.", details: err.message });
+  }
+});
+
+/**
+ * POST /brand/me/logo
+ * Upload logo to cloud storage and persist public URL on the default brand.
+ */
+router.post("/me/logo", authMiddleware, upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No logo file provided." });
+    if (!req.file.mimetype?.startsWith("image/")) {
+      return res.status(400).json({ error: "Only image files are allowed for logos." });
+    }
+
+    const pool = getPool();
+    if (!pool) return res.status(503).json({ error: "Database unavailable." });
+
+    const { rows: targetRows } = await pool.query(
+      `SELECT u.id AS user_id, b.id AS brand_id
+       FROM users u
+       JOIN brands b ON b.user_id = u.id
+       WHERE u.firebase_uid = $1
+       ORDER BY b.is_default DESC, b.created_at ASC
+       LIMIT 1`,
+      [req.user.uid]
+    );
+    const target = targetRows[0];
+    if (!target) return res.status(404).json({ error: "Brand not found." });
+
+    const ext = (path.extname(req.file.originalname || "") || ".png").replace(/[^.\w]/g, "");
+    const filename = `logo-${Date.now()}${ext}`;
+    const gcsPath = buildPath(String(target.user_id), String(target.brand_id), "brand-logo", filename);
+    const uploadedUrl = await uploadBuffer(req.file.buffer, gcsPath, req.file.mimetype || "image/png");
+    if (!uploadedUrl) {
+      return res.status(503).json({ error: "Logo upload failed. Cloud storage unavailable." });
+    }
+
+    const safeLogoUrl = sanitizeLogoUrlForDb(uploadedUrl);
+    const { rows } = await pool.query(
+      `UPDATE brands
+       SET logo_url=$1, updated_at=NOW()
+       WHERE id=$2
+       RETURNING *`,
+      [safeLogoUrl, target.brand_id]
+    );
+    res.json({ logoUrl: safeLogoUrl, brand: rows[0] || null });
+  } catch (err) {
+    logger.error("POST brand/me/logo failed", { error: err.message });
+    res.status(500).json({ error: "Failed to upload brand logo.", details: err.message });
   }
 });
 

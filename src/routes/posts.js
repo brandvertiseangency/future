@@ -49,25 +49,32 @@ router.get('/', authMiddleware, async (req, res) => {
     const platform = typeof req.query.platform === 'string' ? req.query.platform.trim().toLowerCase() : '';
     const platformFilter = platform && platform !== 'all';
 
+    const selectWithSlot = `SELECT p.*,
+       cs.topic AS slot_topic,
+       cs.creative_copy AS slot_creative_copy,
+       cs.hashtags_draft AS slot_hashtags_draft,
+       cs.content_type AS slot_content_type
+     FROM posts p
+     LEFT JOIN calendar_slots cs ON cs.id = p.slot_id`;
     let query, params;
     if (status === 'approved') {
       query = platformFilter
-        ? `SELECT * FROM posts
-               WHERE user_id=$1 AND LOWER(platform)=LOWER($2) AND (status='approved' OR approval_status='approved')
-               ORDER BY created_at DESC LIMIT $3 OFFSET $4`
-        : `SELECT * FROM posts
-               WHERE user_id=$1 AND (status='approved' OR approval_status='approved')
-               ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+        ? `${selectWithSlot}
+               WHERE p.user_id=$1 AND LOWER(p.platform)=LOWER($2) AND (p.status='approved' OR p.approval_status='approved')
+               ORDER BY p.created_at DESC LIMIT $3 OFFSET $4`
+        : `${selectWithSlot}
+               WHERE p.user_id=$1 AND (p.status='approved' OR p.approval_status='approved')
+               ORDER BY p.created_at DESC LIMIT $2 OFFSET $3`;
       params = platformFilter ? [userId, platform, limit, offset] : [userId, limit, offset];
     } else if (status) {
       query = platformFilter
-        ? `SELECT * FROM posts WHERE user_id=$1 AND LOWER(platform)=LOWER($2) AND status=$3 ORDER BY created_at DESC LIMIT $4 OFFSET $5`
-        : `SELECT * FROM posts WHERE user_id=$1 AND status=$2 ORDER BY created_at DESC LIMIT $3 OFFSET $4`;
+        ? `${selectWithSlot} WHERE p.user_id=$1 AND LOWER(p.platform)=LOWER($2) AND p.status=$3 ORDER BY p.created_at DESC LIMIT $4 OFFSET $5`
+        : `${selectWithSlot} WHERE p.user_id=$1 AND p.status=$2 ORDER BY p.created_at DESC LIMIT $3 OFFSET $4`;
       params = platformFilter ? [userId, platform, status, limit, offset] : [userId, status, limit, offset];
     } else {
       query = platformFilter
-        ? `SELECT * FROM posts WHERE user_id=$1 AND LOWER(platform)=LOWER($2) ORDER BY created_at DESC LIMIT $3 OFFSET $4`
-        : `SELECT * FROM posts WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`;
+        ? `${selectWithSlot} WHERE p.user_id=$1 AND LOWER(p.platform)=LOWER($2) ORDER BY p.created_at DESC LIMIT $3 OFFSET $4`
+        : `${selectWithSlot} WHERE p.user_id=$1 ORDER BY p.created_at DESC LIMIT $2 OFFSET $3`;
       params = platformFilter ? [userId, platform, limit, offset] : [userId, limit, offset];
     }
 

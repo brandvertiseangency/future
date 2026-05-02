@@ -16,6 +16,7 @@ const getUserWithBrand = async (uid) => {
   const { rows } = await pool.query(
     `SELECT u.*, 
             b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
+            b.logo_url, b.website, b.phone, b.address,
             b.tone, b.styles, b.audience_age_min, b.audience_age_max,
             b.audience_gender, b.audience_interests, b.audience_location,
             b.platforms, b.goals,
@@ -276,6 +277,9 @@ router.post('/', authMiddleware, async (req, res) => {
     const enrichedImagePrompt = [
       baseImagePrompt,
       visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
+      user.website ? `\nBrand website: ${user.website}` : '',
+      user.phone ? `\nBrand phone: ${user.phone}` : '',
+      user.address ? `\nBrand address: ${user.address}` : '',
       selectedProductBlock ? `\nPRODUCT TO FEATURE:\n${selectedProductBlock}` : '',
       `\nFormat: social media ${contentType || 'post'} for ${platform}.`,
       `Brand: ${user.brand_name || 'modern brand'}.`,

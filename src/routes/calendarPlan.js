@@ -176,6 +176,7 @@ const getUserWithBrand = async (uid) => {
   const { rows } = await pool.query(
     `SELECT u.id, u.credits,
             b.id AS brand_id, b.name AS brand_name, b.description, b.industry,
+            b.logo_url, b.website, b.phone, b.address,
             b.tone, b.styles, b.goals, b.platforms,
             b.audience_age_min, b.audience_age_max, b.audience_gender, b.audience_location, b.audience_interests,
             b.font_mood,
@@ -460,6 +461,9 @@ router.post('/generate-plan', authMiddleware, async (req, res) => {
       `Brand: ${brand.name}`,
       `Industry: ${brand.industry}${brand.industrySubtype ? ` (${brand.industrySubtype})` : ''}`,
       `Description: ${brand.description}`,
+      user.website ? `Website: ${user.website}` : '',
+      user.phone ? `Phone: ${user.phone}` : '',
+      user.address ? `Address: ${user.address}` : '',
       brand.mission ? `Mission: ${brand.mission}` : '',
       brand.usp ? `USP / Key differentiators: ${brand.usp}` : '',
       brand.priceSegment ? `Price segment: ${brand.priceSegment}` : '',

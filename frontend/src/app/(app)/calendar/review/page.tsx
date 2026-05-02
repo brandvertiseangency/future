@@ -57,10 +57,10 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
   return (
     <div
-      className="card-silver"
+      className="app-card bg-white border border-[#E5E7EB]"
       style={{
         borderRadius: 12, padding: '12px 14px',
-        borderColor: selected ? 'rgba(255,255,255,0.22)' : undefined,
+        borderColor: selected ? '#111111' : undefined,
         position: 'relative', transition: 'border-color 0.15s',
       }}
     >
@@ -70,13 +70,13 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
         style={{
           position: 'absolute', top: 10, right: 10,
           width: 18, height: 18, borderRadius: 5,
-          background: selected ? 'linear-gradient(135deg,#fff,#c8c8c8)' : 'rgba(255,255,255,0.06)',
-          border: `1px solid ${selected ? 'transparent' : 'rgba(255,255,255,0.12)'}`,
+          background: selected ? '#111111' : '#fff',
+          border: `1px solid ${selected ? '#111111' : '#D1D5DB'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', transition: 'all 0.15s',
         }}
       >
-        {selected && <Check size={10} color="#000" strokeWidth={3} />}
+        {selected && <Check size={10} color="#fff" strokeWidth={3} />}
       </button>
 
       {/* Date */}
@@ -109,8 +109,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 7, padding: '8px 9px', color: 'rgba(255,255,255,0.86)', fontSize: 12,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '8px 9px', color: '#111111', fontSize: 13,
               outline: 'none', fontFamily: 'inherit',
             }}
             placeholder="Topic"
@@ -130,8 +130,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.8)', fontSize: 12,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '6px 8px', color: '#111111', fontSize: 13,
               resize: 'none', outline: 'none', fontFamily: 'inherit',
             }}
             rows={3}
@@ -151,8 +151,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '6px 8px', color: '#374151', fontSize: 12,
               resize: 'none', outline: 'none', fontFamily: 'inherit',
             }}
             rows={3}
@@ -173,8 +173,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '6px 8px', color: '#374151', fontSize: 12,
               resize: 'none', outline: 'none', fontFamily: 'inherit',
             }}
             rows={3}
@@ -195,8 +195,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 7, padding: '8px 9px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '8px 9px', color: '#374151', fontSize: 12,
               outline: 'none', fontFamily: 'inherit',
             }}
             placeholder="Hashtags (comma-separated)"
@@ -216,8 +216,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               setEditing(false)
             }}
             style={{
-              width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
-              borderRadius: 7, padding: '6px 8px', color: 'rgba(255,255,255,0.65)', fontSize: 11.5,
+              width: '100%', background: '#fff', border: '1px solid #D1D5DB',
+              borderRadius: 7, padding: '6px 8px', color: '#374151', fontSize: 12,
               resize: 'none', outline: 'none', fontFamily: 'inherit',
             }}
             rows={3}
@@ -231,7 +231,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               Topic: {slot.topic}
             </p>
           )}
-          <p style={{ fontSize: 12, color: '#111111', lineHeight: 1.4, marginBottom: slot.creative_brief ? 6 : 0 }}>
+          <p style={{ fontSize: 14, color: '#111111', lineHeight: 1.45, marginBottom: slot.creative_brief ? 8 : 0 }}>
             {idea}
           </p>
           {slot.creative_copy && (
@@ -442,7 +442,7 @@ function CalendarReviewInner() {
             <p style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
               {new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
               {dateSlots.map(slot => (
                 <SlotCard
                   key={slot.id}
