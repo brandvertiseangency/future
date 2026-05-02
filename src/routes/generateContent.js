@@ -192,6 +192,15 @@ const isWeakImagePrompt = (text = '') => {
   return genericSignals.some((s) => t.includes(s));
 };
 
+const words = (value, max = 10) =>
+  String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, max)
+    .join(' ');
+
 /** POST /api/generate-content */
 router.post('/', authMiddleware, async (req, res) => {
   const pool = getPool();
@@ -274,6 +283,10 @@ router.post('/', authMiddleware, async (req, res) => {
     const selectedRefs = Array.isArray(selectedProduct?.images) ? selectedProduct.images.filter(Boolean).slice(0, 3) : [];
     const referenceImageUrls = [...selectedRefs, ...brandRefs, ...primaryRefs].filter(Boolean).slice(0, 3);
 
+    const overlayHeadline = words(brief || caption, 8);
+    const overlaySupport = words(caption, 14);
+    const overlayContact = [user.website, user.phone, user.address].filter(Boolean).join(' · ');
+
     const enrichedImagePrompt = [
       baseImagePrompt,
       visualDNAParts.length ? `\nBRAND VISUAL IDENTITY:\n${visualDNAParts.join('. ')}` : '',
@@ -288,6 +301,14 @@ router.post('/', authMiddleware, async (req, res) => {
         : '',
       selectedProductBlock
         ? 'Maintain exact product identity: preserve garment silhouette, embroidery pattern, cuffs/placket details, and realistic fabric drape.'
+        : '',
+      'BRAND_POST_STYLE: Design as a polished social media brand creative (not an app screenshot).',
+      referenceImageUrls.length
+        ? 'LOGO_REQUIREMENT: Place the uploaded brand logo once, clean and readable.'
+        : '',
+      `TEXT_OVERLAY_REQUIREMENT: Include readable copy overlay with short lines. HEADLINE: "${overlayHeadline}". SUPPORT: "${overlaySupport}".`,
+      overlayContact
+        ? `CONTACT_REQUIREMENT: Include this contact line in footer area: "${overlayContact}".`
         : '',
       'High quality, professional, photorealistic output.',
       'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',

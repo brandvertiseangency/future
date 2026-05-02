@@ -325,6 +325,16 @@ function isWeakImagePrompt(text = '') {
   ].some((s) => t.includes(s));
 }
 
+function words(value, max = 10) {
+  return String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, max)
+    .join(' ');
+}
+
 // ─── POST /api/calendar/generate-plan ────────────────────────────────────────
 
 router.post('/generate-plan', authMiddleware, async (req, res) => {
@@ -1129,6 +1139,9 @@ async function runGenerationJob(jobId, slotIds, pool) {
           slot.content_type === 'reel' || slot.content_type === 'story'
             ? '9:16'
             : (slot.content_type === 'carousel' ? '4:5' : '1:1');
+        const overlayHeadline = words(slot.topic || slot.post_idea, 8);
+        const overlaySupport = words(caption || slot.caption_draft || slot.post_idea, 14);
+        const overlayContact = [brand.website, brand.phone, brand.address].filter(Boolean).join(' · ');
 
         const artDirection = [
           `FORMAT: ${slot.platform} ${slot.content_type}. Aspect ratio ${aspectRatio}.`,
@@ -1141,6 +1154,14 @@ async function runGenerationJob(jobId, slotIds, pool) {
           'QUALITY: premium, high-end, photorealistic, detailed textures.',
           primaryImageProduct || logoReferenceImages.length
             ? 'BRAND_MARK_RULE: Use only the provided official brand/product mark if naturally present on product/packaging/signage. Do not invent text or fake logos.'
+            : '',
+          'BRAND_POST_STYLE: Design as a polished social media brand creative (not an app screenshot).',
+          logoReferenceImages.length
+            ? 'LOGO_REQUIREMENT: Place the uploaded brand logo once, clean and readable.'
+            : '',
+          `TEXT_OVERLAY_REQUIREMENT: Include readable brand copy overlay exactly as short lines. HEADLINE: "${overlayHeadline}". SUPPORT: "${overlaySupport}".`,
+          overlayContact
+            ? `CONTACT_REQUIREMENT: Include this contact line in footer area: "${overlayContact}".`
             : '',
           'OUTPUT_FORM: single full-bleed photorealistic photograph only. No simulated social media UI, no Instagram/Facebook/TikTok mock layouts, no phone frames, no avatar strips, no overlay quote cards, no hashtags or captions rendered inside the image.',
           'RESTRICTIONS: absolutely no extra text, random letters, fake logos, UI frames, mockups, watermarks, badges, or poster elements in the image.',

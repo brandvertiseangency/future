@@ -313,7 +313,7 @@ OUTPUT REQUIREMENTS:
 - JSON format: { "caption": "string", "hashtags": ["string"], "imagePrompt": "string", "carouselSlides": [{ "headline": "string", "body": "string" }] | null }
 - caption: The full post caption. Include emojis where appropriate for the tone. No hashtags in caption.
 - hashtags: 5-10 relevant hashtags without the # symbol. Mix popular and niche.
-- imagePrompt: A detailed prompt for image generation. Describe composition, lighting, mood, style. Incorporate the brand's visual DNA. Never include text in the image prompt unless text overlay is requested.
+- imagePrompt: A detailed prompt for image generation. Describe composition, lighting, mood, style. Incorporate the brand's visual DNA. For brand social posts, include logo placement guidance and concise, readable text-overlay direction.
 - carouselSlides: Only populate if contentType is 'carousel'. 4-6 slides with headline + body each.`;
 
   return prompt;
