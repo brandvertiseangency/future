@@ -9,13 +9,37 @@
 const DEFAULT_TIMEOUT_MS = 45_000;
 const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
+const NANO_BANANA_ALIASES = new Set([
+  'nanobana',
+  'nano-banana',
+  'nano banana',
+  'nano banana pro',
+  'nanobanana',
+  'nanobanana pro',
+  'gemini-3-pro-image-preview',
+]);
+
+const normalizeNativeImageModel = (raw) => {
+  const value = String(raw || '').trim();
+  if (!value) return 'gemini-3-pro-image-preview';
+  const key = value.toLowerCase();
+  if (NANO_BANANA_ALIASES.has(key)) return 'gemini-3-pro-image-preview';
+  return value;
+};
+
+const parseEnvBool = (raw, fallback = true) => {
+  if (raw == null) return fallback;
+  const value = String(raw).trim().toLowerCase();
+  if (['false', '0', 'no', 'off'].includes(value)) return false;
+  if (['true', '1', 'yes', 'on'].includes(value)) return true;
+  return fallback;
+};
 /** Gemini native image (Nano Banana Pro line). */
-const GOOGLE_NATIVE_IMAGE_MODEL =
-  process.env.GOOGLE_NATIVE_IMAGE_MODEL || 'gemini-3-pro-image-preview';
+const GOOGLE_NATIVE_IMAGE_MODEL = normalizeNativeImageModel(process.env.GOOGLE_NATIVE_IMAGE_MODEL);
 /** Imagen text-to-image (optional second step). */
 const GOOGLE_IMAGEN_MODEL = process.env.GOOGLE_IMAGEN_MODEL || 'imagen-4.0-fast-generate-001';
 /** When true (default), try Imagen if native returns no image or errors. */
-const GOOGLE_IMAGE_IMAGEN_FALLBACK = process.env.GOOGLE_IMAGE_IMAGEN_FALLBACK !== 'false';
+const GOOGLE_IMAGE_IMAGEN_FALLBACK = parseEnvBool(process.env.GOOGLE_IMAGE_IMAGEN_FALLBACK, true);
 let googleImageRateLimitedUntil = 0;
 
 const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
