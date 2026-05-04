@@ -8,15 +8,16 @@ export default function AppError({
   reset: () => void
 }) {
   return (
-    <div className="min-h-[60vh] flex items-center justify-center px-4">
-      <div className="max-w-md w-full rounded-2xl border border-[#E5E7EB] bg-white p-5 text-center">
-        <p className="text-sm font-semibold text-[#111111]">Something went wrong</p>
-        <p className="mt-2 text-xs text-[#6B7280]">{error?.message || 'Unexpected application error.'}</p>
+    <div className="flex min-h-[60vh] items-center justify-center px-4">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+        <p className="text-sm font-semibold text-foreground">Something went wrong</p>
+        <p className="mt-2 text-xs text-muted-foreground">{error?.message || 'Unexpected application error.'}</p>
         <button
+          type="button"
           onClick={reset}
-          className="mt-4 rounded-lg bg-[#111111] px-3 py-1.5 text-xs font-semibold text-white"
+          className="mt-4 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-opacity hover:opacity-90"
         >
-          Try Again
+          Try again
         </button>
       </div>
     </div>

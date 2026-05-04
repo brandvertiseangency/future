@@ -131,8 +131,8 @@ export default function OutputsPage() {
         </div>
       ) : null}
       {selectedIds.length > 0 ? (
-        <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm">
-          <span className="text-[#6B7280]">{selectedIds.length} selected</span>
+        <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
+          <span className="text-muted-foreground">{selectedIds.length} selected</span>
           <Button
             size="sm"
             className="ml-3"
@@ -155,13 +155,13 @@ export default function OutputsPage() {
       <SectionCard title="Filters" subtitle="Find outputs quickly by platform, status, or keyword.">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative min-w-[220px] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search outputs..."
-              className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#111111]"
+              className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </div>
           {PLATFORM_FILTERS.map((p) => (
@@ -174,13 +174,13 @@ export default function OutputsPage() {
               {s === 'all' ? 'All Statuses' : s}
             </FilterPill>
           ))}
-          <div className="ml-auto rounded-lg border border-[#E5E7EB] p-1">
-            <button onClick={() => setLayoutMode('grid')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'grid' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Grid</button>
-            <button onClick={() => setLayoutMode('list')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'list' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>List</button>
+          <div className="ml-auto rounded-lg border border-border p-1">
+            <button onClick={() => setLayoutMode('grid')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Grid</button>
+            <button onClick={() => setLayoutMode('list')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>List</button>
           </div>
         </div>
       </SectionCard>
-      <p className="text-xs text-[#6B7280]">Shortcuts: `/` focus search, `S` schedule selected outputs.</p>
+      <p className="text-xs text-muted-foreground">Shortcuts: `/` focus search, `S` schedule selected outputs.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <div>
@@ -210,14 +210,14 @@ export default function OutputsPage() {
                 }}
                 role="button"
                 tabIndex={0}
-                className={cn('group app-card overflow-hidden text-left transition hover:border-[#111111] cursor-pointer', layoutMode === 'list' && 'flex items-center')}
+                className={cn('group app-card overflow-hidden text-left transition hover:border-primary cursor-pointer', layoutMode === 'list' && 'flex items-center')}
               >
-                <div className={cn('bg-[#F3F4F6]', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
+                <div className={cn('bg-muted', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={post.image_url} alt={displayCaption(post.caption, 'Generated output')} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-5 w-5" /></div>
+                    <div className="flex h-full items-center justify-center text-muted-foreground/80"><ImageIcon className="h-5 w-5" /></div>
                   )}
                 </div>
                 <div className="space-y-2 p-3">
@@ -238,11 +238,11 @@ export default function OutputsPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="line-clamp-2 text-sm font-medium text-[#111111]">{post.slot_topic || 'Untitled output'}</p>
+                  <p className="line-clamp-2 text-sm font-medium text-foreground">{post.slot_topic || 'Untitled output'}</p>
                   {post.slot_creative_copy ? <p className="line-clamp-2 text-xs text-[#4B5563]">{post.slot_creative_copy}</p> : null}
-                  <p className="line-clamp-3 text-xs text-[#6B7280]">{displayCaption(post.caption, `${post.platform} ${post.content_type || 'post'}`)}</p>
+                  <p className="line-clamp-3 text-xs text-muted-foreground">{displayCaption(post.caption, `${post.platform} ${post.content_type || 'post'}`)}</p>
                   {post.slot_hashtags_draft?.length ? (
-                    <p className="line-clamp-1 text-[11px] text-[#6B7280]">
+                    <p className="line-clamp-1 text-[11px] text-muted-foreground">
                       {post.slot_hashtags_draft.map((h) => h.startsWith('#') ? h : `#${h}`).join(' ')}
                     </p>
                   ) : null}
@@ -252,9 +252,9 @@ export default function OutputsPage() {
                         {getEffectivePostStatus(post.status, post.approval_status)}
                       </span>
                     </StatusBadge>
-                    <span className="text-xs text-[#6B7280] capitalize">{post.slot_content_type || post.content_type || 'post'}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{post.slot_content_type || post.content_type || 'post'}</span>
                   </div>
-                  <label className="inline-flex items-center gap-2 text-xs text-[#6B7280]">
+                  <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={selectedIds.includes(post.id)}
@@ -281,20 +281,20 @@ export default function OutputsPage() {
       <SectionCard title="Selected Output" subtitle="Inspect details and versions">
         {selected ? (
           <div className="space-y-3">
-            <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
+            <div className="overflow-hidden rounded-lg border border-border bg-muted">
               {selected.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={selected.image_url} alt={displayCaption(selected.caption, 'Selected output')} className="h-44 w-full object-cover" />
               ) : (
-                <div className="flex h-44 items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-6 w-6" /></div>
+                <div className="flex h-44 items-center justify-center text-muted-foreground/80"><ImageIcon className="h-6 w-6" /></div>
               )}
             </div>
-            <p className="text-sm text-[#111111]">{displayCaption(selected.caption, 'No caption')}</p>
+            <p className="text-sm text-foreground">{displayCaption(selected.caption, 'No caption')}</p>
             <div>
-              <p className="mb-2 text-xs text-[#6B7280]">Versions</p>
+              <p className="mb-2 text-xs text-muted-foreground">Versions</p>
               <div className="grid grid-cols-3 gap-2">
                 {['v1', 'v2', 'v3'].map((version) => (
-                  <button key={version} className="rounded-lg border border-[#E5E7EB] py-2 text-sm text-[#111111]">{version}</button>
+                  <button key={version} className="rounded-lg border border-border py-2 text-sm text-foreground">{version}</button>
                 ))}
               </div>
             </div>
@@ -304,7 +304,7 @@ export default function OutputsPage() {
             </Button>
           </div>
         ) : (
-          <p className="text-sm text-[#6B7280]">Select an output card to inspect details.</p>
+          <p className="text-sm text-muted-foreground">Select an output card to inspect details.</p>
         )}
       </SectionCard>
       </div>
@@ -314,7 +314,7 @@ export default function OutputsPage() {
 
 function FilterPill({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={cn('rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-all duration-150', active ? 'border-[#111111] bg-[#111111] text-white' : 'border-[#E5E7EB] bg-white text-[#6B7280] hover:bg-[#F3F4F6]')}>
+    <button onClick={onClick} className={cn('rounded-full border px-3 py-1.5 text-[11.5px] font-medium transition-all duration-150', active ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground hover:bg-muted')}>
       {children}
     </button>
   )

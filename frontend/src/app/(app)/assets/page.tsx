@@ -109,7 +109,7 @@ function AddProductModal({
       >
         <div className="flex items-center justify-between">
           <h3 className="text-white font-semibold text-base">Add Product / Service</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-white/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors">
+          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-card/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors">
             <X size={13} />
           </button>
         </div>
@@ -126,14 +126,14 @@ function AddProductModal({
               value={form[key as keyof typeof form]}
               onChange={(e) => setForm(f => ({ ...f, [key]: e.target.value }))}
               placeholder={placeholder}
-              className="w-full bg-white/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.22] transition-all"
+              className="w-full bg-card/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.22] transition-all"
             />
           </div>
         ))}
         <div>
           <label className="block text-[10px] text-white/30 uppercase tracking-[0.1em] mb-1">Product Image</label>
           <div className="flex items-center gap-2">
-            <label className="px-3 py-2 rounded-xl border border-white/[0.10] bg-white/[0.03] text-white/60 text-xs cursor-pointer hover:border-white/[0.2] transition-colors">
+            <label className="px-3 py-2 rounded-xl border border-white/[0.10] bg-card/[0.03] text-white/60 text-xs cursor-pointer hover:border-white/[0.2] transition-colors">
               {uploadingImage ? 'Uploading…' : 'Attach Image'}
               <input
                 type="file"
@@ -155,7 +155,7 @@ function AddProductModal({
         <button
           onClick={handleSave}
           disabled={saving || uploadingImage}
-          className="w-full h-10 rounded-xl bg-white text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-white/90 transition-all disabled:opacity-60"
+          className="w-full h-10 rounded-xl bg-card text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-card/90 transition-all disabled:opacity-60"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           {saving ? 'Saving…' : 'Add Product'}
@@ -174,7 +174,7 @@ function ProductCard({ product, onDelete }: { product: Product; onDelete: () => 
       className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
     >
       {/* Image */}
-      <div className="aspect-square bg-white/[0.03] relative overflow-hidden flex items-center justify-center">
+      <div className="aspect-square bg-card/[0.03] relative overflow-hidden flex items-center justify-center">
         {product.images?.[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
@@ -227,7 +227,7 @@ function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) 
       animate={{ opacity: 1, y: 0 }}
       className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
     >
-      <div className="aspect-square bg-white/[0.03] relative overflow-hidden flex items-center justify-center">
+      <div className="aspect-square bg-card/[0.03] relative overflow-hidden flex items-center justify-center">
         {asset.url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={asset.url} alt={asset.label ?? ''} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
@@ -241,7 +241,7 @@ function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) 
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2 gap-1.5">
           <a href={asset.url} download target="_blank" rel="noreferrer"
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-white/10 transition-all">
+            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-card/10 transition-all">
             <Download size={13} className="text-white/60" />
           </a>
           <button onClick={onDelete}
@@ -316,7 +316,7 @@ export default function AssetsPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.20] transition-colors w-[220px]"
+                className="pl-9 pr-4 py-2 rounded-xl bg-card/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.20] transition-colors w-[220px]"
                 placeholder="Search..."
               />
             </div>
@@ -325,7 +325,7 @@ export default function AssetsPage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/60 text-sm font-medium hover:bg-white/[0.08] hover:border-white/[0.16] transition-all disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-card/[0.04] text-white/60 text-sm font-medium hover:bg-card/[0.08] hover:border-white/[0.16] transition-all disabled:opacity-50"
               >
                 {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 Upload
@@ -333,7 +333,7 @@ export default function AssetsPage() {
             ) : (
               <button
                 onClick={() => setShowAddProduct(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/60 text-sm font-medium hover:bg-white/[0.08] hover:border-white/[0.16] transition-all"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-card/[0.04] text-white/60 text-sm font-medium hover:bg-card/[0.08] hover:border-white/[0.16] transition-all"
               >
                 <Plus size={14} /> Add Product
               </button>
@@ -351,7 +351,7 @@ export default function AssetsPage() {
       </BlurFade>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-white/[0.03] border border-white/[0.07] w-fit">
+      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-card/[0.03] border border-white/[0.07] w-fit">
         {([
           { key: 'assets', label: 'Generated Assets', icon: ImageIcon, count: assets.length },
           { key: 'products', label: 'Products & Services', icon: Package, count: products.length },
@@ -362,13 +362,13 @@ export default function AssetsPage() {
             className={cn(
               'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
               tab === key
-                ? 'bg-white/[0.10] border border-white/[0.15] text-white shadow-sm'
+                ? 'bg-card/[0.10] border border-white/[0.15] text-white shadow-sm'
                 : 'text-white/35 hover:text-white/60'
             )}
           >
             <Icon size={13} />
             {label}
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', tab === key ? 'bg-white/10 text-white/70' : 'bg-white/[0.05] text-white/20')}>
+            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', tab === key ? 'bg-card/10 text-white/70' : 'bg-card/[0.05] text-white/20')}>
               {count}
             </span>
           </button>
@@ -388,7 +388,7 @@ export default function AssetsPage() {
           <SurfaceCard className="relative overflow-hidden" >
             <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
             <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-card/[0.04] border border-white/[0.08] flex items-center justify-center">
                 <ImageIcon size={28} className="text-white/15" />
               </div>
               <div className="text-center">
@@ -396,7 +396,7 @@ export default function AssetsPage() {
                 <p className="text-[13px] text-white/25 mt-1">Generated content and uploaded files will appear here</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.10] text-white/50 text-sm hover:bg-white/[0.05] transition-all">
+                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.10] text-white/50 text-sm hover:bg-card/[0.05] transition-all">
                   <Upload size={13} />Upload
                 </button>
                 <Link href="/generate"><AIButton className="px-4 py-2 rounded-xl text-sm"><Sparkles size={13} className="mr-1.5" />Generate</AIButton></Link>
@@ -418,14 +418,14 @@ export default function AssetsPage() {
           <SurfaceCard className="relative overflow-hidden">
             <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
             <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center">
+              <div className="w-16 h-16 rounded-2xl bg-card/[0.04] border border-white/[0.08] flex items-center justify-center">
                 <Package size={28} className="text-white/15" />
               </div>
               <div className="text-center">
                 <p className="text-[15px] font-semibold text-white/50">No products yet</p>
                 <p className="text-[13px] text-white/25 mt-1">Add your products and services for AI to feature in content</p>
               </div>
-              <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white text-black text-sm font-semibold hover:bg-white/90 transition-all">
+              <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card text-black text-sm font-semibold hover:bg-card/90 transition-all">
                 <Plus size={14} />Add Product
               </button>
             </div>
@@ -438,7 +438,7 @@ export default function AssetsPage() {
             {/* Add another */}
             <button
               onClick={() => setShowAddProduct(true)}
-              className="rounded-2xl border-2 border-dashed border-white/[0.08] flex flex-col items-center justify-center gap-2 aspect-square hover:border-white/[0.18] hover:bg-white/[0.02] transition-all group"
+              className="rounded-2xl border-2 border-dashed border-white/[0.08] flex flex-col items-center justify-center gap-2 aspect-square hover:border-white/[0.18] hover:bg-card/[0.02] transition-all group"
             >
               <Plus size={20} className="text-white/20 group-hover:text-white/40 transition-colors" />
               <p className="text-white/20 text-xs group-hover:text-white/40 transition-colors">Add Product</p>

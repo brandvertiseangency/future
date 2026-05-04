@@ -128,20 +128,23 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F7F7F8] py-6">
+    <div className="min-h-screen bg-background py-6 text-foreground">
       <PageContainer className="max-w-[1400px]">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-[#111111]">
-              Brand <span className="text-highlight">Onboarding</span>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              Brand <span className="text-pull text-primary">onboarding</span>
             </h1>
-            <p className="mt-1 text-sm text-[#6B7280]">
+            <p className="mt-1 text-sm text-muted-foreground">
               Fullscreen setup flow that powers strategy, generation quality, and publishing relevance.
             </p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => router.push('/dashboard')}>
             Exit
           </Button>
+        </div>
+        <div className="mb-4 rounded-xl border border-primary/25 bg-primary/5 px-4 py-2.5 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Autosave on.</span> Your step and answers are saved in this browser — you can leave and resume anytime on this device.
         </div>
         {missingCritical.length > 0 ? (
           <div className="mb-4 flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -170,13 +173,13 @@ export default function OnboardingPage() {
             </div>
           </div>
           <div className="col-span-12 lg:col-span-6">
-            <div className="rounded-2xl border border-[#E5E7EB] bg-white p-6 min-h-[72vh]">
+            <div className="min-h-[72vh] rounded-2xl border border-border bg-card p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280]">Step {step} of {STEPS.length}</p>
-                  <h2 className="text-xl font-semibold text-[#111111]">{activeSection.title}</h2>
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Step {step} of {STEPS.length}</p>
+                  <h2 className="text-xl font-semibold text-foreground">{activeSection.title}</h2>
                 </div>
-                <p className="text-xs text-[#6B7280]">{Math.round(progress)}% complete</p>
+                <p className="text-xs text-muted-foreground">{Math.round(progress)}% complete</p>
               </div>
               <div className="onboarding-step-light">
                 <MotionSection motionKey={step}>
@@ -187,28 +190,28 @@ export default function OnboardingPage() {
           </div>
           <div className="col-span-12 lg:col-span-3">
             <StickyPreviewPanel title="Brand Intelligence">
-              <div className="rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] p-3">
-                <p className="text-xs text-[#6B7280]">Brand</p>
-                <p className="text-sm font-medium text-[#111111]">{onboardingData.brandName || 'Unnamed brand'}</p>
-                <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">{onboardingData.description || 'Add positioning to improve relevance.'}</p>
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">Brand</p>
+                <p className="text-sm font-medium text-foreground">{onboardingData.brandName || 'Unnamed brand'}</p>
+                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{onboardingData.description || 'Add positioning to improve relevance.'}</p>
               </div>
-              <div className="rounded-xl bg-[#F7F7F8] border border-[#E5E7EB] p-3">
-                <p className="text-xs text-[#6B7280]">Audience snapshot</p>
-                <p className="text-sm text-[#111111]">
+              <div className="rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-xs text-muted-foreground">Audience snapshot</p>
+                <p className="text-sm text-foreground">
                   {onboardingData.audienceAgeMin}-{onboardingData.audienceAgeMax}, {onboardingData.audienceGender.replace('_', ' ')}
                 </p>
-                <p className="text-xs text-[#6B7280]">{onboardingData.audienceCity || 'No location yet'}</p>
+                <p className="text-xs text-muted-foreground">{onboardingData.audienceCity || 'No location yet'}</p>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280] mb-2">Missing critical</p>
+                <p className="mb-2 text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Missing critical</p>
                 {missingCritical.length ? (
                   <div className="space-y-1.5">
                     {missingCritical.map((item) => (
-                      <p key={item} className="text-xs text-[#111111]">- {item}</p>
+                      <p key={item} className="text-xs text-foreground">- {item}</p>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-emerald-700">All critical sections complete.</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-400">All critical sections complete.</p>
                 )}
               </div>
             </StickyPreviewPanel>
@@ -218,33 +221,33 @@ export default function OnboardingPage() {
       <style jsx global>{`
         .onboarding-step-light .text-white,
         .onboarding-step-light [class*="text-white/"] {
-          color: #111111 !important;
+          color: #191919 !important;
         }
         .onboarding-step-light [class*="text-white/2"],
         .onboarding-step-light [class*="text-white/3"],
         .onboarding-step-light [class*="text-white/4"],
         .onboarding-step-light [class*="text-white/5"],
         .onboarding-step-light [class*="text-white/6"] {
-          color: #6b7280 !important;
+          color: #5c5c66 !important;
         }
         .onboarding-step-light [class*="border-white/"],
         .onboarding-step-light [class*="border-[var(--ai-border)]"] {
-          border-color: #e5e7eb !important;
+          border-color: #e0e0e6 !important;
         }
         .onboarding-step-light [class*="bg-white/"] {
-          background-color: #f7f7f8 !important;
+          background-color: #f9f9f9 !important;
         }
         .onboarding-step-light [class*="text-[var(--ai-color)]"] {
-          color: #111111 !important;
+          color: #191919 !important;
         }
         .onboarding-step-light [class*="bg-[var(--ai-color)]"] {
-          background-color: #111111 !important;
+          background-color: #003bff !important;
           color: #ffffff !important;
         }
         .onboarding-step-light input,
         .onboarding-step-light textarea,
         .onboarding-step-light select {
-          color: #111111;
+          color: #191919;
         }
       `}</style>
     </div>

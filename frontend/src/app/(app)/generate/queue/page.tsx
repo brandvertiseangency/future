@@ -60,12 +60,12 @@ function GenerationQueueInner() {
 
   if (!resolvedJobId) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center text-sm text-[#6B7280]">
+      <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground">
         No active generation job found.
       </div>
     )
   }
-  if (!job) return <div className="flex min-h-[60vh] items-center justify-center text-sm text-[#6B7280]"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading job...</div>
+  if (!job) return <div className="flex min-h-[60vh] items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading job...</div>
 
   const isActive = (job.status === 'running' || job.status === 'queued') && !computedDone
   const isDone = computedDone
@@ -114,35 +114,35 @@ function GenerationQueueInner() {
         <SectionCard title="Progress" subtitle="Live generation status">
           <div className="space-y-4">
             <div className="text-center">
-              <div className="mx-auto mb-3 flex h-32 w-32 items-center justify-center rounded-full border border-[#E5E7EB] bg-[#F7F7F8]">
-                {isActive ? <Loader2 className="h-8 w-8 animate-spin text-[#111111]" /> : <CheckCircle2 className="h-8 w-8 text-[#111111]" />}
+              <div className="mx-auto mb-3 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-muted/40">
+                {isActive ? <Loader2 className="h-8 w-8 animate-spin text-foreground" /> : <CheckCircle2 className="h-8 w-8 text-foreground" />}
               </div>
-              <p className="text-3xl font-semibold text-[#111111]">{pct}%</p>
-              <p className="text-sm text-[#6B7280]">{isDone ? 'Completed' : 'Generating...'}</p>
+              <p className="text-3xl font-semibold text-foreground">{pct}%</p>
+              <p className="text-sm text-muted-foreground">{isDone ? 'Completed' : 'Generating...'}</p>
             </div>
 
             <div className="h-2 rounded-full bg-[#EFEFF1]">
-              <div className="h-2 rounded-full bg-[#111111] transition-all" style={{ width: `${pct}%` }} />
+              <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
 
             <div className="space-y-2 text-sm">
               {queueSteps.map((step) => {
                 return (
-                  <div key={step.label} className="flex items-center justify-between rounded-lg border border-[#E5E7EB] px-3 py-2">
-                    <span className="text-[#111111]">{step.label}</span>
-                    <span className="text-xs text-[#6B7280]">{step.done ? 'Done' : step.active ? 'In progress' : 'Pending'}</span>
+                  <div key={step.label} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                    <span className="text-foreground">{step.label}</span>
+                    <span className="text-xs text-muted-foreground">{step.done ? 'Done' : step.active ? 'In progress' : 'Pending'}</span>
                   </div>
                 )
               })}
             </div>
 
             {!isDone && (
-              <div className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">
-                Estimated time remaining: <span className="font-medium text-[#111111]">{etaMinutes}m</span>
+              <div className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                Estimated time remaining: <span className="font-medium text-foreground">{etaMinutes}m</span>
               </div>
             )}
-            <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
-              Workflow state: <span className="font-medium text-[#111111]">{canonicalState.replace(/_/g, ' ')}</span>
+            <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+              Workflow state: <span className="font-medium text-foreground">{canonicalState.replace(/_/g, ' ')}</span>
             </div>
 
             {isDone && (
@@ -155,22 +155,22 @@ function GenerationQueueInner() {
 
         <SectionCard title="Live Activity" subtitle="Latest queue logs">
           {currentItem && (
-            <div className="mb-3 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs">
-              <p className="text-[#6B7280]">Currently generating</p>
-              <p className="text-[#111111]">{currentItem.post_idea}</p>
+            <div className="mb-3 rounded-lg border border-border bg-card px-3 py-2 text-xs">
+              <p className="text-muted-foreground">Currently generating</p>
+              <p className="text-foreground">{currentItem.post_idea}</p>
             </div>
           )}
           <div className="space-y-2">
             {slots.slice(0, 10).map((slot) => (
-              <div key={slot.id} className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm">
+              <div key={slot.id} className="rounded-lg border border-border px-3 py-2 text-sm">
                 <div className="flex gap-2">
                   {slot.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={slot.image_url} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
                   ) : null}
                   <div className="min-w-0 flex-1">
-                    <p className="text-[#111111] line-clamp-2">{slot.post_idea}</p>
-                    <p className="text-xs text-[#6B7280]">
+                    <p className="text-foreground line-clamp-2">{slot.post_idea}</p>
+                    <p className="text-xs text-muted-foreground">
                       {slot.status}
                       {slot.platform ? ` · ${slot.platform}` : ''}
                       {slot.content_type ? ` · ${slot.content_type}` : ''}

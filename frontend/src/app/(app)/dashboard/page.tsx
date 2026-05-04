@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
-import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { NextStepCard, PageContainer } from '@/components/ui/page-primitives'
 import { SectionCard, StatCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
@@ -39,16 +39,22 @@ export default function DashboardPage() {
   }, [nextStep.title])
 
   return (
-    <PageContainer className="space-y-6">
+    <PageContainer className="space-y-8 md:space-y-10">
       <PageIntroModal
         pageKey="dashboard"
         title="Welcome to your AI Design Hub"
         description="This is your control center where you track progress and generate content."
       />
-      <PageHeader
-        title={<>Dashboard <span className="text-highlight">Overview</span></>}
-        description={`Welcome back. Here's what's happening for ${brandName}.`}
-      />
+      <header className="relative overflow-hidden rounded-2xl border border-border bg-card px-5 py-8 md:px-10 md:py-12">
+        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Studio</p>
+        <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.08]">
+          Dashboard <span className="text-pull text-primary">overview</span>
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
+          Welcome back — here&apos;s what&apos;s happening for <span className="font-medium text-foreground">{brandName}</span>.
+        </p>
+      </header>
       {hasDataError ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           Some dashboard metrics could not be refreshed. Values may be stale; please retry in a moment.
@@ -83,23 +89,23 @@ export default function DashboardPage() {
       <SectionCard title="Recent Outputs" subtitle="Latest generated creatives.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {recentOutputs.length === 0 ? (
-            <div className="col-span-full rounded-lg border border-dashed border-[#E5E7EB] p-8 text-center text-sm text-[#6B7280]">
+            <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
               No outputs yet. Start from Generate Content.
             </div>
           ) : (
             recentOutputs.map((output) => (
-              <div key={output.id} className="app-card overflow-hidden">
-                <div className="aspect-[4/3] bg-[#F3F4F6]">
+              <div key={output.id} className="app-card group overflow-hidden transition-shadow hover:shadow-md">
+                <div className="aspect-[4/3] bg-muted">
                   {output.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={output.image_url} alt={displayCaption(output.caption, 'Output image')} className="h-full w-full object-cover" />
+                    <img src={output.image_url} alt={displayCaption(output.caption, 'Output image')} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-5 w-5" /></div>
+                    <div className="flex h-full items-center justify-center text-muted-foreground"><ImageIcon className="h-5 w-5" /></div>
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="line-clamp-2 text-sm text-[#111111]">{displayCaption(output.caption, 'Untitled output')}</p>
-                  <p className="mt-2 text-xs text-[#6B7280]">{output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}</p>
+                  <p className="line-clamp-2 text-sm text-foreground">{displayCaption(output.caption, 'Untitled output')}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">{output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}</p>
                 </div>
               </div>
             ))
@@ -111,39 +117,41 @@ export default function DashboardPage() {
         <SectionCard title="Usage Summary" subtitle="Monthly consumption overview">
           <div className="flex items-center gap-4">
             <div
-              className="flex h-24 w-24 items-center justify-center rounded-full border border-[#E5E7EB] text-sm font-semibold text-[#111111]"
-              style={{ background: `conic-gradient(#111111 ${usedPercent}%, #EFEFF1 ${usedPercent}% 100%)` }}
+              className="flex h-24 w-24 items-center justify-center rounded-full border border-border text-sm font-semibold text-foreground"
+              style={{
+                background: `conic-gradient(var(--primary) ${usedPercent}%, var(--muted) ${usedPercent}% 100%)`,
+              }}
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card">
                 {usedPercent}%
               </div>
             </div>
             <div className="space-y-2 text-sm">
-              <p className="text-[#6B7280]">Posts <span className="font-semibold text-[#111111]">{totalPosts}/30</span></p>
-              <p className="text-[#6B7280]">Reels <span className="font-semibold text-[#111111]">{10 - reelsLeft}/10</span></p>
-              <p className="text-[#6B7280]">Credits <span className="font-semibold text-[#111111]">{credits}/200</span></p>
+              <p className="text-muted-foreground">Posts <span className="font-semibold text-foreground">{totalPosts}/30</span></p>
+              <p className="text-muted-foreground">Reels <span className="font-semibold text-foreground">{10 - reelsLeft}/10</span></p>
+              <p className="text-muted-foreground">Credits <span className="font-semibold text-foreground">{credits}/200</span></p>
             </div>
           </div>
         </SectionCard>
 
         <SectionCard title="Calendar Overview" subtitle="Weekly publishing map">
           <div className="mb-3 flex items-center justify-between text-sm">
-            <span className="text-[#6B7280]">Scheduled this week</span>
-            <span className="font-medium text-[#111111]">{scheduledPosts}</span>
+            <span className="text-muted-foreground">Scheduled this week</span>
+            <span className="font-medium text-foreground">{scheduledPosts}</span>
           </div>
-          <div className="h-2 rounded-full bg-[#EFEFF1]">
-            <div className="h-2 rounded-full bg-[#111111]" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
+          <div className="h-2 rounded-full bg-muted">
+            <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-[#6B7280]">
+          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <CalendarDays className="h-4 w-4" />
             <Sparkles className="h-4 w-4" />
             Keep approving content to increase publishing momentum.
           </div>
           <div className="mt-4 grid grid-cols-7 gap-1">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-              <div key={day} className="rounded-md border border-[#E5E7EB] bg-white p-2 text-center">
-                <p className="text-[10px] text-[#6B7280]">{day}</p>
-                <p className="text-sm font-semibold text-[#111111]">{index < scheduledPosts ? 1 : 0}</p>
+              <div key={day} className="rounded-md border border-border bg-card p-2 text-center">
+                <p className="text-[10px] text-muted-foreground">{day}</p>
+                <p className="text-sm font-semibold text-foreground">{index < scheduledPosts ? 1 : 0}</p>
               </div>
             ))}
           </div>
@@ -152,14 +160,14 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionCard title="Activity Timeline" subtitle="Recent workflow events">
-          <ul className="space-y-2 text-sm text-[#6B7280]">
-            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Brand profile configured</li>
-            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Calendar plan generated</li>
-            <li className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2">Posts approved and ready for creatives</li>
+          <ul className="space-y-2 text-sm text-muted-foreground">
+            <li className="rounded-lg border border-border bg-card px-3 py-2">Brand profile configured</li>
+            <li className="rounded-lg border border-border bg-card px-3 py-2">Calendar plan generated</li>
+            <li className="rounded-lg border border-border bg-card px-3 py-2">Posts approved and ready for creatives</li>
           </ul>
         </SectionCard>
         <SectionCard title="Smart Suggestion" subtitle="AI recommendation based on your activity">
-          <p className="text-sm text-[#6B7280]">Try generating reels this week to improve engagement variety.</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">Try generating reels this week to improve engagement variety.</p>
           <Link href="/generate" className="mt-3 inline-block">
             <Button variant="secondary">Generate Reels</Button>
           </Link>

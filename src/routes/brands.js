@@ -6,6 +6,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const { getPool } = require('../config/postgres');
 const logger = require('../utils/logger');
+const { previewBrandFromUrl } = require('../services/brandSiteImport');
 
 const getUserId = async (uid) => {
   const pool = getPool();
@@ -63,6 +64,18 @@ router.post('/', authMiddleware, async (req, res) => {
     res.status(201).json({ brand: rows[0] });
   } catch (err) {
     res.status(500).json({ error: 'Failed to create brand.' });
+  }
+});
+
+/** POST /api/brands/import-site-preview — extract OG/meta for onboarding (no DB write) */
+router.post('/import-site-preview', authMiddleware, async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    const preview = await previewBrandFromUrl(url);
+    res.json({ preview });
+  } catch (err) {
+    logger.warn('Brand site import preview failed', { error: err.message });
+    res.status(400).json({ error: 'import_failed', message: err.message || 'Could not read that URL.' });
   }
 });
 

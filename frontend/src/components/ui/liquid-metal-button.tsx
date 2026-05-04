@@ -1,7 +1,7 @@
 'use client'
 
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -16,6 +16,9 @@ interface LiquidMetalButtonProps {
   onClick?: React.MouseEventHandler<HTMLButtonElement>
 }
 
+/**
+ * Primary CTA — Behance-style blue gradient (tokens in globals.css).
+ */
 export function LiquidMetalButton({
   children,
   label = 'Get Started',
@@ -30,121 +33,58 @@ export function LiquidMetalButton({
   const buttonRef = useRef<HTMLButtonElement>(null)
   const rippleId = useRef(0)
 
-  // Inject styles once
-  useEffect(() => {
-    const id = 'lmb-styles'
-    if (document.getElementById(id)) return
-    const s = document.createElement('style')
-    s.id = id
-    s.textContent = `
-      @keyframes lmb-spin {
-        from { transform: rotate(0deg); }
-        to   { transform: rotate(360deg); }
-      }
-      @keyframes lmb-ripple {
-        0%   { transform: translate(-50%,-50%) scale(0); opacity: 0.5; }
-        100% { transform: translate(-50%,-50%) scale(5); opacity: 0; }
-      }
-      .lmb-spinner {
-        position: absolute;
-        inset: -200%;
-        width: 500%;
-        height: 500%;
-        animation: lmb-spin 3s linear infinite;
-        background: conic-gradient(
-          from 90deg at 50% 50%,
-          transparent    0%,
-          rgba(255,255,255,0.08)  20%,
-          rgba(255,255,255,0.9)   45%,
-          #fff           50%,
-          rgba(255,255,255,0.9)   55%,
-          rgba(255,255,255,0.08)  80%,
-          transparent    100%
-        );
-      }
-    `
-    document.head.appendChild(s)
-  }, [])
-
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     if (buttonRef.current) {
       const r = buttonRef.current.getBoundingClientRect()
       const rpl = { x: e.clientX - r.left, y: e.clientY - r.top, id: rippleId.current++ }
-      setRipples(p => [...p, rpl])
-      setTimeout(() => setRipples(p => p.filter(x => x.id !== rpl.id)), 700)
+      setRipples((p) => [...p, rpl])
+      setTimeout(() => setRipples((p) => p.filter((x) => x.id !== rpl.id)), 600)
     }
     onClick?.(e)
   }
 
-  const content = children ?? (viewMode === 'icon'
-    ? <Sparkles size={16} className="text-white/70" />
-    : <span style={{ fontSize: 14, fontWeight: 600, color: '#ccc', letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>{label}</span>)
-
-  const sizeStyle: React.CSSProperties = fullWidth
-    ? { width: '100%', height: 46 }
-    : { minHeight: 46, minWidth: viewMode === 'icon' ? 46 : 46, width: 'fit-content' }
+  const content =
+    children ??
+    (viewMode === 'icon' ? (
+      <Sparkles size={16} className="text-white" />
+    ) : (
+      <span className="text-sm font-semibold tracking-tight text-white">{label}</span>
+    ))
 
   return (
-    <div
-      className={cn('align-middle', className)}
+    <button
+      ref={buttonRef}
+      type={type}
+      onClick={handleClick}
+      disabled={disabled}
+      className={cn(
+        'relative overflow-hidden rounded-xl px-5 py-2.5 font-medium text-white shadow-md transition-transform duration-200',
+        'hover:brightness-105 hover:shadow-lg active:scale-[0.99]',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]',
+        'disabled:pointer-events-none disabled:opacity-50',
+        fullWidth ? 'w-full' : 'inline-flex min-h-11 min-w-[120px] items-center justify-center',
+        className
+      )}
       style={{
-        ...sizeStyle,
-        position: 'relative',
-        borderRadius: 100,
-        padding: 1,
-        overflow: 'hidden',
-        display: fullWidth ? 'block' : 'inline-block',
-        flexShrink: 0,
-        opacity: disabled ? 0.6 : 1,
+        backgroundImage: 'var(--gradient-cta)',
+        backgroundColor: 'var(--brand-blue)',
       }}
+      aria-label={typeof label === 'string' ? label : undefined}
     >
-      {/* Spinning conic gradient border */}
-      <div className="lmb-spinner" />
-
-      {/* Inner dark pill */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        minHeight: 46,
-        borderRadius: 100,
-        background: 'linear-gradient(180deg, #1c1c1c 0%, #0a0a0a 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingInline: fullWidth ? 0 : 20,
-        color: '#f5f5f5',
-        zIndex: 1,
-        overflow: 'hidden',
-      }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: '#f5f5f5', fontWeight: 600, fontSize: 14, lineHeight: 1, whiteSpace: 'nowrap' }}>
-          {content}
-        </span>
-
-        {/* Clickable surface with ripple */}
-        <button
-          ref={buttonRef}
-          type={type}
-          onClick={handleClick}
-          disabled={disabled}
+      <span className="relative z-[1] inline-flex items-center justify-center gap-2">{content}</span>
+      {ripples.map((r) => (
+        <span
+          key={r.id}
+          className="pointer-events-none absolute animate-[bv-ripple_0.55s_ease-out_forwards] rounded-full bg-white/30"
           style={{
-            position: 'absolute', inset: 0,
-            background: 'transparent', border: 'none',
-            cursor: disabled ? 'not-allowed' : 'pointer', borderRadius: 100, overflow: 'hidden',
+            left: r.x,
+            top: r.y,
+            width: 12,
+            height: 12,
+            transform: 'translate(-50%, -50%)',
           }}
-          aria-label={typeof label === 'string' ? label : undefined}
-        >
-          {ripples.map(r => (
-            <span key={r.id} style={{
-              position: 'absolute', left: r.x, top: r.y,
-              width: 16, height: 16, borderRadius: '50%',
-              background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, transparent 70%)',
-              pointerEvents: 'none',
-              animation: 'lmb-ripple 0.7s ease-out',
-            }} />
-          ))}
-        </button>
-      </div>
-    </div>
+        />
+      ))}
+    </button>
   )
 }

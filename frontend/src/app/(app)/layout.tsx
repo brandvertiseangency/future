@@ -3,7 +3,6 @@
 import { useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { ThemeProvider } from 'next-themes'
 import useSWR from 'swr'
 import { Sidebar } from '@/components/app/sidebar'
 import { Topbar } from '@/components/app/topbar'
@@ -13,6 +12,7 @@ import { Toaster } from 'sonner'
 import { AuthGuard } from '@/components/AuthGuard'
 import { PageErrorBoundary } from '@/components/ErrorBoundary'
 import { CommandPalette } from '@/components/command-palette'
+import { ContentPolicyModal } from '@/components/app/content-policy-modal'
 import { useBrandStore } from '@/stores/brand'
 import { apiCall } from '@/lib/api'
 import { MOTION_TRANSITIONS } from '@/lib/motion'
@@ -41,7 +41,7 @@ function AppShell({ children }: { children: ReactNode }) {
   }, [brandData?.brand, setBrand])
 
   return (
-    <div className="min-h-screen bg-[#F7F7F8]">
+    <div className="min-h-screen bg-background text-foreground">
       {!isOnboardingRoute ? (
         <div className="hidden md:block">
           <Sidebar />
@@ -65,16 +65,15 @@ function AppShell({ children }: { children: ReactNode }) {
       ) : null}
       <Toaster theme="light" position="bottom-right" />
       <CommandPalette />
+      <ContentPolicyModal />
     </div>
   )
 }
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <AuthGuard>
-        <AppShell>{children}</AppShell>
-      </AuthGuard>
-    </ThemeProvider>
+    <AuthGuard>
+      <AppShell>{children}</AppShell>
+    </AuthGuard>
   )
 }

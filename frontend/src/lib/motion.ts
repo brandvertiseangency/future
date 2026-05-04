@@ -1,9 +1,9 @@
 export const MOTION_EASE_STANDARD: [number, number, number, number] = [0.16, 1, 0.3, 1]
 
 export const MOTION_TRANSITIONS = {
-  page: { duration: 0.2, ease: MOTION_EASE_STANDARD } as const,
-  section: { duration: 0.22, ease: MOTION_EASE_STANDARD } as const,
-  micro: { duration: 0.2, ease: MOTION_EASE_STANDARD } as const,
+  page: { duration: 0.32, ease: MOTION_EASE_STANDARD } as const,
+  section: { duration: 0.28, ease: MOTION_EASE_STANDARD } as const,
+  micro: { duration: 0.22, ease: MOTION_EASE_STANDARD } as const,
 } as const
 
 // Shared Framer Motion helpers

@@ -62,10 +62,10 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
   return (
     <div
-      className="app-card bg-white border border-[#E5E7EB]"
+      className="app-card bg-card border border-border"
       style={{
         borderRadius: 12, padding: '12px 14px',
-        borderColor: selected ? '#111111' : undefined,
+        borderColor: selected ? '#191919' : undefined,
         position: 'relative', transition: 'border-color 0.15s',
       }}
     >
@@ -75,8 +75,8 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
         style={{
           position: 'absolute', top: 10, right: 10,
           width: 18, height: 18, borderRadius: 5,
-          background: selected ? '#111111' : '#fff',
-          border: `1px solid ${selected ? '#111111' : '#D1D5DB'}`,
+          background: selected ? '#191919' : '#fff',
+          border: `1px solid ${selected ? '#191919' : '#D1D5DB'}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           cursor: 'pointer', transition: 'all 0.15s',
         }}
@@ -115,7 +115,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
             }}
             style={{
               width: '100%', background: '#fff', border: '1px solid #D1D5DB',
-              borderRadius: 7, padding: '8px 9px', color: '#111111', fontSize: 13,
+              borderRadius: 7, padding: '8px 9px', color: '#191919', fontSize: 13,
               outline: 'none', fontFamily: 'inherit',
             }}
             placeholder="Topic"
@@ -136,7 +136,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
             }}
             style={{
               width: '100%', background: '#fff', border: '1px solid #D1D5DB',
-              borderRadius: 7, padding: '6px 8px', color: '#111111', fontSize: 13,
+              borderRadius: 7, padding: '6px 8px', color: '#191919', fontSize: 13,
               resize: 'none', outline: 'none', fontFamily: 'inherit',
             }}
             rows={3}
@@ -236,7 +236,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
               Topic: {slot.topic}
             </p>
           )}
-          <p style={{ fontSize: 14, color: '#111111', lineHeight: 1.45, marginBottom: slot.creative_brief ? 8 : 0 }}>
+          <p style={{ fontSize: 14, color: '#191919', lineHeight: 1.45, marginBottom: slot.creative_brief ? 8 : 0 }}>
             {idea}
           </p>
           {slot.creative_copy && (
@@ -278,7 +278,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#6B7280] transition-colors hover:border-[#111111] hover:bg-[#F3F4F6]"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-primary hover:bg-muted"
           aria-label="Edit slot"
         >
           <Edit2 size={14} />
@@ -286,7 +286,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
         <button
           type="button"
           onClick={() => setDeleteOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-red-500 transition-colors hover:border-red-300 hover:bg-red-50"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card text-red-500 transition-colors hover:border-red-300 hover:bg-red-50"
           aria-label="Remove slot"
         >
           <Trash2 size={14} />
@@ -398,7 +398,7 @@ function CalendarReviewInner() {
   if (!planData) {
     return (
       <PageContainer className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#6B7280]" aria-label="Loading plan" />
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-label="Loading plan" />
       </PageContainer>
     )
   }
@@ -427,7 +427,7 @@ function CalendarReviewInner() {
             type="button"
             onClick={() => void handleApprove()}
             disabled={approving || slots.length === 0 || insufficientCredits}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#111111] px-6 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#222222]"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {approving ? (
               <>
@@ -441,7 +441,7 @@ function CalendarReviewInner() {
               </>
             )}
           </button>
-          <p className="mt-2 text-xs text-[#6B7280]">
+          <p className="mt-2 text-xs text-muted-foreground">
             Costs {creditsNeeded} credits · Balance {creditBalance}
             {insufficientCredits ? (
               <>
@@ -453,7 +453,7 @@ function CalendarReviewInner() {
               </>
             ) : null}
           </p>
-          <p className="mt-1 text-xs text-[#6B7280]">
+          <p className="mt-1 text-xs text-muted-foreground">
             {selected.size === 0 ? 'All posts selected' : `${selected.size} selected`}
           </p>
         </div>
@@ -461,10 +461,10 @@ function CalendarReviewInner() {
 
       {/* Select all */}
       <SectionCard title="Selection" subtitle="Choose which slots to include in generation." className="mb-4">
-        <label className="flex cursor-pointer items-center gap-3 text-sm text-[#111111]">
+        <label className="flex cursor-pointer items-center gap-3 text-sm text-foreground">
           <input
             type="checkbox"
-            className="h-4 w-4 rounded border-[#E5E7EB] accent-[#111111]"
+            className="h-4 w-4 rounded border-border accent-primary"
             checked={slots.length > 0 && (selected.size === 0 || selected.size === slots.length)}
             onChange={toggleAll}
           />

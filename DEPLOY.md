@@ -50,10 +50,16 @@ All server-side image generation uses the **Google Gemini / Imagen** APIs (`GOOG
    - `GOOGLE_AI_API_KEY` — required for any image from calendar, queue, posts, or workers.
    - Optional tuning:
      - `GOOGLE_NATIVE_IMAGE_MODEL` — default `gemini-3-pro-image-preview` (Nano Banana Pro). Alternatives: `gemini-3.1-flash-image-preview`, `gemini-2.5-flash-image` (see [Gemini image models](https://ai.google.dev/gemini-api/docs/image-generation)).
-     - `GOOGLE_IMAGEN_MODEL` — default `imagen-4.0-fast-generate-001` when native returns no image.
-     - `GOOGLE_IMAGE_IMAGEN_FALLBACK=false` — disable Imagen and fail if native alone does not return an image.
+     - **Imagen fallback** (see [Imagen on Gemini API](https://ai.google.dev/gemini-api/docs/imagen)):
+       - `GOOGLE_IMAGE_IMAGEN_FALLBACK=false` — disable Imagen when native returns no image.
+       - `GOOGLE_IMAGEN_TIER` — `fast` (default), `standard`, or `ultra`; picks `imagen-4.0-*-generate-001` unless overridden.
+       - `GOOGLE_IMAGEN_MODEL` — if set, **overrides** tier and uses this model id exactly.
+       - `GOOGLE_IMAGEN_IMAGE_SIZE` — `1K` or `2K` (2K is sent only for Standard/Ultra models; Fast ignores image size per API).
+       - `GOOGLE_IMAGEN_PERSON_GENERATION` — `allow_adult` (default), `dont_allow`, or `allow_all` (EU/MENA may restrict `allow_all`).
+     - Long prompts are shortened server-side for Imagen (~480 token API limit); check logs if Imagen returns empty payloads.
+     - `GOOGLE_NATIVE_IMAGE_QUALITY_PRESET` — `speed` | `balanced` (default) | `detail`: appends a short realism hint to **native** Gemini image prompts only.
 3. Redeploy the API service after changing variables.
-4. Smoke test: run one calendar slot or `/api` flow that generates an image; confirm logs show `google-native` or `google-imagen` and no OpenAI image errors.
+4. Smoke test: run one calendar slot or `/api` flow that generates an image; confirm logs show `google-native` or `google-imagen` and no OpenAI image errors. If native often fails, confirm `Imagen fallback succeeded` appears and stored post metadata includes `imageProvider: google-imagen` when applicable.
 
 `OPENAI_API_KEY` remains used for **text** (`callAI` / captions / JSON), not for images.
 

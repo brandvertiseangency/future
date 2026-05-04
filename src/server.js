@@ -93,6 +93,7 @@ app.use("/api/calendar/generate-plan", expensiveLimiter);
 app.use("/api/calendar/plans", expensiveLimiter);
 app.use("/api/generate-content", expensiveLimiter);
 app.use("/api/generate", expensiveLimiter);
+app.use("/api/brands/import-site-preview", expensiveLimiter);
 
 // ─── Static files (outputs only — prototype removed) ──
 app.use("/outputs", express.static(path.join(__dirname, "../outputs")));

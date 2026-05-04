@@ -25,7 +25,7 @@ export function WorkflowProgress() {
   )
 
   return (
-    <div className="md:ml-[240px] border-b border-[#E5E7EB] bg-white px-4 py-2 md:px-6">
+    <div className="md:ml-[240px] border-b border-border bg-card/80 px-4 py-2 backdrop-blur-sm md:px-6">
       <div className="flex items-center justify-between gap-3">
         <div className="hidden md:flex items-center gap-2 overflow-x-auto scrollbar-hide">
           {WORKFLOW_STEPS.map((step, idx) => {
@@ -37,21 +37,21 @@ export function WorkflowProgress() {
                   href={step.href}
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs whitespace-nowrap transition-colors',
-                    current && 'border-[#111111] bg-[#111111] text-white',
-                    complete && 'border-emerald-200 bg-emerald-50 text-emerald-700',
-                    !current && !complete && 'border-[#E5E7EB] bg-[#F7F7F8] text-[#6B7280] hover:bg-[#F3F4F6]'
+                    current && 'border-primary bg-primary text-primary-foreground',
+                    complete && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+                    !current && !complete && 'border-border bg-muted text-muted-foreground hover:bg-accent'
                   )}
                 >
                   {complete ? <Check className="h-3 w-3" /> : null}
                   {step.label}
                 </Link>
-                {idx < WORKFLOW_STEPS.length - 1 ? <span className="text-[#9CA3AF]">→</span> : null}
+                {idx < WORKFLOW_STEPS.length - 1 ? <span className="text-muted-foreground/60">→</span> : null}
               </div>
             )
           })}
         </div>
-        <p className="text-xs text-[#6B7280]">Workflow completion</p>
-        <p className="text-xs font-semibold text-[#111111]">{progress}%</p>
+        <p className="text-xs text-muted-foreground">Workflow completion</p>
+        <p className="text-xs font-semibold text-foreground">{progress}%</p>
       </div>
     </div>
   )

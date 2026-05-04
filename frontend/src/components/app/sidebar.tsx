@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useBrandStore } from '@/stores/brand'
 import { useAuth } from '@/lib/auth-context'
+import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
@@ -41,7 +42,9 @@ function NavItem({
       href={href}
       className={cn(
         'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
-        active ? 'bg-[#F3F4F6] text-[#111111] border border-[#E5E7EB]' : 'text-[#6B7280] hover:bg-[#F3F4F6] hover:text-[#111111]',
+        active
+          ? 'border border-primary/25 bg-primary/10 text-foreground'
+          : 'text-muted-foreground hover:bg-muted hover:text-foreground',
       )}
     >
       <Icon size={16} />
@@ -53,6 +56,7 @@ function NavItem({
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const { resolvedTheme } = useTheme()
   const { currentBrand } = useBrandStore()
   const { signOut } = useAuth()
 
@@ -70,10 +74,10 @@ export function Sidebar() {
   const brandName = currentBrand?.name ?? 'My Brand'
 
   return (
-    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-[#E5E7EB] bg-white">
+    <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-border bg-card">
       <div className="flex h-14 items-center px-4">
         <Image
-          src="/Brandvertise-Dark-Logo.webp"
+          src={resolvedTheme === 'dark' ? '/Brandvertise-Light-Logo.webp' : '/Brandvertise-Dark-Logo.webp'}
           alt="Brandvertise"
           width={130}
           height={28}
@@ -96,22 +100,22 @@ export function Sidebar() {
         </nav>
       </div>
 
-      <div className="space-y-3 border-t border-[#E5E7EB] px-3 py-3">
+      <div className="space-y-3 border-t border-border px-3 py-3">
         <div
-          className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-[#E5E7EB] px-2.5 py-2.5 transition-colors hover:bg-[#F7F7F8]"
+          className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-border bg-background/60 px-2.5 py-2.5 transition-colors hover:bg-muted"
           onClick={() => router.push('/settings')}
         >
-          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-[#111111] text-[10px] font-bold text-white">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="truncate text-[12px] font-medium leading-tight text-[#111111]">{brandName}</p>
-            <p className="mt-0.5 text-[10px] leading-tight text-[#6B7280]">{planLabel} plan</p>
+            <p className="truncate text-[12px] font-medium leading-tight text-foreground">{brandName}</p>
+            <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{planLabel} plan</p>
           </div>
         </div>
         <button
           onClick={() => router.push('/brand')}
-          className="flex w-full items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-2.5 py-2 text-left text-[12px] text-[#111111] hover:bg-[#F7F7F8]"
+          className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left text-[12px] text-foreground hover:bg-muted"
         >
           <BriefcaseBusiness size={14} />
           Edit brand
@@ -119,15 +123,15 @@ export function Sidebar() {
 
         <button className="px-1 text-left" onClick={() => router.push('/settings#billing')}>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-[10.5px] text-[#6B7280]">
+            <span className="text-[10.5px] text-muted-foreground">
               {credits}
-              <span className="text-[#9CA3AF]"> / {maxCredits} credits</span>
+              <span className="text-muted-foreground/70"> / {maxCredits} credits</span>
             </span>
-            <span className="text-[10px] font-medium text-[#6B7280]">{Math.round(pct)}%</span>
+            <span className="text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
           </div>
-          <div className="h-[4px] overflow-hidden rounded-full bg-[#EFEFF1]">
+          <div className="h-[4px] overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-[#111111] transition-all duration-700"
+              className="h-full rounded-full bg-primary transition-all duration-700"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -138,7 +142,7 @@ export function Sidebar() {
           <button
             onClick={signOut}
             title="Sign out"
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#E5E7EB] text-[#6B7280] transition-colors hover:bg-[#F3F4F6] hover:text-[#111111]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <LogOut size={14} />
           </button>

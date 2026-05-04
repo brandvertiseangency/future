@@ -86,17 +86,17 @@ function DraggablePost({ post, selected, onSelect }: { post: PostItem; selected:
       {...attributes}
       onClick={onSelect}
       type="button"
-      className={`flex w-full gap-2 rounded-lg border px-2 py-2 text-left ${selected ? 'border-[#111111] bg-[#F3F4F6]' : 'border-[#E5E7EB] bg-white'}`}
+      className={`flex w-full gap-2 rounded-lg border px-2 py-2 text-left ${selected ? 'border-primary bg-muted' : 'border-border bg-card'}`}
     >
       {post.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={post.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
       ) : (
-        <div className="h-10 w-10 shrink-0 rounded-lg bg-[#F3F4F6]" />
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-muted" />
       )}
       <div className="min-w-0 flex-1">
-        <p className="line-clamp-1 text-sm text-[#111111]">{cap}</p>
-        <p className="mt-0.5 text-xs capitalize text-[#6B7280]">{post.platform}</p>
+        <p className="line-clamp-1 text-sm text-foreground">{cap}</p>
+        <p className="mt-0.5 text-xs capitalize text-muted-foreground">{post.platform}</p>
       </div>
     </button>
   )
@@ -108,19 +108,19 @@ function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[88px] rounded-lg border p-2 transition-colors ${isOver ? 'border-dashed border-2 border-[#111111] bg-[#F3F4F6] animate-pulse' : 'border-[#E5E7EB] bg-white'}`}
+      className={`min-h-[88px] rounded-lg border p-2 transition-colors ${isOver ? 'border-dashed border-2 border-primary bg-muted animate-pulse' : 'border-border bg-card'}`}
     >
-      <p className="mb-2 text-xs text-[#6B7280]">{slot.label}</p>
+      <p className="mb-2 text-xs text-muted-foreground">{slot.label}</p>
       {post?.image_url ? (
         <div className="space-y-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={post.image_url} alt="" className="aspect-square w-full rounded-lg object-cover" />
-          <p className="line-clamp-2 text-xs text-[#111111]">{cap}</p>
+          <p className="line-clamp-2 text-xs text-foreground">{cap}</p>
         </div>
       ) : post ? (
-        <p className="line-clamp-2 text-sm text-[#111111]">{cap}</p>
+        <p className="line-clamp-2 text-sm text-foreground">{cap}</p>
       ) : (
-        <div className="flex flex-col items-center justify-center gap-1 py-2 text-[#9CA3AF]">
+        <div className="flex flex-col items-center justify-center gap-1 py-2 text-muted-foreground/80">
           <span className="text-lg leading-none">+</span>
           <p className="text-xs">Drop post here</p>
         </div>
@@ -356,8 +356,8 @@ export default function SchedulerPage() {
           Could not refresh scheduler posts right now. Please retry in a moment.
         </div>
       ) : null}
-      <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
-        Timezone: <span className="font-medium text-[#111111]">{timezone}</span>
+      <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
+        Timezone: <span className="font-medium text-foreground">{timezone}</span>
         {offsetStr}
       </div>
       <NextStepCard
@@ -370,23 +370,23 @@ export default function SchedulerPage() {
         primaryCta={hasSlotForSelected ? { label: 'Schedule This Post', href: '/scheduler' } : { label: 'Go to Outputs', href: '/outputs' }}
         secondaryCta={{ label: 'Review Calendar', href: '/calendar' }}
       />
-      <p className="text-xs text-[#6B7280]">
-        Shortcuts: <kbd className="rounded border border-[#E5E7EB] px-1">Ctrl/Cmd + Enter</kbd> schedule,{' '}
-        <kbd className="rounded border border-[#E5E7EB] px-1">U</kbd> remove from slot, <kbd className="rounded border border-[#E5E7EB] px-1">Backspace</kbd> move to draft.
+      <p className="text-xs text-muted-foreground">
+        Shortcuts: <kbd className="rounded border border-border px-1">Ctrl/Cmd + Enter</kbd> schedule,{' '}
+        <kbd className="rounded border border-border px-1">U</kbd> remove from slot, <kbd className="rounded border border-border px-1">Backspace</kbd> move to draft.
       </p>
 
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-        <DialogContent className="max-w-md border-[#E5E7EB] bg-white p-6" showCloseButton>
-          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-[#111111]">
+        <DialogContent className="max-w-md border-border bg-card p-6" showCloseButton>
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
             <CalendarClock className="h-4 w-4" />
             Change date &amp; time
           </DialogTitle>
-          <p className="text-sm text-[#6B7280]">Sets when this post is scheduled to publish (local time).</p>
+          <p className="text-sm text-muted-foreground">Sets when this post is scheduled to publish (local time).</p>
           <input
             type="datetime-local"
             value={rescheduleValue}
             onChange={(e) => setRescheduleValue(e.target.value)}
-            className="mt-3 h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm text-[#111111] outline-none focus:border-[#111111]"
+            className="mt-3 h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-primary"
           />
           <div className="mt-4 flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setRescheduleOpen(false)}>
@@ -413,9 +413,9 @@ export default function SchedulerPage() {
                 <DraggablePost key={post.id} post={post} selected={selectedPostId === post.id} onSelect={() => setSelectedPostId(post.id)} />
               ))}
               {!isLoading && posts.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-[#E5E7EB] p-4 text-center">
-                  <p className="text-sm text-[#111111]">No posts available for scheduling</p>
-                  <p className="mt-1 text-xs text-[#6B7280]">Approve items in Calendar or generate new outputs first.</p>
+                <div className="rounded-lg border border-dashed border-border p-4 text-center">
+                  <p className="text-sm text-foreground">No posts available for scheduling</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Approve items in Calendar or generate new outputs first.</p>
                 </div>
               ) : null}
             </div>
@@ -432,7 +432,7 @@ export default function SchedulerPage() {
           <SectionCard title="Selected Post Details" subtitle="Review before scheduling" className="xl:sticky xl:top-20 h-fit">
             {selectedPost ? (
               <div className="space-y-3">
-                <div className="relative overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
+                <div className="relative overflow-hidden rounded-lg border border-border bg-muted">
                   {selectedPost.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
@@ -441,13 +441,13 @@ export default function SchedulerPage() {
                       className="h-52 w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-52 items-center justify-center text-[#9CA3AF]">No image</div>
+                    <div className="flex h-52 items-center justify-center text-muted-foreground/80">No image</div>
                   )}
-                  <div className="pointer-events-none absolute left-2 top-2 rounded bg-white/85 px-2 py-0.5 text-[10px] font-medium capitalize text-[#111111] shadow-sm">
+                  <div className="pointer-events-none absolute left-2 top-2 rounded bg-card/85 px-2 py-0.5 text-[10px] font-medium capitalize text-foreground shadow-sm">
                     {selectedPost.platform}
                   </div>
                 </div>
-                <p className="text-sm text-[#111111]">{displayCaption(selectedPost.caption, 'No caption')}</p>
+                <p className="text-sm text-foreground">{displayCaption(selectedPost.caption, 'No caption')}</p>
                 <div className="flex justify-end">
                   <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
                     <span title={getPostStatusHint(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
@@ -456,20 +456,20 @@ export default function SchedulerPage() {
                   </StatusBadge>
                 </div>
                 {selectedPost.scheduled_at ? (
-                  <p className="text-xs text-[#6B7280]">
+                  <p className="text-xs text-muted-foreground">
                     Scheduled:{' '}
-                    <span className="font-medium text-[#111111]">
+                    <span className="font-medium text-foreground">
                       {new Date(selectedPost.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                     </span>
                   </p>
                 ) : null}
                 <div>
-                  <label className="mb-1 block text-xs text-[#6B7280]">Internal note</label>
+                  <label className="mb-1 block text-xs text-muted-foreground">Internal note</label>
                   <textarea
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Internal note for this schedule…"
-                    className="min-h-20 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm outline-none focus:border-[#111111]"
+                    className="min-h-20 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary"
                   />
                 </div>
                 <Button className="w-full" onClick={() => void scheduleSelected()} disabled={scheduling}>
@@ -486,7 +486,7 @@ export default function SchedulerPage() {
                 </Button>
               </div>
             ) : (
-              <p className="text-sm text-[#6B7280]">Select a post to inspect details.</p>
+              <p className="text-sm text-muted-foreground">Select a post to inspect details.</p>
             )}
           </SectionCard>
         </div>

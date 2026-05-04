@@ -21,11 +21,11 @@ export function PageHeader({
   actions?: ReactNode
 }) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
-      <div>
-        {eyebrow && <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#6B7280]">{eyebrow}</div>}
-        <h1 className="text-[26px] md:text-[30px] font-semibold tracking-tight text-[#111111]">{title}</h1>
-        {description && <p className="mt-2 text-sm text-[#6B7280]">{description}</p>}
+    <div className="mb-8 flex items-start justify-between gap-4 md:mb-10">
+      <div className="max-w-3xl">
+        {eyebrow && <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</div>}
+        <h1 className="text-[28px] font-semibold tracking-tight text-foreground md:text-[36px] md:leading-[1.1]">{title}</h1>
+        {description && <p className="mt-3 text-base leading-relaxed text-muted-foreground md:text-[17px]">{description}</p>}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
@@ -49,8 +49,8 @@ export function EmptyState({
 }) {
   return (
     <SurfaceCard className="p-10 text-center">
-      <p className="text-[15px] font-semibold text-[#111111]">{title}</p>
-      {subtitle && <p className="mt-1 text-[12px] text-[#6B7280]">{subtitle}</p>}
+      <p className="text-[15px] font-semibold text-foreground">{title}</p>
+      {subtitle && <p className="mt-1 text-[12px] text-muted-foreground">{subtitle}</p>}
       {action && <div className="mt-4 flex items-center justify-center gap-2">{action}{secondaryAction}</div>}
     </SurfaceCard>
   )
@@ -70,10 +70,10 @@ export function NextStepCard({
   className?: string
 }) {
   return (
-    <SurfaceCard className={cn('p-4 md:p-5', className)}>
-      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#6B7280]">Priority Next Step</p>
-      <p className="mt-2 text-base font-semibold text-[#111111]">{title}</p>
-      <p className="mt-1 text-sm text-[#6B7280]">{reason}</p>
+    <SurfaceCard className={cn('border-primary/20 ring-1 ring-primary/15 p-4 md:p-5', className)}>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">Priority next step</p>
+      <p className="mt-2 text-lg font-semibold tracking-tight text-foreground md:text-xl">{title}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{reason}</p>
       <div className="mt-4 flex flex-wrap gap-2">
         <Link href={primaryCta.href}>
           <Button>{primaryCta.label}</Button>

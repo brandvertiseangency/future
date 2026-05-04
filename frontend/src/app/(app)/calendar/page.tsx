@@ -59,10 +59,10 @@ export default function CalendarPage() {
 
   const columnHelper = createColumnHelper<CalendarRow>()
   const columns = [
-    columnHelper.accessor('day', { header: 'Day', cell: (info) => <span className="text-sm text-[#6B7280]">{info.getValue()}</span> }),
-    columnHelper.accessor('type', { header: 'Type', cell: (info) => <span className="capitalize text-sm text-[#111111]">{info.getValue()}</span> }),
-    columnHelper.accessor('idea', { header: 'Idea', cell: (info) => <span className="text-sm text-[#111111]">{info.getValue()}</span> }),
-    columnHelper.accessor('caption', { header: 'Caption', cell: (info) => <span className="line-clamp-1 text-sm text-[#6B7280]">{info.getValue()}</span> }),
+    columnHelper.accessor('day', { header: 'Day', cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span> }),
+    columnHelper.accessor('type', { header: 'Type', cell: (info) => <span className="capitalize text-sm text-foreground">{info.getValue()}</span> }),
+    columnHelper.accessor('idea', { header: 'Idea', cell: (info) => <span className="text-sm text-foreground">{info.getValue()}</span> }),
+    columnHelper.accessor('caption', { header: 'Caption', cell: (info) => <span className="line-clamp-1 text-sm text-muted-foreground">{info.getValue()}</span> }),
     columnHelper.accessor('status', {
       header: 'Status',
       cell: (info) => (
@@ -77,19 +77,19 @@ export default function CalendarPage() {
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
           <button
-            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
             onClick={(e) => { e.stopPropagation(); selectRow(row.original) }}
           >
             <Pencil className="h-3 w-3" />
           </button>
           <button
-            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
             onClick={(e) => { e.stopPropagation(); void approveById(row.original) }}
           >
             <Check className="h-3 w-3" />
           </button>
           <button
-            className="rounded border border-[#E5E7EB] px-2 py-1 text-[11px] text-[#6B7280] hover:bg-[#F3F4F6]"
+            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
             onClick={(e) => { e.stopPropagation(); }}
           >
             <RefreshCcw className="h-3 w-3" />
@@ -200,9 +200,9 @@ export default function CalendarPage() {
         description="Review ideas, edit captions, and approve content before generation."
         actions={
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-[#E5E7EB] p-1">
-              <button onClick={() => setViewMode('table')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'table' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Table</button>
-              <button onClick={() => setViewMode('calendar')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'calendar' ? 'bg-[#111111] text-white' : 'text-[#6B7280]')}>Calendar</button>
+            <div className="rounded-lg border border-border p-1">
+              <button onClick={() => setViewMode('table')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Table</button>
+              <button onClick={() => setViewMode('calendar')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'calendar' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Calendar</button>
             </div>
             <Link href="/calendar/generate">
               <Button><Sparkles className="mr-2 h-4 w-4" />Generate Calendar</Button>
@@ -216,7 +216,7 @@ export default function CalendarPage() {
         primaryCta={hasApprovedOrScheduled ? { label: 'Open Scheduler', href: '/scheduler' } : { label: 'Approve in Calendar', href: '/calendar' }}
         secondaryCta={{ label: 'Generate New Calendar', href: '/calendar/generate' }}
       />
-      <p className="text-xs text-[#6B7280]">Shortcuts: `A` approve selected, `Shift+A` approve all, `G` open generate.</p>
+      <p className="text-xs text-muted-foreground">Shortcuts: `A` approve selected, `Shift+A` approve all, `G` open generate.</p>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_360px]">
         <SectionCard title="Weekly Plan" subtitle="Click a row to edit details on the right panel." className="xl:sticky xl:top-20">
@@ -233,9 +233,9 @@ export default function CalendarPage() {
           ) : null}
           {viewMode === 'table' ? <div className="overflow-x-auto">
             {rows.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-[#E5E7EB] p-8 text-center">
-                <p className="text-sm font-medium text-[#111111]">No content yet</p>
-                <p className="mt-1 text-xs text-[#6B7280]">Generate your first calendar to begin approvals.</p>
+              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+                <p className="text-sm font-medium text-foreground">No content yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">Generate your first calendar to begin approvals.</p>
                 <Link href="/calendar/generate" className="mt-3 inline-block"><Button size="sm">Generate Calendar</Button></Link>
               </div>
             ) : null}
@@ -244,7 +244,7 @@ export default function CalendarPage() {
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="border-b border-[#E5E7EB] px-3 py-2 text-left text-xs font-medium text-[#6B7280]">
+                      <th key={header.id} className="border-b border-border px-3 py-2 text-left text-xs font-medium text-muted-foreground">
                         {flexRender(header.column.columnDef.header, header.getContext())}
                       </th>
                     ))}
@@ -255,7 +255,7 @@ export default function CalendarPage() {
                 {table.getRowModel().rows.map((row) => (
                   <tr
                     key={row.id}
-                    className={cn('cursor-pointer hover:bg-[#F7F7F8]', selected?.id === row.original.id && 'bg-[#F3F4F6]')}
+                    className={cn('cursor-pointer hover:bg-muted/40', selected?.id === row.original.id && 'bg-muted')}
                     onClick={() => selectRow(row.original)}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -270,10 +270,10 @@ export default function CalendarPage() {
           </div> : (
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
               {rows.map((row) => (
-                <button key={row.id} onClick={() => selectRow(row)} className="rounded-lg border border-[#E5E7EB] p-3 text-left hover:bg-[#F7F7F8]">
-                  <p className="text-xs text-[#6B7280]">{row.day}</p>
-                  <p className="mt-1 text-sm font-medium text-[#111111]">{row.idea}</p>
-                  <p className="mt-1 text-xs text-[#6B7280] line-clamp-2">{row.caption}</p>
+                <button key={row.id} onClick={() => selectRow(row)} className="rounded-lg border border-border p-3 text-left hover:bg-muted/40">
+                  <p className="text-xs text-muted-foreground">{row.day}</p>
+                  <p className="mt-1 text-sm font-medium text-foreground">{row.idea}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{row.caption}</p>
                 </button>
               ))}
             </div>
@@ -283,18 +283,18 @@ export default function CalendarPage() {
         <SectionCard title="Post Editor" subtitle="Update and approve selected item." className="xl:sticky xl:top-20 h-fit">
           {selected ? (
             <div className="space-y-3">
-              <p className="rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 py-2 text-xs text-[#6B7280]">Editing Post #{rows.findIndex((r) => r.id === selected.id) + 1}</p>
+              <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">Editing Post #{rows.findIndex((r) => r.id === selected.id) + 1}</p>
               <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Idea</label>
-                <input value={editedIdea} disabled className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 text-sm text-[#6B7280]" />
+                <label className="mb-1 block text-xs text-muted-foreground">Idea</label>
+                <input value={editedIdea} disabled className="h-10 w-full rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Caption</label>
-                <textarea value={editedCaption} onChange={(e) => setEditedCaption(e.target.value)} className="min-h-24 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm outline-none focus:border-[#111111]" />
+                <label className="mb-1 block text-xs text-muted-foreground">Caption</label>
+                <textarea value={editedCaption} onChange={(e) => setEditedCaption(e.target.value)} className="min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary" />
               </div>
               <div>
-                <label className="mb-1 block text-xs text-[#6B7280]">Product</label>
-                <input value={editedProduct} onChange={(e) => setEditedProduct(e.target.value)} placeholder="Select product name" className="h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm outline-none focus:border-[#111111]" />
+                <label className="mb-1 block text-xs text-muted-foreground">Product</label>
+                <input value={editedProduct} onChange={(e) => setEditedProduct(e.target.value)} placeholder="Select product name" className="h-10 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-primary" />
               </div>
               <Button className="w-full" onClick={approve} disabled={saving}>
                 <Check className="mr-2 h-4 w-4" />
@@ -302,7 +302,7 @@ export default function CalendarPage() {
               </Button>
             </div>
           ) : (
-            <p className="text-sm text-[#6B7280]">Select a row from the calendar table to edit content.</p>
+            <p className="text-sm text-muted-foreground">Select a row from the calendar table to edit content.</p>
           )}
         </SectionCard>
       </div>

@@ -147,6 +147,9 @@ ${feedbackBlock}
 STRICT RULES:
 - Do NOT include: text overlays, watermarks, logos, distorted faces, extra limbs
 - Do NOT generate nsfw, violent, or inappropriate content
+- Avoid generic stock-photo look: no oversaturated HDR, plastic skin, fake bokeh blobs, or "AI gloss"
+- Scene and wardrobe must feel believable for ${target_audience}; no random unrelated props
+- Prefer real-camera cues: natural skin texture, plausible shadows, editorial color grade (not neon)
 - Output a single high-quality photorealistic image`;
 
   logger.info("Prompt built", {

@@ -327,6 +327,12 @@ router.post('/', authMiddleware, async (req, res) => {
     });
     const rawImage = imageResult?.imageData || null;
     if (!rawImage) {
+      if (imageResult?.provider === 'policy-blocked') {
+        return res.status(400).json({
+          error: 'policy_blocked',
+          message: imageResult?.error || 'This request was blocked by our safety policy.',
+        });
+      }
       logger.error('Image generation failed in generate-content', {
         provider: imageResult?.provider || 'unknown',
         reason: imageResult?.error || 'unknown',

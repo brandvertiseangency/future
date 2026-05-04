@@ -52,7 +52,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-const field = 'h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111111] outline-none placeholder:text-[#9CA3AF] focus:border-[#111111]'
+const field = 'h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/80 focus:border-primary'
 
 function styleFromFontMood(fontMood?: string): FormValues['style'] {
   if (!fontMood) return 'minimal'
@@ -128,7 +128,7 @@ export default function BrandDetailsPage() {
       goals: [],
       styleKeywords: '',
       style: 'minimal',
-      colorPrimary: '#111111',
+      colorPrimary: '#191919',
       colorSecondary: '#ffffff',
       colorAccent: '#9CA3AF',
       fontMood: 'sans_modern',
@@ -163,7 +163,7 @@ export default function BrandDetailsPage() {
       goals: Array.isArray(brand.goals) ? brand.goals : [],
       styleKeywords: Array.isArray(brand.styles) ? brand.styles.join(', ') : '',
       style: styleFromFontMood(brand.font_mood),
-      colorPrimary: brand.color_primary ?? '#111111',
+      colorPrimary: brand.color_primary ?? '#191919',
       colorSecondary: brand.color_secondary ?? '#ffffff',
       colorAccent: brand.color_accent ?? '#9CA3AF',
       fontMood: brand.font_mood ?? '',
@@ -302,8 +302,8 @@ export default function BrandDetailsPage() {
       <PageContainer className="space-y-4">
         <SkeletonCard lines={2} />
         <SkeletonCard lines={8} />
-        <div className="flex items-center justify-center text-xs text-[#6B7280]">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin text-[#111111]" />
+        <div className="flex items-center justify-center text-xs text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin text-foreground" />
           Loading brand profile...
         </div>
       </PageContainer>
@@ -324,20 +324,20 @@ export default function BrandDetailsPage() {
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
         <SectionCard title="Brand Profile" subtitle="This data is pulled from onboarding and remains editable.">
-          <div className="mb-4 flex items-center gap-3 rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3">
-            <div className="h-16 w-16 overflow-hidden rounded-xl border border-[#E5E7EB] bg-white">
+          <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
+            <div className="h-16 w-16 overflow-hidden rounded-xl border border-border bg-card">
               {logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-[#9CA3AF]">No logo</div>
+                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground/80">No logo</div>
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-[#111111]">Brand logo</p>
-              <p className="text-xs text-[#6B7280]">Uploaded to cloud storage and used during content generation.</p>
+              <p className="text-sm font-medium text-foreground">Brand logo</p>
+              <p className="text-xs text-muted-foreground">Uploaded to cloud storage and used during content generation.</p>
             </div>
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#111111] hover:bg-[#F3F4F6]">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground hover:bg-muted">
               <Upload className="h-3.5 w-3.5" />
               {uploadingLogo ? 'Uploading...' : 'Upload'}
               <input
@@ -354,47 +354,47 @@ export default function BrandDetailsPage() {
           </div>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Brand name</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Brand name</label>
               <input className={fieldWithError('name')} {...form.register('name')} />
               {isSubmitted && errors.name ? <p className="mt-1 text-xs text-red-600">{errors.name.message as string}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Tagline</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Tagline</label>
               <input className={field} {...form.register('tagline')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Industry</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Industry</label>
               <input className={fieldWithError('industry')} {...form.register('industry')} />
               {isSubmitted && errors.industry ? <p className="mt-1 text-xs text-red-600">{errors.industry.message as string}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Industry subtype</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Industry subtype</label>
               <input className={field} {...form.register('industrySubtype')} />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs text-[#6B7280]">Brand description</label>
-              <textarea className={cn('min-h-24 w-full rounded-lg border bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]', isSubmitted && errors.description ? 'border-red-300 focus:border-red-500' : 'border-[#E5E7EB]')} {...form.register('description')} />
+              <label className="mb-1 block text-xs text-muted-foreground">Brand description</label>
+              <textarea className={cn('min-h-24 w-full rounded-lg border bg-card px-3 py-2 text-sm outline-none focus:border-primary', isSubmitted && errors.description ? 'border-red-300 focus:border-red-500' : 'border-border')} {...form.register('description')} />
               {isSubmitted && errors.description ? <p className="mt-1 text-xs text-red-600">{errors.description.message as string}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Audience location</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Audience location</label>
               <input className={fieldWithError('audienceLocation')} {...form.register('audienceLocation')} />
               {isSubmitted && errors.audienceLocation ? <p className="mt-1 text-xs text-red-600">{errors.audienceLocation.message as string}</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Audience interests (comma separated)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Audience interests (comma separated)</label>
               <input className={field} {...form.register('audienceInterests')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Audience age min</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Audience age min</label>
               <input type="number" className={field} {...form.register('audienceAgeMin')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Audience age max</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Audience age max</label>
               <input type="number" className={field} {...form.register('audienceAgeMax')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Audience gender</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Audience gender</label>
               <select className={field} {...form.register('audienceGender')}>
                 <option value="mixed">Mixed</option>
                 <option value="mostly_male">Mostly male</option>
@@ -402,13 +402,13 @@ export default function BrandDetailsPage() {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Website / competitor link</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Website / competitor link</label>
               <input className={field} {...form.register('website')} />
             </div>
             <div className="md:col-span-2">
               <button
                 type="button"
-                className="rounded-lg border border-[#E5E7EB] px-3 py-2 text-xs text-[#111111] hover:bg-[#F7F7F8]"
+                className="rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted/40"
                 onClick={() => setShowAdvanced((v) => !v)}
               >
                 {showAdvanced ? 'Hide advanced settings' : 'Show advanced settings'}
@@ -417,15 +417,15 @@ export default function BrandDetailsPage() {
             {showAdvanced ? (
               <>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Phone</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Phone</label>
               <input className={field} {...form.register('phone')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Address</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Address</label>
               <input className={field} {...form.register('address')} />
             </div>
             <div>
-              <label className="mb-2 block text-xs text-[#6B7280]">Style</label>
+              <label className="mb-2 block text-xs text-muted-foreground">Style</label>
               <div className="grid grid-cols-3 gap-2">
                 {styleOptions.map((style) => (
                   <button
@@ -434,7 +434,7 @@ export default function BrandDetailsPage() {
                     onClick={() => form.setValue('style', style)}
                     className={cn(
                       'h-10 rounded-lg border text-sm capitalize',
-                      form.watch('style') === style ? 'border-[#111111] bg-[#F3F4F6] text-[#111111]' : 'border-[#E5E7EB] text-[#6B7280]'
+                      form.watch('style') === style ? 'border-primary bg-muted text-foreground' : 'border-border text-muted-foreground'
                     )}
                   >
                     {style}
@@ -443,7 +443,7 @@ export default function BrandDetailsPage() {
               </div>
             </div>
             <div>
-              <label className="mb-2 block text-xs text-[#6B7280]">Tone</label>
+              <label className="mb-2 block text-xs text-muted-foreground">Tone</label>
               <select className={field} {...form.register('tone')}>
                 {toneOptions.map((tone) => (
                   <option key={tone} value={tone}>{tone}</option>
@@ -451,53 +451,53 @@ export default function BrandDetailsPage() {
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs text-[#6B7280]">Style keywords (comma separated)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Style keywords (comma separated)</label>
               <input className={field} {...form.register('styleKeywords')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Primary color</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Primary color</label>
               <input className={field} {...form.register('colorPrimary')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Secondary color</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Secondary color</label>
               <input className={field} {...form.register('colorSecondary')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Accent color</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Accent color</label>
               <input className={field} {...form.register('colorAccent')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Font mood</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Font mood</label>
               <input className={field} {...form.register('fontMood')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Price segment</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Price segment</label>
               <input className={field} {...form.register('priceSegment')} />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs text-[#6B7280]">USP keywords (comma separated)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">USP keywords (comma separated)</label>
               <input className={field} {...form.register('uspKeywords')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Weekly post count</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Weekly post count</label>
               <input type="number" className={field} {...form.register('weeklyPostCount')} />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Active platforms (comma separated)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Active platforms (comma separated)</label>
               <input className={field} {...form.register('activePlatforms')} />
             </div>
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs text-[#6B7280]">Content mix JSON</label>
-              <textarea className="min-h-20 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-sm outline-none focus:border-[#111111]" {...form.register('contentMix')} />
+              <label className="mb-1 block text-xs text-muted-foreground">Content mix JSON</label>
+              <textarea className="min-h-20 w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none focus:border-primary" {...form.register('contentMix')} />
             </div>
             <div className="md:col-span-2 flex items-center gap-2">
               <input id="auto-schedule" type="checkbox" {...form.register('autoSchedule')} />
-              <label htmlFor="auto-schedule" className="text-sm text-[#111111]">Auto schedule enabled</label>
+              <label htmlFor="auto-schedule" className="text-sm text-foreground">Auto schedule enabled</label>
             </div>
               </>
             ) : null}
             <div className="md:col-span-2">
-              <label className="mb-2 block text-xs text-[#6B7280]">Goals</label>
+              <label className="mb-2 block text-xs text-muted-foreground">Goals</label>
               <div className="flex flex-wrap gap-2">
                 {goalOptions.map((goal) => (
                   <button
@@ -506,7 +506,7 @@ export default function BrandDetailsPage() {
                     onClick={() => toggleGoal(goal)}
                     className={cn(
                       'rounded-full border px-3 py-1 text-xs',
-                      watchedGoals.includes(goal) ? 'border-[#111111] bg-[#111111] text-white' : 'border-[#E5E7EB] bg-white text-[#6B7280]'
+                      watchedGoals.includes(goal) ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-card text-muted-foreground'
                     )}
                   >
                     {goal}
@@ -520,15 +520,15 @@ export default function BrandDetailsPage() {
               {saving ? 'Saving...' : 'Save Brand Changes'}
             </Button>
           </div>
-          <p className="mt-2 text-xs text-[#6B7280]">
+          <p className="mt-2 text-xs text-muted-foreground">
             {saveState === 'saving' ? 'Saving changes...' : saveState === 'saved' ? `Saved at ${lastSavedAt}` : saveState === 'error' ? 'Save failed. Please retry.' : 'No recent save.'}
           </p>
         </SectionCard>
 
         <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="xl:sticky xl:top-20 h-fit">
           <div className="space-y-4">
-            <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-center">
-              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-[#E5E7EB] bg-white text-lg font-semibold text-[#111111]">
+            <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
+              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-lg font-semibold text-foreground">
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
@@ -536,24 +536,24 @@ export default function BrandDetailsPage() {
                   (form.watch('name') || 'BV').slice(0, 2).toUpperCase()
                 )}
               </div>
-              <p className="text-sm font-semibold text-[#111111]">{form.watch('name') || 'Brand Name'}</p>
-              <p className="text-xs text-[#6B7280]">{form.watch('industry') || 'Industry'}</p>
+              <p className="text-sm font-semibold text-foreground">{form.watch('name') || 'Brand Name'}</p>
+              <p className="text-xs text-muted-foreground">{form.watch('industry') || 'Industry'}</p>
             </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
-              <p className="mb-2 text-xs font-medium text-[#6B7280]">Goals</p>
+            <div className="rounded-xl border border-border bg-card p-3">
+              <p className="mb-2 text-xs font-medium text-muted-foreground">Goals</p>
               <div className="flex flex-wrap gap-2">
                 {(watchedGoals.length ? watchedGoals : ['No goals selected']).slice(0, 4).map((goal) => (
-                  <span key={goal} className="rounded-full border border-[#E5E7EB] bg-[#F7F7F8] px-2 py-1 text-[11px] text-[#6B7280]">{goal}</span>
+                  <span key={goal} className="rounded-full border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">{goal}</span>
                 ))}
               </div>
             </div>
-            <div className="rounded-xl border border-[#E5E7EB] bg-white p-3">
+            <div className="rounded-xl border border-border bg-card p-3">
               <div className="mb-1 flex items-center justify-between">
-                <p className="text-xs font-medium text-[#6B7280]">Brand Quality Score</p>
-                <p className="text-xs font-semibold text-[#111111]">{qualityScore}%</p>
+                <p className="text-xs font-medium text-muted-foreground">Brand Quality Score</p>
+                <p className="text-xs font-semibold text-foreground">{qualityScore}%</p>
               </div>
               <div className="h-2 rounded-full bg-[#EFEFF1]">
-                <div className="h-2 rounded-full bg-[#111111] transition-all" style={{ width: `${qualityScore}%` }} />
+                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${qualityScore}%` }} />
               </div>
             </div>
           </div>

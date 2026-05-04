@@ -392,6 +392,12 @@ router.post('/:id/regenerate', authMiddleware, async (req, res) => {
             timeoutMs: 120_000,
           }
         );
+        if (!imageResult?.imageData && imageResult?.provider === 'policy-blocked') {
+          return res.status(400).json({
+            error: 'policy_blocked',
+            message: imageResult?.error || 'This request was blocked by our safety policy.',
+          });
+        }
         const newImg = imageResult?.imageData || null;
         if (newImg) {
           const persisted = await persistGeneratedImageToStorage({

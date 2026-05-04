@@ -20,31 +20,31 @@ export default function AgentsPage() {
         title="Meet your AI agent workspace"
         description="Each agent is built for a focused workflow, from websites to analytics."
       />
-      <PageHeader title={<>AI <span className="text-highlight">Agents</span></>} description="Explore AI assistants for brand workflows." />
-      <div className="rounded-xl border border-[#E5E7EB] bg-white p-4">
-        <p className="text-sm font-medium text-[#111111]">Unlock all AI agents</p>
-        <p className="mt-1 text-xs text-[#6B7280]">Get access to website, branding, presentations, and analytics workflows.</p>
+      <PageHeader title={<>AI <span className="text-pull text-primary">agents</span></>} description="Explore AI assistants for brand workflows." />
+      <div className="rounded-xl border border-border bg-card p-4">
+        <p className="text-sm font-medium text-foreground">Unlock all AI agents</p>
+        <p className="mt-1 text-xs text-muted-foreground">Get access to website, branding, presentations, and analytics workflows.</p>
         <Button className="mt-3">Upgrade to Pro</Button>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {AGENTS.map((agent) => (
-          <div key={agent.id} className="relative overflow-hidden rounded-xl border border-[#E5E7EB] bg-white p-5">
-            <div className="mb-4 h-36 rounded-lg border border-[#E5E7EB] bg-[#F7F7F8]" />
-            <h3 className="text-base font-semibold text-[#111111]">{agent.title}</h3>
-            <p className="mt-1 text-sm text-[#6B7280]">{agent.description}</p>
-            <ul className="mt-3 space-y-1 text-xs text-[#6B7280]">
+          <div key={agent.id} className="relative overflow-hidden rounded-xl border border-border bg-card p-5">
+            <div className="mb-4 h-36 rounded-lg border border-border bg-muted" />
+            <h3 className="text-base font-semibold text-foreground">{agent.title}</h3>
+            <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>
+            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
               <li>- Guided workflow templates</li>
               <li>- Brand-aware outputs</li>
               <li>- Export-ready assets</li>
               <li>- Use case: launch a campaign in minutes</li>
             </ul>
-            <div className="absolute inset-0 flex items-center justify-center bg-white/70">
+            <div className="absolute inset-0 flex items-center justify-center bg-card/75 backdrop-blur-[2px]">
               <Button variant="secondary"><Lock className="mr-2 h-4 w-4" />Unlock</Button>
             </div>
           </div>
         ))}
       </div>
-      <div className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-4 text-sm text-[#6B7280]">
+      <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
         Pro includes all premium agents, faster generation, and higher output limits.
       </div>
     </PageContainer>

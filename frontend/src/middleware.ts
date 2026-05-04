@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 // Public routes that don't require authentication
 const PUBLIC_PATHS = ['/', '/auth', '/pricing']
-const PUBLIC_PREFIXES = ['/api/webhooks', '/_next', '/favicon']
+const PUBLIC_PREFIXES = ['/api/webhooks', '/_next', '/favicon', '/legal']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

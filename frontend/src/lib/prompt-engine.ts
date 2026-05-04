@@ -52,6 +52,8 @@ OUTPUT REQUIREMENTS:
 - caption: The full post caption. Include emojis where appropriate for the tone. No hashtags in caption.
 - hashtags: 5-10 relevant hashtags without the # symbol. Mix popular and niche.
 - imagePrompt: A detailed prompt for image generation. Describe composition, lighting, mood, style. Never include text in the image prompt unless text overlay is requested.
+- imagePrompt must match the TARGET AUDIENCE (setting, age-appropriate styling, platform-native vibe) — never generic unrelated scenes.
+- imagePrompt should read like a creative brief for a real photoshoot: lens feel (e.g. 35mm / 85mm), lighting setup, art direction. Avoid "stock photo of happy people" clichés and hyper-polished AI-HDR looks.
 - carouselSlides: Only populate if contentType is 'carousel'. 4-6 slides with headline + body each.`
 }
 
@@ -72,7 +74,8 @@ CRITICAL RULES:
 - CTA: ${getCTA(brand.goals, request.platform)}
 - Never start the caption with the brand name
 - The first line must hook the reader immediately — no preamble
-- Make it feel like a real human wrote it for this specific brand`
+- Make it feel like a real human wrote it for this specific brand
+- imagePrompt: tie visual story to audience (${buildAudienceDescription(brand)}) and brand styles (${brand.styles.join(', ') || 'on-brand'}); explicit negatives: no watermark, no UI mockups, no extra random text in frame`
 }
 
 export function getToneDescriptor(tone: number): string {

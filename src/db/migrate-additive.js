@@ -20,6 +20,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS website              TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at     TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete  BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id   TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS content_policy_version     TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS content_policy_accepted_at TIMESTAMPTZ;
 
 -- Rename old column if it exists (name → display_name)
 DO $$

@@ -56,12 +56,35 @@ async function patchMe(req, res) {
     const displayName = req.body.displayName ?? req.body.display_name;
     const website = req.body.website;
     const photoUrl = req.body.photoUrl ?? req.body.photo_url;
-    const { rows } = await pool.query(
-      `UPDATE users SET display_name=COALESCE($1,display_name), website=COALESCE($2,website),
+    const acceptContentPolicy =
+      req.body.acceptContentPolicy === true || req.body.accept_content_policy === true;
+    const contentPolicyVersionRaw =
+      req.body.contentPolicyVersion ?? req.body.content_policy_version ?? '';
+    const contentPolicyVersion = String(contentPolicyVersionRaw).trim().slice(0, 128);
+
+    if (acceptContentPolicy && !contentPolicyVersion) {
+      return res.status(400).json({
+        error: 'content_policy_version_required',
+        message: 'content_policy_version is required when accepting the content policy.',
+      });
+    }
+
+    let sql;
+    let params;
+    if (acceptContentPolicy && contentPolicyVersion) {
+      sql = `UPDATE users SET display_name=COALESCE($1,display_name), website=COALESCE($2,website),
+       photo_url=COALESCE($3,photo_url), content_policy_version=$5, content_policy_accepted_at=NOW(),
+       updated_at=NOW()
+       WHERE firebase_uid=$4 RETURNING *`;
+      params = [displayName, website, photoUrl, req.user.uid, contentPolicyVersion];
+    } else {
+      sql = `UPDATE users SET display_name=COALESCE($1,display_name), website=COALESCE($2,website),
        photo_url=COALESCE($3,photo_url), updated_at=NOW()
-       WHERE firebase_uid=$4 RETURNING *`,
-      [displayName, website, photoUrl, req.user.uid]
-    );
+       WHERE firebase_uid=$4 RETURNING *`;
+      params = [displayName, website, photoUrl, req.user.uid];
+    }
+
+    const { rows } = await pool.query(sql, params);
     if (!rows[0]) return res.status(404).json({ error: 'User not found.' });
     res.json({ user: rows[0] });
   } catch (err) {

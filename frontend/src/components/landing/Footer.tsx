@@ -176,7 +176,23 @@ export default function Footer() {
           <p style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", margin: 0 }}>
             © 2026 Brandvertise AI. All rights reserved.
           </p>
-          <div style={{ display: "flex", gap: 20 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+            <a
+              href="/legal/acceptable-use"
+              style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", textDecoration: "none", transition: "color 0.2s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.2)"; }}
+            >
+              Acceptable Use
+            </a>
+            <a
+              href="/legal/report-content"
+              style={{ fontSize: 12, color: "rgba(255,255,255,0.2)", textDecoration: "none", transition: "color 0.2s" }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.2)"; }}
+            >
+              Report content
+            </a>
             {["Privacy Policy", "Terms of Service", "Cookies"].map((l) => (
               <a
                 key={l}

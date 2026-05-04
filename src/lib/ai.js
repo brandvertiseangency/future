@@ -10,6 +10,7 @@ const DEFAULT_TIMEOUT_MS = 45_000;
 const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
 const logger = require('../utils/logger');
+const { checkImageGenerationPrompt } = require('./contentSafety');
 const NANO_BANANA_ALIASES = new Set([
   'nanobana',
   'nano-banana',
@@ -37,15 +38,72 @@ const parseEnvBool = (raw, fallback = true) => {
 };
 /** Gemini native image (Nano Banana Pro line). */
 const GOOGLE_NATIVE_IMAGE_MODEL = normalizeNativeImageModel(process.env.GOOGLE_NATIVE_IMAGE_MODEL);
+
+/** Imagen tier → default model id when `GOOGLE_IMAGEN_MODEL` is unset. */
+const IMAGEN_TIER_MODELS = {
+  fast: 'imagen-4.0-fast-generate-001',
+  standard: 'imagen-4.0-generate-001',
+  ultra: 'imagen-4.0-ultra-generate-001',
+};
+const imagenTierRaw = String(process.env.GOOGLE_IMAGEN_TIER || 'fast').trim().toLowerCase();
+const IMAGEN_TIER = ['fast', 'standard', 'ultra'].includes(imagenTierRaw) ? imagenTierRaw : 'fast';
+
+const resolveImagenModelId = () => {
+  const explicit = process.env.GOOGLE_IMAGEN_MODEL && String(process.env.GOOGLE_IMAGEN_MODEL).trim();
+  if (explicit) return explicit;
+  return IMAGEN_TIER_MODELS[IMAGEN_TIER] || IMAGEN_TIER_MODELS.fast;
+};
+
 /** Imagen text-to-image (optional second step). */
-const GOOGLE_IMAGEN_MODEL = process.env.GOOGLE_IMAGEN_MODEL || 'imagen-4.0-fast-generate-001';
+const GOOGLE_IMAGEN_MODEL = resolveImagenModelId();
+
 /** When true (default), try Imagen if native returns no image or errors. */
 const GOOGLE_IMAGE_IMAGEN_FALLBACK = parseEnvBool(process.env.GOOGLE_IMAGE_IMAGEN_FALLBACK, true);
+
+/** Google API: `dont_allow` | `allow_adult` | `allow_all` (EU/MENA may forbid allow_all). */
+const GOOGLE_IMAGEN_PERSON_GENERATION = (() => {
+  const v = String(process.env.GOOGLE_IMAGEN_PERSON_GENERATION || 'allow_adult').trim().toLowerCase();
+  if (['dont_allow', 'allow_adult', 'allow_all'].includes(v)) return v;
+  return 'allow_adult';
+})();
+
+/** `1K` | `2K` — 2K only applied when the resolved model supports it (Standard/Ultra per Google docs). */
+const GOOGLE_IMAGEN_IMAGE_SIZE = (() => {
+  const v = String(process.env.GOOGLE_IMAGEN_IMAGE_SIZE || '2K').trim().toUpperCase();
+  if (v === '1K' || v === '2K') return v;
+  return '2K';
+})();
+
 let googleImageRateLimitedUntil = 0;
+
+const imagenModelSupportsConfigurableImageSize = (modelId) => {
+  const m = String(modelId || '').toLowerCase();
+  if (m.includes('fast')) return false;
+  return m.includes('imagen-4.0-generate-001') || m.includes('ultra-generate');
+};
+
+/** Appended to Gemini native image prompts only (not Imagen — token limits). */
+const NATIVE_QUALITY_PRESET = String(process.env.GOOGLE_NATIVE_IMAGE_QUALITY_PRESET || 'balanced')
+  .trim()
+  .toLowerCase();
+const NATIVE_QUALITY_SUFFIX = {
+  speed: '',
+  balanced:
+    ' Photographic realism: natural color, subtle grain, avoid plastic HDR or oversharpening.',
+  detail:
+    ' High perceived detail: crisp materials, realistic shadow falloff, editorial color grade, no halos, no synthetic glow.',
+};
+const nativeImageQualitySuffix =
+  NATIVE_QUALITY_SUFFIX[NATIVE_QUALITY_PRESET] ?? NATIVE_QUALITY_SUFFIX.balanced;
 
 logger.info('AI image config resolved', {
   nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
+  nativeQualityPreset: NATIVE_QUALITY_PRESET,
   imagenModel: GOOGLE_IMAGEN_MODEL,
+  imagenTier: IMAGEN_TIER,
+  imagenPersonGeneration: GOOGLE_IMAGEN_PERSON_GENERATION,
+  imagenImageSize: GOOGLE_IMAGEN_IMAGE_SIZE,
+  imagenSupportsImageSizeParam: imagenModelSupportsConfigurableImageSize(GOOGLE_IMAGEN_MODEL),
   imagenFallbackEnabled: GOOGLE_IMAGE_IMAGEN_FALLBACK,
 });
 
@@ -241,6 +299,52 @@ const normalizeAspectRatioForImagen = (aspectRatio) => {
   return '1:1';
 };
 
+/** Imagen prompt input limit ~480 tokens; stay conservative in characters (no tokenizer in-path). */
+const IMAGEN_PROMPT_MAX_CHARS = 2000;
+
+/**
+ * Shorten long prompts for Imagen: keep start (subject/brand) and end (constraints).
+ * @param {string} text
+ * @returns {string}
+ */
+const shortenPromptForImagen = (text) => {
+  const s = String(text || '').replace(/\s+/g, ' ').trim();
+  if (s.length <= IMAGEN_PROMPT_MAX_CHARS) return s;
+  const head = 950;
+  const tail = 950;
+  return `${s.slice(0, head)}\n\n[...]\n\n${s.slice(-tail)}`;
+};
+
+/**
+ * Defensive extraction of base64 image bytes from generateImages SDK response.
+ * @param {object} response
+ * @returns {string|null}
+ */
+const extractImagenImageBase64 = (response) => {
+  const imgs = response?.generatedImages ?? response?.generated_images;
+  if (!Array.isArray(imgs) || imgs.length === 0) {
+    const topKeys = response && typeof response === 'object' ? Object.keys(response) : [];
+    logger.warn('Imagen response missing or empty generatedImages', {
+      topKeys,
+      generatedImagesLength: Array.isArray(imgs) ? imgs.length : null,
+    });
+    return null;
+  }
+  const first = imgs[0];
+  const img = first?.image ?? first?.Image;
+  const bytes =
+    img?.imageBytes ??
+    img?.image_bytes ??
+    img?.bytes ??
+    (typeof img === 'string' ? img : null);
+  if (bytes) return bytes;
+  logger.warn('Imagen first image missing imageBytes', {
+    firstKeys: first && typeof first === 'object' ? Object.keys(first) : [],
+    imageKeys: img && typeof img === 'object' ? Object.keys(img) : [],
+  });
+  return null;
+};
+
 /**
  * Gemini native image (generateContent + IMAGE modality).
  * @returns {Promise<{ imageData: string, model: string } | null>}
@@ -254,7 +358,7 @@ const generateImageWithGoogleNative = async (imagePrompt, timeoutMs, aspectRatio
     const part = await buildInlineImagePartFromUrl(refUrl);
     if (part) inlineParts.push(part);
   }
-  const text = `${imagePrompt}${aspectRatioHint(aspectRatio)}`;
+  const text = `${imagePrompt}${aspectRatioHint(aspectRatio)}${nativeImageQualitySuffix}`;
   const response = await withTimeout(
     ai.models.generateContent({
       model: GOOGLE_NATIVE_IMAGE_MODEL,
@@ -287,15 +391,29 @@ const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio
     imagenAspect !== String(aspectRatio || '').trim()
       ? ` (Output canvas is ${imagenAspect} per image API; preserve ${aspectRatio} vertical-feed composition intent.)`
       : '';
+  const fullPrompt = `${imagePrompt}${aspectRatioHint(aspectRatio)}${ratioNote}`;
+  const promptForImagen = shortenPromptForImagen(fullPrompt);
+
+  const config = {
+    numberOfImages: 1,
+    aspectRatio: imagenAspect,
+    outputMimeType: 'image/jpeg',
+    personGeneration: GOOGLE_IMAGEN_PERSON_GENERATION,
+  };
+  if (imagenModelSupportsConfigurableImageSize(GOOGLE_IMAGEN_MODEL)) {
+    config.imageSize = GOOGLE_IMAGEN_IMAGE_SIZE === '2K' ? '2K' : '1K';
+  }
+
   const response = await withTimeout(
     ai.models.generateImages({
       model: GOOGLE_IMAGEN_MODEL,
-      prompt: `${imagePrompt}${aspectRatioHint(aspectRatio)}${ratioNote}`,
-      config: { numberOfImages: 1, aspectRatio: imagenAspect, outputMimeType: 'image/jpeg' },
+      prompt: promptForImagen,
+      config,
     }),
     timeoutMs
   );
-  const b64 = response?.generatedImages?.[0]?.image?.imageBytes;
+
+  const b64 = extractImagenImageBase64(response);
   if (!b64) return null;
   return { imageData: `data:image/jpeg;base64,${b64}`, model: GOOGLE_IMAGEN_MODEL };
 };
@@ -318,6 +436,19 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       imageData: null,
       error: 'Image generation requires GOOGLE_AI_API_KEY (Google AI Studio / Gemini API key).',
       provider: 'none',
+      model: null,
+    };
+  }
+  const policy = checkImageGenerationPrompt(imagePrompt);
+  if (!policy.ok) {
+    logger.warn('Image generation blocked by content policy', {
+      code: policy.code,
+      promptPreview: String(imagePrompt || '').slice(0, 120),
+    });
+    return {
+      imageData: null,
+      error: policy.message,
+      provider: 'policy-blocked',
       model: null,
     };
   }

@@ -43,7 +43,7 @@ function ContentMixSliders({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Content Mix</label>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Content Mix</label>
         <span className={cn('text-xs', total === 100 ? 'text-emerald-700' : 'text-red-600')}>
           {total}% {total === 100 ? 'OK' : '(must be 100%)'}
         </span>
@@ -52,13 +52,13 @@ function ContentMixSliders({
         {Object.entries(mix).map(([key, val]) => (
           <div key={key}>
             <div className="mb-1 flex items-center justify-between">
-              <span className="text-sm text-[#111111]">{MIX_LABELS[key] ?? key}</span>
-              <span className="text-sm text-[#6B7280]">{val}%</span>
+              <span className="text-sm text-foreground">{MIX_LABELS[key] ?? key}</span>
+              <span className="text-sm text-muted-foreground">{val}%</span>
             </div>
             <input
               type="range" min={0} max={100} step={5} value={val}
               onChange={e => update(key, Number(e.target.value))}
-              className="w-full accent-[#111111]"
+              className="w-full accent-primary"
             />
           </div>
         ))}
@@ -158,15 +158,15 @@ function CalendarGenerateInner() {
         title="Plan your content with AI"
         description="Set your monthly content mix and generate a review-ready calendar."
       />
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-[#6B7280] hover:text-[#111111]">
+      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
         <ChevronLeft className="h-4 w-4" /> Back
       </button>
 
-      <div className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-white px-3 py-1">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-[#F3F4F6]">
-          <Calendar className="h-3.5 w-3.5 text-[#111111]" />
+      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1">
+        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
+          <Calendar className="h-3.5 w-3.5 text-foreground" />
         </div>
-        <span className="text-xs uppercase tracking-wide text-[#6B7280]">Content Calendar</span>
+        <span className="text-xs uppercase tracking-wide text-muted-foreground">Content Calendar</span>
       </div>
 
       <PageHeader
@@ -178,19 +178,19 @@ function CalendarGenerateInner() {
         <SectionCard title="Plan Configuration" subtitle="Define month, volume, and mix before generation.">
           <div className="space-y-5">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-[#6B7280]">Month</label>
+              <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Month</label>
               <input
                 type="month"
                 value={month}
                 onChange={e => setMonth(e.target.value)}
-                className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-white px-3 text-sm text-[#111111] outline-none focus:border-[#111111]"
+                className="h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none focus:border-primary"
               />
             </div>
 
             <div>
               <div className="mb-1 flex items-center justify-between">
-                <label className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">How many posts?</label>
-                <span className="text-sm font-semibold text-[#111111]">{postCount}</span>
+                <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">How many posts?</label>
+                <span className="text-sm font-semibold text-foreground">{postCount}</span>
               </div>
               <input
                 type="range"
@@ -199,9 +199,9 @@ function CalendarGenerateInner() {
                 step={1}
                 value={postCount}
                 onChange={e => setPostCount(Number(e.target.value))}
-                className="w-full accent-[#111111]"
+                className="w-full accent-primary"
               />
-              <div className="mt-1 flex items-center justify-between text-xs text-[#6B7280]">
+              <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
                 <span>4 min</span>
                 <span>{maxPosts} max ({plan})</span>
               </div>
@@ -214,18 +214,18 @@ function CalendarGenerateInner() {
         <SectionCard title="Summary" subtitle="Credits and quick actions" className="xl:sticky xl:top-20 h-fit">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#6B7280]">Plan</span>
+              <span className="text-sm text-muted-foreground">Plan</span>
               <StatusBadge tone="neutral">{String(plan).toUpperCase()}</StatusBadge>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#6B7280]">Credits needed</span>
-              <span className="text-sm font-semibold text-[#111111]">{creditsNeeded}</span>
+              <span className="text-sm text-muted-foreground">Credits needed</span>
+              <span className="text-sm font-semibold text-foreground">{creditsNeeded}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-[#6B7280]">Balance</span>
-              <span className="text-sm font-semibold text-[#111111]">{credits}</span>
+              <span className="text-sm text-muted-foreground">Balance</span>
+              <span className="text-sm font-semibold text-foreground">{credits}</span>
             </div>
-            <div className={cn('rounded-lg border px-3 py-2 text-xs', hasCredits ? 'border-[#E5E7EB] bg-[#F7F7F8] text-[#6B7280]' : 'border-red-200 bg-red-50 text-red-600')}>
+            <div className={cn('rounded-lg border px-3 py-2 text-xs', hasCredits ? 'border-border bg-muted/40 text-muted-foreground' : 'border-red-200 bg-red-50 text-red-600')}>
               {hasCredits ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after.` : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
             </div>
             {!onboardingReady ? (
@@ -275,7 +275,7 @@ function CalendarGenerateInner() {
             : <><Sparkles className="mr-2 h-4 w-4" />Generate Content Plan</>
           }
         </Button>
-        <p className="text-center text-xs text-[#6B7280]">Credits are charged only after you approve and confirm.</p>
+        <p className="text-center text-xs text-muted-foreground">Credits are charged only after you approve and confirm.</p>
       </div>
     </PageContainer>
   )

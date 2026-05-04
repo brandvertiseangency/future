@@ -112,25 +112,36 @@ export default function SettingsPage() {
         </TabsList>
 
         <TabsContent value="profile">
+        <SectionCard title="Compliance" subtitle="Policies and reporting.">
+          <div className="flex flex-col gap-2 text-sm">
+            <Link href="/legal/acceptable-use" className="font-medium text-foreground underline underline-offset-2" target="_blank" rel="noopener noreferrer">
+              Acceptable Use Policy
+            </Link>
+            <Link href="/legal/report-content" className="font-medium text-foreground underline underline-offset-2" target="_blank" rel="noopener noreferrer">
+              Report content
+            </Link>
+          </div>
+        </SectionCard>
+
         <SectionCard title="Profile" subtitle="Update your account information.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Name</label>
+              <label className="mb-1 block text-xs text-muted-foreground">Name</label>
               <div className="relative">
-                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6B7280]" />
-                <input value={name} onChange={(e) => setName(e.target.value)} className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none ${nameTooShort ? 'border-red-300 focus:border-red-500' : 'border-[#E5E7EB] focus:border-[#111111]'}`} />
+                <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <input value={name} onChange={(e) => setName(e.target.value)} className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none ${nameTooShort ? 'border-red-300 focus:border-red-500' : 'border-border focus:border-primary'}`} />
               </div>
               {nameTooShort ? <p className="mt-1 text-xs text-red-600">Name must be at least 2 characters.</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#6B7280]">Email</label>
-              <input value={email} readOnly className="h-10 w-full rounded-lg border border-[#E5E7EB] bg-[#F7F7F8] px-3 text-sm text-[#6B7280]" />
+              <label className="mb-1 block text-xs text-muted-foreground">Email</label>
+              <input value={email} readOnly className="h-10 w-full rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground" />
             </div>
           </div>
           <Button className="mt-4" onClick={saveProfile} disabled={!canSave}>
             {savingProfile ? 'Saving...' : canSave ? 'Save Profile' : 'Saved'}
           </Button>
-          <p className="mt-2 text-xs text-[#6B7280]">
+          <p className="mt-2 text-xs text-muted-foreground">
             {saveState === 'saving' ? 'Saving changes...' : saveState === 'saved' ? `Saved at ${lastSavedAt}` : saveState === 'error' ? 'Save failed. Please retry.' : 'No unsaved changes.'}
           </p>
         </SectionCard>
@@ -148,13 +159,13 @@ export default function SettingsPage() {
         <div id="billing" className="scroll-mt-20">
         <SectionCard title="Billing" subtitle="Manage your plan and credits.">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-[#E5E7EB] p-3">
-              <p className="text-xs text-[#6B7280]">Current Plan</p>
-              <p className="mt-1 text-lg font-semibold text-[#111111] capitalize">{plan}</p>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Current Plan</p>
+              <p className="mt-1 text-lg font-semibold text-foreground capitalize">{plan}</p>
             </div>
-            <div className="rounded-lg border border-[#E5E7EB] p-3">
-              <p className="text-xs text-[#6B7280]">Credits</p>
-              <p className="mt-1 text-lg font-semibold text-[#111111]">{credits}</p>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Credits</p>
+              <p className="mt-1 text-lg font-semibold text-foreground">{credits}</p>
             </div>
           </div>
           <Button className="mt-4" onClick={() => window.location.assign('/pricing')}>
@@ -167,7 +178,7 @@ export default function SettingsPage() {
 
         <TabsContent value="api">
         <SectionCard title="API / Integrations" subtitle="Reserved for future integrations and developer setup.">
-          <p className="text-sm text-[#6B7280]">Coming soon: API keys, webhooks, and third-party integrations.</p>
+          <p className="text-sm text-muted-foreground">Coming soon: API keys, webhooks, and third-party integrations.</p>
         </SectionCard>
         </TabsContent>
       </Tabs>
