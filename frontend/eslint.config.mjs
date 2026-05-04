@@ -35,6 +35,10 @@ const eslintConfig = defineConfig([
     "src/components/ui/typewriter-effect.tsx",
   ]),
   {
+    linterOptions: {
+      // Unused eslint-disable directives — warn only
+      reportUnusedDisableDirectives: "warn",
+    },
     rules: {
       // Allow simple setState calls in useEffect (e.g. mount guards)
       "react-hooks/purity": "off",
@@ -48,8 +52,6 @@ const eslintConfig = defineConfig([
       "import/no-anonymous-default-export": "warn",
       // any is acceptable in API/SWR response shapes — warn only
       "@typescript-eslint/no-explicit-any": "warn",
-      // Unused eslint-disable directives — warn only
-      "reportUnusedDisableDirectives": "warn",
     },
   },
 ]);
