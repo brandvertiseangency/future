@@ -1,12 +1,16 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
+import { displayCaption } from '@/lib/caption'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { Edit2, Trash2, CheckCircle2, Loader2, ChevronLeft, Check } from 'lucide-react'
-import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
+import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { SectionCard } from '@/components/ui/saas-primitives'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
@@ -30,10 +34,10 @@ interface Slot {
 }
 
 const TYPE_STYLES: Record<string, { bg: string; border: string; text: string; label: string }> = {
-  post:     { bg: '#F3F4F6', border: '#E5E7EB', text: '#111111', label: 'Post' },
-  reel:     { bg: '#EEF2FF', border: '#DDE3FF', text: '#1F2937', label: 'Reel' },
-  carousel: { bg: '#F9FAFB', border: '#E5E7EB', text: '#374151', label: 'Carousel' },
-  story:    { bg: '#F9FAFB', border: '#E5E7EB', text: '#4B5563', label: 'Story' },
+  post:     { bg: '#F7F7F8', border: '#E5E7EB', text: '#6B7280', label: 'Post' },
+  reel:     { bg: '#F7F7F8', border: '#E5E7EB', text: '#6B7280', label: 'Reel' },
+  carousel: { bg: '#F7F7F8', border: '#E5E7EB', text: '#6B7280', label: 'Carousel' },
+  story:    { bg: '#F7F7F8', border: '#E5E7EB', text: '#6B7280', label: 'Story' },
 }
 
 function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
@@ -44,6 +48,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
   onEdit: (value: { topic?: string; post_idea?: string; creative_copy?: string; caption_draft?: string; hashtags_draft?: string[]; creative_brief?: string }) => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [topic, setTopic] = useState(slot.topic || '')
   const [idea, setIdea] = useState(slot.post_idea)
   const [creativeCopy, setCreativeCopy] = useState(slot.creative_copy || '')
@@ -241,7 +246,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
           )}
           {slot.caption_draft && (
             <p style={{ fontSize: 11, color: '#374151', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
-              Caption: {slot.caption_draft}
+              Caption: {displayCaption(slot.caption_draft)}
             </p>
           )}
           {slot.hashtags_draft && slot.hashtags_draft.length > 0 && (
@@ -269,22 +274,39 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
-        <button onClick={() => setEditing(true)} style={iconBtnStyle}>
-          <Edit2 size={11} color="rgba(255,255,255,0.3)" />
+      <div className="mt-2 flex gap-1">
+        <button
+          type="button"
+          onClick={() => setEditing(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-[#6B7280] transition-colors hover:border-[#111111] hover:bg-[#F3F4F6]"
+          aria-label="Edit slot"
+        >
+          <Edit2 size={14} />
         </button>
-        <button onClick={onDelete} style={iconBtnStyle}>
-          <Trash2 size={11} color="rgba(244,100,100,0.5)" />
+        <button
+          type="button"
+          onClick={() => setDeleteOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#E5E7EB] bg-white text-red-500 transition-colors hover:border-red-300 hover:bg-red-50"
+          aria-label="Remove slot"
+        >
+          <Trash2 size={14} />
         </button>
       </div>
+      <ConfirmDialog
+        open={deleteOpen}
+        surface="light"
+        tone="danger"
+        title="Remove this slot?"
+        description="It will not be generated when you approve the plan."
+        confirmLabel="Remove"
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={() => {
+          setDeleteOpen(false)
+          onDelete()
+        }}
+      />
     </div>
   )
-}
-
-const iconBtnStyle: React.CSSProperties = {
-  width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.07)', display: 'flex', alignItems: 'center',
-  justifyContent: 'center', cursor: 'pointer',
 }
 
 function CalendarReviewInner() {
@@ -304,11 +326,17 @@ function CalendarReviewInner() {
     }
   }, [planId, latestPlanData, router])
 
-  const { data: planData, mutate } = useSWR(
+  const { data: planData } = useSWR(
     resolvedPlanId ? `/api/calendar/plans/${resolvedPlanId}` : null,
     (u: string) => apiCall<any>(u),
     { revalidateOnFocus: false }
   )
+  const { data: creditsData } = useSWR(
+    '/api/credits/balance',
+    (u: string) => apiCall<{ balance?: number }>(u),
+    { revalidateOnFocus: false }
+  )
+  const creditBalance = creditsData?.balance ?? 0
 
   const plan = planData?.plan ?? planData
   const allSlots: Slot[] = planData?.slots ?? []
@@ -320,6 +348,7 @@ function CalendarReviewInner() {
   const slots = allSlots.filter(s => !deletedIds.has(s.id))
   const approvedCount = selected.size === 0 ? slots.length : selected.size
   const creditsNeeded = approvedCount * 2
+  const insufficientCredits = creditBalance < creditsNeeded && slots.length > 0
 
   const toggleAll = () => {
     if (selected.size === slots.length) setSelected(new Set())
@@ -343,6 +372,10 @@ function CalendarReviewInner() {
 
   const handleApprove = async () => {
     if (!resolvedPlanId) return
+    if (insufficientCredits) {
+      toast.error('Not enough credits to approve this selection.')
+      return
+    }
     setApproving(true)
     try {
       const slotIds = selected.size > 0 ? Array.from(selected) : slots.map(s => s.id)
@@ -362,11 +395,13 @@ function CalendarReviewInner() {
     }
   }
 
-  if (!planData) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-      <Loader2 size={24} color="rgba(255,255,255,0.3)" style={{ animation: 'spin 1s linear infinite' }} />
-    </div>
-  )
+  if (!planData) {
+    return (
+      <PageContainer className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#6B7280]" aria-label="Loading plan" />
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer className="max-w-6xl">
@@ -387,53 +422,59 @@ function CalendarReviewInner() {
         </div>
 
         {/* Approve CTA */}
-        <div style={{ textAlign: 'right' }}>
+        <div className="text-right">
           <button
-            onClick={handleApprove}
-            disabled={approving || slots.length === 0}
-            className={!approving && slots.length > 0 ? 'btn-silver' : ''}
-            style={{
-              padding: '11px 22px', borderRadius: 11, border: 'none',
-              background: approving || slots.length === 0 ? 'rgba(255,255,255,0.06)' : undefined,
-              color: approving || slots.length === 0 ? 'rgba(255,255,255,0.2)' : '#000',
-              fontSize: 13, fontWeight: 600, cursor: approving ? 'not-allowed' : 'pointer',
-              display: 'flex', alignItems: 'center', gap: 7,
-            }}
+            type="button"
+            onClick={() => void handleApprove()}
+            disabled={approving || slots.length === 0 || insufficientCredits}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#111111] px-6 text-sm font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50 hover:bg-[#222222]"
           >
-            {approving
-              ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Starting...</>
-              : <><CheckCircle2 size={14} /> Approve & Generate ({creditsNeeded} credits)</>
-            }
+            {approving ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Starting…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="h-4 w-4" />
+                Approve & Generate
+              </>
+            )}
           </button>
-          <p style={{ fontSize: 10, color: '#6B7280', marginTop: 5 }}>
+          <p className="mt-2 text-xs text-[#6B7280]">
+            Costs {creditsNeeded} credits · Balance {creditBalance}
+            {insufficientCredits ? (
+              <>
+                {' '}
+                ·{' '}
+                <Link href="/settings#billing" className="font-medium text-red-600 underline-offset-2 hover:underline">
+                  Top up
+                </Link>
+              </>
+            ) : null}
+          </p>
+          <p className="mt-1 text-xs text-[#6B7280]">
             {selected.size === 0 ? 'All posts selected' : `${selected.size} selected`}
           </p>
         </div>
       </div>
 
       {/* Select all */}
-      <SurfaceCard className="p-3 mb-4">
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button
-          onClick={toggleAll}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 12, color: '#4B5563',
-          }}
-        >
-          <div style={{
-            width: 16, height: 16, borderRadius: 4,
-            background: selected.size === slots.length ? 'linear-gradient(135deg,#fff,#c8c8c8)' : 'rgba(255,255,255,0.06)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            {selected.size === slots.length && <Check size={9} color="#000" strokeWidth={3} />}
-          </div>
-          {selected.size === slots.length ? 'Deselect all' : 'Select all'}
-        </button>
-      </div>
-      </SurfaceCard>
+      <SectionCard title="Selection" subtitle="Choose which slots to include in generation." className="mb-4">
+        <label className="flex cursor-pointer items-center gap-3 text-sm text-[#111111]">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-[#E5E7EB] accent-[#111111]"
+            checked={slots.length > 0 && (selected.size === 0 || selected.size === slots.length)}
+            onChange={toggleAll}
+          />
+          <span>
+            {slots.length > 0 && (selected.size === 0 || selected.size === slots.length)
+              ? 'Deselect all slots'
+              : 'Select all slots'}
+          </span>
+        </label>
+      </SectionCard>
 
       {/* Grid by date */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { CreditCard, User } from 'lucide-react'
 import useSWR from 'swr'
@@ -28,7 +29,9 @@ function parseApiError(error: unknown): string {
 }
 
 export default function SettingsPage() {
+  const pathname = usePathname()
   const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('profile')
   const [name, setName] = useState(user?.displayName ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
@@ -41,6 +44,16 @@ export default function SettingsPage() {
   const baselineName = meData?.user?.display_name ?? user?.displayName ?? ''
   const nameTooShort = name.trim().length > 0 && name.trim().length < 2
   const canSave = name.trim().length >= 2 && name.trim() !== baselineName.trim() && !savingProfile
+
+  useEffect(() => {
+    const syncTabFromHash = () => {
+      if (typeof window === 'undefined') return
+      if (window.location.hash === '#billing') setActiveTab('billing')
+    }
+    syncTabFromHash()
+    window.addEventListener('hashchange', syncTabFromHash)
+    return () => window.removeEventListener('hashchange', syncTabFromHash)
+  }, [pathname])
 
   useEffect(() => {
     const dbName = meData?.user?.display_name
@@ -90,7 +103,7 @@ export default function SettingsPage() {
       />
       <PageHeader title="Settings" description="Manage profile, brand, billing, and integrations." />
 
-      <Tabs defaultValue="profile" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="grid grid-cols-4 max-w-[520px]">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="brand">Brand</TabsTrigger>

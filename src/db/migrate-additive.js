@@ -130,6 +130,7 @@ ALTER TABLE posts ADD COLUMN IF NOT EXISTS approval_status  TEXT DEFAULT 'pendin
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS approved_at      TIMESTAMPTZ;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS version_number   INTEGER DEFAULT 1;
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS product_id       UUID;
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS scheduler_note   TEXT;
 
 -- Widen status CHECK to include 'approved'
 ALTER TABLE posts DROP CONSTRAINT IF EXISTS posts_status_check;

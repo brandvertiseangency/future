@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { Download, ImageIcon, RefreshCcw, Search } from 'lucide-react'
@@ -14,6 +14,7 @@ import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
 import { logUxEvent } from '@/lib/ux-events'
+import { displayCaption } from '@/lib/caption'
 
 interface Post {
   id: string
@@ -35,6 +36,7 @@ const PLATFORM_FILTERS = ['all', 'instagram', 'linkedin', 'twitter', 'tiktok', '
 const STATUS_FILTERS = ['all', 'draft', 'approved', 'scheduled']
 
 export default function OutputsPage() {
+  const { mutate: globalMutate } = useSWRConfig()
   const router = useRouter()
   const [platform, setPlatform] = useState('all')
   const [status, setStatus] = useState('all')
@@ -44,15 +46,26 @@ export default function OutputsPage() {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const searchRef = useRef<HTMLInputElement | null>(null)
-  const triggerDownload = (url?: string, filename = 'output-image') => {
+  const triggerDownload = async (url?: string, filename = 'output-image') => {
     if (!url) return
-    const anchor = document.createElement('a')
-    anchor.href = url
-    anchor.download = filename
-    anchor.rel = 'noopener noreferrer'
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
+    const t = toast.loading('Downloading…')
+    try {
+      const res = await fetch(url, { mode: 'cors' })
+      if (!res.ok) throw new Error('Network error')
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = filename
+      anchor.rel = 'noopener noreferrer'
+      document.body.appendChild(anchor)
+      anchor.click()
+      document.body.removeChild(anchor)
+      URL.revokeObjectURL(objectUrl)
+      toast.success('Saved to device.', { id: t })
+    } catch {
+      toast.error('Download failed. Try opening the image in a new tab.', { id: t })
+    }
   }
   const regeneratePost = async (postId: string) => {
     setRegeneratingId(postId)
@@ -61,6 +74,7 @@ export default function OutputsPage() {
         method: 'POST',
         body: JSON.stringify({ feedback: 'Regenerate with improved composition' }),
       })
+      await globalMutate((key) => typeof key === 'string' && key.startsWith('/api/posts'))
       toast.success('Regeneration started')
     } catch {
       toast.error('Failed to regenerate')
@@ -81,7 +95,7 @@ export default function OutputsPage() {
       if (!search) return true
       const q = search.toLowerCase()
       return [
-        post.caption,
+        displayCaption(post.caption),
         post.slot_topic,
         post.slot_creative_copy,
         ...(post.slot_hashtags_draft || []),
@@ -201,13 +215,13 @@ export default function OutputsPage() {
                 <div className={cn('bg-[#F3F4F6]', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={post.image_url} alt={post.caption || 'Generated output'} className="h-full w-full object-cover" />
+                    <img src={post.image_url} alt={displayCaption(post.caption, 'Generated output')} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-5 w-5" /></div>
                   )}
                 </div>
                 <div className="space-y-2 p-3">
-                  <div className="opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                     <div className="mb-2 flex items-center gap-1">
                       <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); setSelected(post) }}>Preview</Button>
                       <Button size="sm" variant="secondary" className="h-7 px-2" onClick={(e) => { e.stopPropagation(); regeneratePost(post.id) }}>Regenerate</Button>
@@ -226,7 +240,7 @@ export default function OutputsPage() {
                   </div>
                   <p className="line-clamp-2 text-sm font-medium text-[#111111]">{post.slot_topic || 'Untitled output'}</p>
                   {post.slot_creative_copy ? <p className="line-clamp-2 text-xs text-[#4B5563]">{post.slot_creative_copy}</p> : null}
-                  <p className="line-clamp-3 text-xs text-[#6B7280]">{post.caption || 'No caption'}</p>
+                  <p className="line-clamp-3 text-xs text-[#6B7280]">{displayCaption(post.caption, `${post.platform} ${post.content_type || 'post'}`)}</p>
                   {post.slot_hashtags_draft?.length ? (
                     <p className="line-clamp-1 text-[11px] text-[#6B7280]">
                       {post.slot_hashtags_draft.map((h) => h.startsWith('#') ? h : `#${h}`).join(' ')}
@@ -270,12 +284,12 @@ export default function OutputsPage() {
             <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
               {selected.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={selected.image_url} alt={selected.caption || 'Selected output'} className="h-44 w-full object-cover" />
+                <img src={selected.image_url} alt={displayCaption(selected.caption, 'Selected output')} className="h-44 w-full object-cover" />
               ) : (
                 <div className="flex h-44 items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-6 w-6" /></div>
               )}
             </div>
-            <p className="text-sm text-[#111111]">{selected.caption}</p>
+            <p className="text-sm text-[#111111]">{displayCaption(selected.caption, 'No caption')}</p>
             <div>
               <p className="mb-2 text-xs text-[#6B7280]">Versions</p>
               <div className="grid grid-cols-3 gap-2">

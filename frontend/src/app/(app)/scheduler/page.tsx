@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { addDays, format, startOfWeek } from 'date-fns'
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
@@ -13,6 +14,11 @@ import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
 import { logUxEvent } from '@/lib/ux-events'
+import { displayCaption } from '@/lib/caption'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
+import { CalendarClock } from 'lucide-react'
+
+const DEFAULT_SLOT_HOUR = 10
 
 type PostItem = {
   id: string
@@ -25,14 +31,53 @@ type PostItem = {
 }
 
 type Slot = {
+  /** Local calendar day key yyyy-MM-dd (Mon–Sun current week) */
   id: string
   label: string
   postId?: string
 }
 
+function slotIdForLocalDate(d: Date): string {
+  return format(d, 'yyyy-MM-dd')
+}
+
+function buildWeekSlots(anchor = new Date()): Slot[] {
+  const monday = startOfWeek(anchor, { weekStartsOn: 1 })
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = addDays(monday, i)
+    return {
+      id: slotIdForLocalDate(d),
+      label: `${format(d, 'EEE d MMM')} · 10:00 AM`,
+      postId: undefined,
+    }
+  })
+}
+
+/** Map a scheduled ISO time to a grid day key (local date). */
+function getSlotIdFromScheduledAt(scheduledAt?: string): string | null {
+  if (!scheduledAt) return null
+  const d = new Date(scheduledAt)
+  if (Number.isNaN(d.getTime())) return null
+  return slotIdForLocalDate(d)
+}
+
+/** Next occurrence of this calendar day at default publish hour (local). */
+function scheduledIsoForDayKey(dayKey: string): string {
+  const parts = dayKey.split('-').map(Number)
+  const [y, m, day] = parts
+  if (!y || !m || !day) return new Date().toISOString()
+  const next = new Date(y, m - 1, day, DEFAULT_SLOT_HOUR, 0, 0, 0)
+  const now = new Date()
+  if (next <= now) {
+    next.setDate(next.getDate() + 7)
+  }
+  return next.toISOString()
+}
+
 function DraggablePost({ post, selected, onSelect }: { post: PostItem; selected: boolean; onSelect: () => void }) {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: post.id })
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
+  const cap = displayCaption(post.caption, 'Untitled post')
   return (
     <button
       ref={setNodeRef}
@@ -40,61 +85,107 @@ function DraggablePost({ post, selected, onSelect }: { post: PostItem; selected:
       {...listeners}
       {...attributes}
       onClick={onSelect}
-      className={`w-full rounded-lg border px-3 py-2 text-left ${selected ? 'border-[#111111] bg-[#F3F4F6]' : 'border-[#E5E7EB] bg-white'}`}
+      type="button"
+      className={`flex w-full gap-2 rounded-lg border px-2 py-2 text-left ${selected ? 'border-[#111111] bg-[#F3F4F6]' : 'border-[#E5E7EB] bg-white'}`}
     >
-      <p className="line-clamp-1 text-sm text-[#111111]">{post.caption || 'Untitled post'}</p>
-      <p className="mt-1 text-xs text-[#6B7280] capitalize">{post.platform}</p>
+      {post.image_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={post.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
+      ) : (
+        <div className="h-10 w-10 shrink-0 rounded-lg bg-[#F3F4F6]" />
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="line-clamp-1 text-sm text-[#111111]">{cap}</p>
+        <p className="mt-0.5 text-xs capitalize text-[#6B7280]">{post.platform}</p>
+      </div>
     </button>
   )
 }
 
 function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
   const { isOver, setNodeRef } = useDroppable({ id: slot.id })
+  const cap = post ? displayCaption(post.caption, 'Post') : ''
   return (
-    <div ref={setNodeRef} className={`min-h-[76px] rounded-lg border p-2 ${isOver ? 'border-[#111111] bg-[#F3F4F6]' : 'border-[#E5E7EB] bg-white'}`}>
+    <div
+      ref={setNodeRef}
+      className={`min-h-[88px] rounded-lg border p-2 transition-colors ${isOver ? 'border-dashed border-2 border-[#111111] bg-[#F3F4F6] animate-pulse' : 'border-[#E5E7EB] bg-white'}`}
+    >
       <p className="mb-2 text-xs text-[#6B7280]">{slot.label}</p>
-      {post ? <p className="line-clamp-2 text-sm text-[#111111]">{post.caption}</p> : <p className="text-xs text-[#9CA3AF]">Drop post here</p>}
+      {post?.image_url ? (
+        <div className="space-y-1">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.image_url} alt="" className="aspect-square w-full rounded-lg object-cover" />
+          <p className="line-clamp-2 text-xs text-[#111111]">{cap}</p>
+        </div>
+      ) : post ? (
+        <p className="line-clamp-2 text-sm text-[#111111]">{cap}</p>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-1 py-2 text-[#9CA3AF]">
+          <span className="text-lg leading-none">+</span>
+          <p className="text-xs">Drop post here</p>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function SchedulerPage() {
   const searchParams = useSearchParams()
-  const { data, mutate, error, isLoading } = useSWR('/api/posts?limit=30', (url: string) => apiCall<{ posts: PostItem[] }>(url), { revalidateOnFocus: false })
+  const { data, mutate, error, isLoading } = useSWR(
+    '/api/posts?limit=30',
+    (url: string) => apiCall<{ posts: PostItem[] }>(url),
+    { revalidateOnFocus: false },
+  )
   const posts = data?.posts ?? []
   const sensors = useSensors(useSensor(PointerSensor))
 
-  const [slots, setSlots] = useState<Slot[]>([
-    { id: 'mon-10', label: 'Mon · 10:00 AM' },
-    { id: 'tue-10', label: 'Tue · 10:00 AM' },
-    { id: 'wed-10', label: 'Wed · 10:00 AM' },
-    { id: 'thu-10', label: 'Thu · 10:00 AM' },
-    { id: 'fri-10', label: 'Fri · 10:00 AM' },
-    { id: 'sat-10', label: 'Sat · 10:00 AM' },
-  ])
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(posts[0]?.id ?? null)
+  const [slots, setSlots] = useState<Slot[]>(() => buildWeekSlots())
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
   const [scheduling, setScheduling] = useState(false)
   const [comment, setComment] = useState('')
+  const [rescheduleOpen, setRescheduleOpen] = useState(false)
+  const [rescheduleValue, setRescheduleValue] = useState('')
+
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const hydratedFromServerRef = useRef(false)
+  const offsetStr = useMemo(() => {
+    try {
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' }).formatToParts(new Date())
+      const tz = parts.find((p) => p.type === 'timeZoneName')?.value
+      return tz ? ` (${tz})` : ''
+    } catch {
+      return ''
+    }
+  }, [timezone])
+
   const selectedFromOutputs = useMemo(
     () => (searchParams.get('postIds') || '').split(',').map((id) => id.trim()).filter(Boolean),
-    [searchParams]
+    [searchParams],
   )
 
   const postMap = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts])
   const selectedPost = selectedPostId ? postMap.get(selectedPostId) : undefined
   const hasSlotForSelected = Boolean(selectedPost && slots.some((slot) => slot.postId === selectedPost.id))
 
-  const getSlotIdFromScheduledAt = (scheduledAt?: string) => {
-    if (!scheduledAt) return null
-    const d = new Date(scheduledAt)
-    if (Number.isNaN(d.getTime())) return null
-    const dayToken = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][d.getDay()]
-    const hour = String(d.getHours())
-    const slotId = `${dayToken}-${hour}`
-    return slots.some((slot) => slot.id === slotId) ? slotId : null
-  }
+  const scheduleFingerprint = useMemo(
+    () =>
+      posts
+        .filter((p) => p.status === 'scheduled' || p.status === 'published')
+        .map((p) => `${p.id}:${p.scheduled_at ?? ''}`)
+        .sort()
+        .join('|'),
+    [posts],
+  )
+
+  useEffect(() => {
+    const base = buildWeekSlots()
+    const scheduled = posts.filter((p) => p.status === 'scheduled' || p.status === 'published')
+    setSlots(
+      base.map((slot) => {
+        const matched = scheduled.find((p) => getSlotIdFromScheduledAt(p.scheduled_at) === slot.id)
+        return matched ? { ...slot, postId: matched.id } : { ...slot, postId: undefined }
+      }),
+    )
+  }, [scheduleFingerprint, posts])
 
   useEffect(() => {
     if (!selectedPostId && posts.length > 0) {
@@ -103,40 +194,58 @@ export default function SchedulerPage() {
     }
   }, [posts, selectedPostId, selectedFromOutputs])
 
-  useEffect(() => {
-    if (hydratedFromServerRef.current) return
-    if (!posts.length) return
-    const scheduled = posts.filter((post) => post.status === 'scheduled' || post.status === 'published')
-    if (!scheduled.length) {
-      hydratedFromServerRef.current = true
-      return
-    }
-    setSlots((prev) =>
-      prev.map((slot) => {
-        const matched = scheduled.find((post) => getSlotIdFromScheduledAt(post.scheduled_at) === slot.id)
-        return matched ? { ...slot, postId: matched.id } : slot
-      })
-    )
-    hydratedFromServerRef.current = true
-  }, [posts, slots])
-
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over) return
-    setSlots((prev) => prev.map((slot) => slot.id === over.id ? { ...slot, postId: String(active.id) } : slot))
+    const overId = String(over.id)
+    setSlots((prev) =>
+      prev
+        .map((slot) => (slot.postId === active.id ? { ...slot, postId: undefined } : slot))
+        .map((slot) => (slot.id === overId ? { ...slot, postId: String(active.id) } : slot)),
+    )
   }
 
-  const getNextScheduledIso = (slotId: string) => {
-    const [dayToken, hourToken] = slotId.split('-')
-    const dayMap: Record<string, number> = { mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6, sun: 0 }
-    const targetDow = dayMap[dayToken] ?? 1
-    const targetHour = Number(hourToken) || 10
-    const now = new Date()
-    const next = new Date(now)
-    const delta = (targetDow - now.getDay() + 7) % 7
-    next.setDate(now.getDate() + delta)
-    next.setHours(targetHour, 0, 0, 0)
-    if (next <= now) next.setDate(next.getDate() + 7)
-    return next.toISOString()
+  const openReschedule = () => {
+    if (!selectedPost) return
+    const base = selectedPost.scheduled_at
+      ? new Date(selectedPost.scheduled_at)
+      : (() => {
+          const slot = slots.find((s) => s.postId === selectedPost.id)
+          if (!slot?.id) return new Date()
+          const parts = slot.id.split('-').map(Number)
+          const [y, m, d] = parts
+          return y && m && d ? new Date(y, m - 1, d, DEFAULT_SLOT_HOUR, 0, 0, 0) : new Date()
+        })()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const local = `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`
+    setRescheduleValue(local)
+    setRescheduleOpen(true)
+  }
+
+  const applyReschedule = async () => {
+    if (!selectedPost || !rescheduleValue) return
+    const d = new Date(rescheduleValue)
+    if (Number.isNaN(d.getTime())) {
+      toast.error('Invalid date')
+      return
+    }
+    setScheduling(true)
+    try {
+      await apiCall(`/api/posts/${selectedPost.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'scheduled',
+          scheduled_at: d.toISOString(),
+          scheduler_note: comment.trim() || null,
+        }),
+      })
+      await mutate()
+      setRescheduleOpen(false)
+      toast.success('Schedule updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update')
+    } finally {
+      setScheduling(false)
+    }
   }
 
   const scheduleSelected = async () => {
@@ -152,7 +261,8 @@ export default function SchedulerPage() {
         method: 'PATCH',
         body: JSON.stringify({
           status: 'scheduled',
-          scheduled_at: getNextScheduledIso(target.id),
+          scheduled_at: scheduledIsoForDayKey(target.id),
+          scheduler_note: comment.trim() || null,
         }),
       })
       await mutate()
@@ -174,13 +284,14 @@ export default function SchedulerPage() {
         body: JSON.stringify({
           status: selectedPost.status === 'published' ? 'published' : 'draft',
           scheduled_at: null,
+          scheduler_note: null,
         }),
       })
       setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
       await mutate()
-      toast.success('Post moved back to queue')
+      toast.success('Removed from schedule')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to reschedule post')
+      toast.error(error instanceof Error ? error.message : 'Failed to remove from slot')
     } finally {
       setScheduling(false)
     }
@@ -190,13 +301,20 @@ export default function SchedulerPage() {
     if (!selectedPost) return
     setScheduling(true)
     try {
-      await apiCall(`/api/posts/${selectedPost.id}`, { method: 'DELETE' })
+      await apiCall(`/api/posts/${selectedPost.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          status: 'draft',
+          scheduled_at: null,
+          scheduler_note: null,
+        }),
+      })
       setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
       setSelectedPostId(null)
       await mutate()
-      toast.success('Post deleted')
+      toast.success('Post moved to draft')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to delete post')
+      toast.error(error instanceof Error ? error.message : 'Failed to update post')
     } finally {
       setScheduling(false)
     }
@@ -227,24 +345,59 @@ export default function SchedulerPage() {
       <PageIntroModal
         pageKey="scheduler"
         title="Plan and automate your posting"
-        description="Drag content into time slots and use AI timing suggestions for better performance."
+        description="Drag content into calendar slots and use AI timing suggestions for better performance."
       />
-      <PageHeader title={<>Content <span className="text-highlight">Scheduler</span></>} description="Drag and drop posts into calendar slots and publish confidently." />
+      <PageHeader
+        title={<>Content <span className="text-highlight">Scheduler</span></>}
+        description="Drag and drop posts into calendar slots and publish confidently."
+      />
       {error ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           Could not refresh scheduler posts right now. Please retry in a moment.
         </div>
       ) : null}
       <div className="rounded-lg border border-[#E5E7EB] bg-white px-3 py-2 text-xs text-[#6B7280]">
-        Timezone: <span className="font-medium text-[#111111]">{timezone}</span> · Best time suggestion: 10:00 AM to 12:00 PM
+        Timezone: <span className="font-medium text-[#111111]">{timezone}</span>
+        {offsetStr}
       </div>
       <NextStepCard
         title={hasSlotForSelected ? 'Schedule selected post now' : 'Assign selected post to a time slot'}
-        reason={hasSlotForSelected ? 'Selected post has a valid slot assignment and is ready to schedule.' : 'Scheduling is blocked until a post is dropped into one of the calendar slots.'}
+        reason={
+          hasSlotForSelected
+            ? 'Selected post has a valid slot assignment and is ready to schedule.'
+            : 'Scheduling is blocked until a post is dropped into one of the calendar slots.'
+        }
         primaryCta={hasSlotForSelected ? { label: 'Schedule This Post', href: '/scheduler' } : { label: 'Go to Outputs', href: '/outputs' }}
         secondaryCta={{ label: 'Review Calendar', href: '/calendar' }}
       />
-      <p className="text-xs text-[#6B7280]">Shortcuts: `Ctrl/Cmd + Enter` schedule, `U` unschedule, `Backspace` delete selected.</p>
+      <p className="text-xs text-[#6B7280]">
+        Shortcuts: <kbd className="rounded border border-[#E5E7EB] px-1">Ctrl/Cmd + Enter</kbd> schedule,{' '}
+        <kbd className="rounded border border-[#E5E7EB] px-1">U</kbd> remove from slot, <kbd className="rounded border border-[#E5E7EB] px-1">Backspace</kbd> move to draft.
+      </p>
+
+      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
+        <DialogContent className="max-w-md border-[#E5E7EB] bg-white p-6" showCloseButton>
+          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-[#111111]">
+            <CalendarClock className="h-4 w-4" />
+            Change date &amp; time
+          </DialogTitle>
+          <p className="text-sm text-[#6B7280]">Sets when this post is scheduled to publish (local time).</p>
+          <input
+            type="datetime-local"
+            value={rescheduleValue}
+            onChange={(e) => setRescheduleValue(e.target.value)}
+            className="mt-3 h-10 w-full rounded-lg border border-[#E5E7EB] px-3 text-sm text-[#111111] outline-none focus:border-[#111111]"
+          />
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => setRescheduleOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" size="sm" onClick={() => void applyReschedule()} disabled={scheduling}>
+              {scheduling ? 'Saving…' : 'Save'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">
@@ -268,8 +421,8 @@ export default function SchedulerPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Calendar Grid" subtitle="Drop posts into day/time cells">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+          <SectionCard title="Calendar Grid" subtitle="This week (Mon–Sun). Default slot time 10:00 when you press Schedule.">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {slots.map((slot) => (
                 <DroppableSlot key={slot.id} slot={slot} post={slot.postId ? postMap.get(slot.postId) : undefined} />
               ))}
@@ -279,37 +432,58 @@ export default function SchedulerPage() {
           <SectionCard title="Selected Post Details" subtitle="Review before scheduling" className="xl:sticky xl:top-20 h-fit">
             {selectedPost ? (
               <div className="space-y-3">
-                <div className="overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
+                <div className="relative overflow-hidden rounded-lg border border-[#E5E7EB] bg-[#F3F4F6]">
                   {selectedPost.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={selectedPost.image_url} alt={selectedPost.caption || 'Selected post'} className="h-40 w-full object-cover" />
+                    <img
+                      src={selectedPost.image_url}
+                      alt={displayCaption(selectedPost.caption, 'Selected post')}
+                      className="h-52 w-full object-cover"
+                    />
                   ) : (
-                    <div className="flex h-40 items-center justify-center text-[#9CA3AF]">No image</div>
+                    <div className="flex h-52 items-center justify-center text-[#9CA3AF]">No image</div>
                   )}
+                  <div className="pointer-events-none absolute left-2 top-2 rounded bg-white/85 px-2 py-0.5 text-[10px] font-medium capitalize text-[#111111] shadow-sm">
+                    {selectedPost.platform}
+                  </div>
                 </div>
-                <p className="text-sm text-[#111111]">{selectedPost.caption}</p>
-                <div className="flex items-center justify-between">
-                  <StatusBadge tone="neutral">{selectedPost.platform}</StatusBadge>
+                <p className="text-sm text-[#111111]">{displayCaption(selectedPost.caption, 'No caption')}</p>
+                <div className="flex justify-end">
                   <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
                     <span title={getPostStatusHint(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
                       {getEffectivePostStatus(selectedPost.status, selectedPost.approval_status)}
                     </span>
                   </StatusBadge>
                 </div>
+                {selectedPost.scheduled_at ? (
+                  <p className="text-xs text-[#6B7280]">
+                    Scheduled:{' '}
+                    <span className="font-medium text-[#111111]">
+                      {new Date(selectedPost.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                    </span>
+                  </p>
+                ) : null}
                 <div>
-                  <label className="mb-1 block text-xs text-[#6B7280]">Comments</label>
+                  <label className="mb-1 block text-xs text-[#6B7280]">Internal note</label>
                   <textarea
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Add notes for this scheduled post..."
+                    placeholder="Internal note for this schedule…"
                     className="min-h-20 w-full rounded-lg border border-[#E5E7EB] px-3 py-2 text-sm outline-none focus:border-[#111111]"
                   />
                 </div>
-                <Button className="w-full" onClick={scheduleSelected} disabled={scheduling}>
+                <Button className="w-full" onClick={() => void scheduleSelected()} disabled={scheduling}>
                   {scheduling ? 'Scheduling...' : 'Schedule Post'}
                 </Button>
-                <Button variant="secondary" className="w-full" onClick={unscheduleSelected} disabled={scheduling}>Reschedule</Button>
-                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 hover:text-red-700" onClick={deleteSelected} disabled={scheduling}>Delete Post</Button>
+                <Button variant="secondary" className="w-full" onClick={() => openReschedule()} disabled={scheduling}>
+                  Change date &amp; time
+                </Button>
+                <Button variant="secondary" className="w-full" onClick={() => void unscheduleSelected()} disabled={scheduling}>
+                  Remove from slot
+                </Button>
+                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => void deleteSelected()} disabled={scheduling}>
+                  Move to draft
+                </Button>
               </div>
             ) : (
               <p className="text-sm text-[#6B7280]">Select a post to inspect details.</p>

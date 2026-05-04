@@ -8,6 +8,7 @@ import { getFirebaseAuth } from '@/lib/firebase'
 import { ChevronLeft, RotateCcw, Download, Check, Loader2 } from 'lucide-react'
 import { PageContainer, SurfaceCard } from '@/components/ui/page-primitives'
 import { toast } from 'sonner'
+import { displayCaption } from '@/lib/caption'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
@@ -166,7 +167,7 @@ export default function OutputDetailPage() {
           <SurfaceCard className="p-[14px]">
             <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Caption</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-              {displayVersion?.caption ?? post.caption}
+              {displayCaption(displayVersion?.caption ?? post.caption, 'No caption')}
             </p>
           </SurfaceCard>
 

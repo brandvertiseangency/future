@@ -189,7 +189,7 @@ router.patch('/:id', authMiddleware, async (req, res) => {
     const userId = await getUserId(req.user.uid);
     if (!userId) return res.status(404).json({ error: 'User not found.' });
 
-    const allowed = ['caption', 'status', 'approval_status', 'scheduled_at'];
+    const allowed = ['caption', 'status', 'approval_status', 'scheduled_at', 'scheduler_note'];
     const sets = [];
     const vals = [];
     for (const key of allowed) {

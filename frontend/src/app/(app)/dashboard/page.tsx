@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { getDashboardNextStep } from '@/lib/workflow-next-step'
 import { logUxEvent } from '@/lib/ux-events'
+import { displayCaption } from '@/lib/caption'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
@@ -91,13 +92,13 @@ export default function DashboardPage() {
                 <div className="aspect-[4/3] bg-[#F3F4F6]">
                   {output.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={output.image_url} alt={output.caption ?? 'Output image'} className="h-full w-full object-cover" />
+                    <img src={output.image_url} alt={displayCaption(output.caption, 'Output image')} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-[#9CA3AF]"><ImageIcon className="h-5 w-5" /></div>
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="line-clamp-2 text-sm text-[#111111]">{output.caption ?? 'Untitled output'}</p>
+                  <p className="line-clamp-2 text-sm text-[#111111]">{displayCaption(output.caption, 'Untitled output')}</p>
                   <p className="mt-2 text-xs text-[#6B7280]">{output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}</p>
                 </div>
               </div>

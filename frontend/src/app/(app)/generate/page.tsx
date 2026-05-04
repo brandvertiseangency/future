@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { ImageIcon, Loader2, Sparkles } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
@@ -28,6 +28,7 @@ function parseApiError(error: unknown): string {
 }
 
 export default function GeneratePage() {
+  const { mutate: globalMutate } = useSWRConfig()
   const router = useRouter()
   const [brief, setBrief] = useState('')
   const [platforms, setPlatforms] = useState<string[]>(['instagram'])
@@ -76,6 +77,7 @@ export default function GeneratePage() {
     setPreview(generated)
     setStage(`Completed: ${generated.length} succeeded, ${failures.length} failed`)
     setLoading(false)
+    void globalMutate('/api/credits/balance')
     if (generated.length > 0) {
       logUxEvent('generate_completed', { selectedPlatforms: platforms.length, succeeded: generated.length, failed: failures.length })
       toast.success('Generation complete')
