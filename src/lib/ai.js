@@ -9,6 +9,7 @@
 const DEFAULT_TIMEOUT_MS = 45_000;
 const OPENAI_MODEL = 'gpt-4o';
 const GEMINI_TEXT_MODEL = 'gemini-2.5-flash';
+const logger = require('../utils/logger');
 const NANO_BANANA_ALIASES = new Set([
   'nanobana',
   'nano-banana',
@@ -41,6 +42,12 @@ const GOOGLE_IMAGEN_MODEL = process.env.GOOGLE_IMAGEN_MODEL || 'imagen-4.0-fast-
 /** When true (default), try Imagen if native returns no image or errors. */
 const GOOGLE_IMAGE_IMAGEN_FALLBACK = parseEnvBool(process.env.GOOGLE_IMAGE_IMAGEN_FALLBACK, true);
 let googleImageRateLimitedUntil = 0;
+
+logger.info('AI image config resolved', {
+  nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
+  imagenModel: GOOGLE_IMAGEN_MODEL,
+  imagenFallbackEnabled: GOOGLE_IMAGE_IMAGEN_FALLBACK,
+});
 
 const withTimeout = (promise, ms = DEFAULT_TIMEOUT_MS) => {
   let timer;
@@ -315,7 +322,6 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     };
   }
   const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [] } = opts;
-  const logger = require('../utils/logger');
   const now = Date.now();
   if (googleImageRateLimitedUntil > now) {
     return {
@@ -329,6 +335,12 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
   let lastError = '';
 
   try {
+    logger.info('Image generation started', {
+      nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
+      imagenFallbackEnabled: GOOGLE_IMAGE_IMAGEN_FALLBACK,
+      aspectRatio,
+      promptPreview: String(imagePrompt || '').slice(0, 120),
+    });
     let nativeResult = null;
     try {
       nativeResult = await generateImageWithGoogleNative(
@@ -355,6 +367,10 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     }
 
     if (!GOOGLE_IMAGE_IMAGEN_FALLBACK) {
+      logger.warn('Native image returned no result and Imagen fallback is disabled', {
+        nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
+        nativeError: lastError || null,
+      });
       return {
         imageData: null,
         error: lastError || 'Native image model returned no image (Imagen fallback disabled).',
@@ -364,8 +380,14 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     }
 
     try {
+      logger.warn('Falling back to Imagen after native image miss/failure', {
+        nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
+        imagenModel: GOOGLE_IMAGEN_MODEL,
+        nativeError: lastError || null,
+      });
       const imagenResult = await generateImageWithGoogleImagen(imagePrompt, timeoutMs, aspectRatio);
       if (imagenResult?.imageData) {
+        logger.info('Imagen fallback succeeded', { imagenModel: imagenResult.model });
         return {
           imageData: imagenResult.imageData,
           error: null,
