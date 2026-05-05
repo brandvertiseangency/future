@@ -35,7 +35,18 @@ router.get('/current', authMiddleware, async (req, res) => {
     const userId = await getUserId(req.user.uid);
     if (!userId || !pool) return res.json({ brand: null });
     const { rows } = await pool.query(
-      'SELECT * FROM brands WHERE user_id=$1 AND is_default=TRUE ORDER BY created_at ASC LIMIT 1',
+      `SELECT b.*,
+              bsp.extracted_colors, bsp.photography_style, bsp.dominant_aesthetic,
+              bsp.mood_keywords, bsp.layout_style, bsp.font_mood_detected,
+              bic.usp_keywords AS industry_usp, bic.industry_answers,
+              ccp.weekly_post_count, ccp.content_type_mix, ccp.active_platforms, ccp.auto_schedule
+       FROM brands b
+       LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+       LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+       LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
+       WHERE b.user_id=$1 AND b.is_default=TRUE
+       ORDER BY b.created_at ASC
+       LIMIT 1`,
       [userId]
     );
     // Return null brand instead of 404 — dashboard handles the empty state gracefully

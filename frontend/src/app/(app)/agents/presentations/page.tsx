@@ -8,8 +8,8 @@ import { AgentFeatureCards } from '@/components/agents/agent-feature-cards'
 import { AgentLockedOverlay } from '@/components/agents/agent-locked-overlay'
 import { AgentPromptBox } from '@/components/agents/agent-prompt-box'
 import { useBrandStore } from '@/stores/brand'
-import { useAgentsStore } from '@/stores/agents'
-import { buildPresentationPrompt } from '@/lib/prompt-engine'
+import { useAgentUnlocked } from '@/lib/agent-access'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/ui/page-primitives'
@@ -81,13 +81,25 @@ const TOOLS = [
   { label: 'Open in Tome', url: 'https://tome.app' },
 ]
 
+function parseAgentError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Generation failed'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    /* ignore */
+  }
+  return raw
+}
+
 export default function PresentationsPage() {
   const { currentBrand } = useBrandStore()
-  const { isUnlocked, unlockAgent } = useAgentsStore()
-  const unlocked = isUnlocked('presentations')
+  const unlocked = useAgentUnlocked('presentations')
 
   const [selectedDeck, setSelectedDeck] = useState<DeckType>(DECK_TYPES[0])
   const [selectedTool, setSelectedTool] = useState(TOOLS[0])
+  const [highlights, setHighlights] = useState('')
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -98,23 +110,25 @@ export default function PresentationsPage() {
     }
     setIsLoading(true)
     setPrompt('')
-    await new Promise((r) => setTimeout(r, 1400))
-
-    const generated = buildPresentationPrompt(
-      {
-        name: currentBrand.name,
-        description: currentBrand.voice,
-        industry: currentBrand.industry,
-        voice: currentBrand.voice,
-        goals: currentBrand.goals,
-        audience: currentBrand.audience as Record<string, unknown>,
-      },
-      selectedDeck.id
-    )
-
-    setPrompt(generated)
-    setIsLoading(false)
-    toast.success(`${selectedDeck.label} prompt generated!`)
+    try {
+      const res = await apiCall<{ prompt: string }>('/api/agents/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          agentType: 'presentations',
+          deckType: selectedDeck.id,
+          presentationPurpose: selectedDeck.subtitle,
+          presentationAudience: selectedDeck.audience,
+          presentationHighlights: highlights.trim() || undefined,
+        }),
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
+      })
+      setPrompt(res.prompt || '')
+      toast.success(`${selectedDeck.label} prompt generated!`)
+    } catch (e) {
+      toast.error(parseAgentError(e))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -135,7 +149,6 @@ export default function PresentationsPage() {
           <AgentLockedOverlay
             agentName="Presentations"
             description="Unlock this agent to generate complete pitch decks and company profiles with slide-by-slide copy, design direction, and speaker notes."
-            onUnlock={() => unlockAgent('presentations')}
           />
         )}
 
@@ -143,7 +156,6 @@ export default function PresentationsPage() {
           className={!unlocked ? 'opacity-30 pointer-events-none select-none blur-sm' : ''}
           animate={{ opacity: unlocked ? 1 : 0.3 }}
         >
-          {/* Deck type selector */}
           <div className="rounded-2xl border border-[var(--border-dim)] bg-[var(--bg-card)] p-6 mb-5">
             <h2 className="text-[15px] font-semibold text-[var(--text-1)] mb-1">Presentation Type</h2>
             <p className="text-[12.5px] text-[var(--text-3)] mb-5">Choose the type of presentation to generate.</p>
@@ -154,7 +166,11 @@ export default function PresentationsPage() {
                 return (
                   <motion.button
                     key={deck.id}
-                    onClick={() => { setSelectedDeck(deck); setPrompt('') }}
+                    type="button"
+                    onClick={() => {
+                      setSelectedDeck(deck)
+                      setPrompt('')
+                    }}
                     whileTap={{ scale: 0.97 }}
                     className={cn(
                       'flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-200',
@@ -185,7 +201,17 @@ export default function PresentationsPage() {
               })}
             </div>
 
-            {/* Slide structure preview */}
+            <div className="mb-5">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">Key points to stress (optional)</label>
+              <textarea
+                value={highlights}
+                onChange={(e) => setHighlights(e.target.value)}
+                rows={3}
+                placeholder="e.g. 3× YoY growth, new enterprise tier, hiring plan"
+                className="w-full rounded-xl border border-[var(--border-dim)] bg-[var(--bg-subtle)] px-4 py-3 text-[13.5px] text-[var(--text-2)] outline-none focus:border-amber-500/50"
+              />
+            </div>
+
             <div className="rounded-xl border border-[var(--border-dim)] bg-[var(--bg-subtle)] p-4 mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-3">Slide Structure Preview</p>
               <div className="flex flex-wrap gap-2">
@@ -206,7 +232,6 @@ export default function PresentationsPage() {
               </div>
             </div>
 
-            {/* Brand info */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">Company</label>
@@ -222,13 +247,13 @@ export default function PresentationsPage() {
               </div>
             </div>
 
-            {/* Tool selector */}
             <div className="mb-5">
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-2">Open In</label>
               <div className="flex flex-wrap gap-2">
                 {TOOLS.map((tool) => (
                   <button
                     key={tool.label}
+                    type="button"
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
@@ -243,7 +268,8 @@ export default function PresentationsPage() {
             </div>
 
             <button
-              onClick={handleGenerate}
+              type="button"
+              onClick={() => void handleGenerate()}
               disabled={isLoading || !currentBrand}
               className="flex items-center gap-2 px-6 py-3 rounded-xl
                          bg-gradient-to-r from-amber-600 to-amber-500 text-white
@@ -262,7 +288,7 @@ export default function PresentationsPage() {
               isLoading={isLoading}
               externalToolUrl={selectedTool.url}
               externalToolLabel={selectedTool.label}
-              onRegenerate={handleGenerate}
+              onRegenerate={() => void handleGenerate()}
             />
           )}
         </motion.div>

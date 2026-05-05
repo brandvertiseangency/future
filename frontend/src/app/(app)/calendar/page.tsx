@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   getCoreRowModel,
   useReactTable,
@@ -8,7 +8,7 @@ import {
   createColumnHelper,
 } from '@tanstack/react-table'
 import { Check, Sparkles, RefreshCcw, Pencil } from 'lucide-react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
 import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
@@ -19,6 +19,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { toast } from 'sonner'
 import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
+import { displayCaption } from '@/lib/caption'
 
 type CalendarRow = {
   id: string
@@ -34,7 +35,12 @@ type CalendarRow = {
 const fetcher = (url: string) => apiCall<{ posts?: Array<{ id: string; title?: string; content_type?: string; caption?: string; status?: CalendarRow['status']; approval_status?: CalendarRow['approvalStatus']; platform?: string; scheduled_at?: string }> }>(url)
 
 export default function CalendarPage() {
+  const { mutate: mutateKeys } = useSWRConfig()
   const { data, mutate } = useSWR('/api/posts?limit=100', fetcher, { revalidateOnFocus: false })
+  const invalidatePostCaches = useCallback(
+    () => mutateKeys((key) => typeof key === 'string' && key.startsWith('/api/posts')),
+    [mutateKeys]
+  )
   const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
   const [selected, setSelected] = useState<CalendarRow | null>(null)
   const [editedIdea, setEditedIdea] = useState('')
@@ -107,7 +113,7 @@ export default function CalendarPage() {
     setEditedProduct('')
   }
 
-  const approve = async () => {
+  const approve = useCallback(async () => {
     if (!selected) return
     setSaving(true)
     try {
@@ -120,15 +126,16 @@ export default function CalendarPage() {
       })
       setSelected((prev) => prev ? { ...prev, caption: editedCaption, status: 'approved', approvalStatus: 'approved' } : prev)
       await mutate()
+      await invalidatePostCaches()
       toast.success('Post approved')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to approve post')
     } finally {
       setSaving(false)
     }
-  }
+  }, [selected, editedCaption, mutate, invalidatePostCaches])
 
-  const approveById = async (row: CalendarRow) => {
+  const approveById = useCallback(async (row: CalendarRow) => {
     setSaving(true)
     try {
       await apiCall(`/api/posts/${row.id}`, {
@@ -139,15 +146,16 @@ export default function CalendarPage() {
         setSelected((prev) => prev ? { ...prev, status: 'approved', approvalStatus: 'approved' } : prev)
       }
       await mutate()
+      await invalidatePostCaches()
       toast.success('Post approved')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to approve post')
     } finally {
       setSaving(false)
     }
-  }
+  }, [selected, mutate, invalidatePostCaches])
 
-  const approveAll = async () => {
+  const approveAll = useCallback(async () => {
     if (!rows.length) return
     setBulkSaving(true)
     try {
@@ -160,13 +168,14 @@ export default function CalendarPage() {
         )
       )
       await mutate()
+      await invalidatePostCaches()
       toast.success('All posts approved')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to approve all posts')
     } finally {
       setBulkSaving(false)
     }
-  }
+  }, [rows, mutate, invalidatePostCaches])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -273,7 +282,7 @@ export default function CalendarPage() {
                 <button key={row.id} onClick={() => selectRow(row)} className="rounded-lg border border-border p-3 text-left hover:bg-muted/40">
                   <p className="text-xs text-muted-foreground">{row.day}</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{row.idea}</p>
-                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{row.caption}</p>
+                  <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{displayCaption(row.caption, '—')}</p>
                 </button>
               ))}
             </div>

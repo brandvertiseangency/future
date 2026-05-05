@@ -1,51 +1,79 @@
 'use client'
 
-import { Lock } from 'lucide-react'
+import { Globe, Palette, Presentation } from 'lucide-react'
+import useSWR from 'swr'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
-import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { AgentCard } from '@/components/agents/AgentCard'
+import { apiCall } from '@/lib/api'
+import { planUnlocksAgents } from '@/lib/agent-access'
 
 const AGENTS = [
-  { id: 'website', title: 'Website Agent', description: 'Build and optimize your website pages.' },
-  { id: 'branding', title: 'Branding Agent', description: 'Generate kits, guidelines, and visual assets.' },
-  { id: 'presentation', title: 'Presentation Agent', description: 'Create polished deck structures and slides.' },
-  { id: 'analytics', title: 'Analytics Agent', description: 'Summarize growth and campaign performance.' },
+  {
+    id: 'website-builder' as const,
+    title: 'Website Builder',
+    description: 'Landing page structure, section copy, and CTA prompts for Framer, Webflow, or v0.',
+    href: '/agents/website-builder',
+    icon: Globe,
+    accentClassName: 'bg-gradient-to-br from-violet-600 to-violet-500',
+  },
+  {
+    id: 'branding-kit' as const,
+    title: 'Branding Kit',
+    description: 'Posters, banners, and card briefs with palette and typography direction for design tools.',
+    href: '/agents/branding-kit',
+    icon: Palette,
+    accentClassName: 'bg-gradient-to-br from-cyan-600 to-cyan-500',
+  },
+  {
+    id: 'presentations' as const,
+    title: 'Presentations',
+    description: 'Slide-by-slide outlines and speaker notes for pitch decks and company profiles.',
+    href: '/agents/presentations',
+    icon: Presentation,
+    accentClassName: 'bg-gradient-to-br from-amber-600 to-amber-500',
+  },
 ]
 
 export default function AgentsPage() {
+  const { data } = useSWR('/api/credits/balance', (url: string) => apiCall<{ plan?: string }>(url), {
+    revalidateOnFocus: false,
+  })
+  const planUnlocked = planUnlocksAgents(data?.plan)
+
   return (
     <PageContainer className="space-y-6">
       <PageIntroModal
         pageKey="agents"
         title="Meet your AI agent workspace"
-        description="Each agent is built for a focused workflow, from websites to analytics."
+        description="Each agent produces prompts and briefs grounded in your brand — paste them into your favourite tools."
       />
-      <PageHeader title={<>AI <span className="text-pull text-primary">agents</span></>} description="Explore AI assistants for brand workflows." />
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-sm font-medium text-foreground">Unlock all AI agents</p>
-        <p className="mt-1 text-xs text-muted-foreground">Get access to website, branding, presentations, and analytics workflows.</p>
-        <Button className="mt-3">Upgrade to Pro</Button>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <PageHeader
+        title={
+          <>
+            AI <span className="text-pull text-primary">agents</span>
+          </>
+        }
+        description="Website, branding, and presentation workflows. Pro and Agency unlock generation on every agent below."
+      />
+      {!planUnlocked ? (
+        <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          <p className="font-medium text-foreground">Unlock on Pro</p>
+          <p className="mt-1">Upgrade to run AI generations from this workspace. You can open each agent from the sidebar to see the interface.</p>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {AGENTS.map((agent) => (
-          <div key={agent.id} className="relative overflow-hidden rounded-xl border border-border bg-card p-5">
-            <div className="mb-4 h-36 rounded-lg border border-border bg-muted" />
-            <h3 className="text-base font-semibold text-foreground">{agent.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{agent.description}</p>
-            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-              <li>- Guided workflow templates</li>
-              <li>- Brand-aware outputs</li>
-              <li>- Export-ready assets</li>
-              <li>- Use case: launch a campaign in minutes</li>
-            </ul>
-            <div className="absolute inset-0 flex items-center justify-center bg-card/75 backdrop-blur-[2px]">
-              <Button variant="secondary"><Lock className="mr-2 h-4 w-4" />Unlock</Button>
-            </div>
-          </div>
+          <AgentCard
+            key={agent.id}
+            title={agent.title}
+            description={agent.description}
+            href={agent.href}
+            icon={agent.icon}
+            accentClassName={agent.accentClassName}
+            locked={!planUnlocked}
+          />
         ))}
-      </div>
-      <div className="rounded-xl border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
-        Pro includes all premium agents, faster generation, and higher output limits.
       </div>
     </PageContainer>
   )

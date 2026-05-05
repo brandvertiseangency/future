@@ -2,6 +2,8 @@ import { getFirebaseAuth } from './firebase'
 
 // In production (Vercel) NEXT_PUBLIC_API_URL points to the backend Vercel project.
 // In local dev it points to http://localhost:4000.
+// Production: set NEXT_PUBLIC_API_URL to your Railway (or other) API origin so browser calls hit the backend.
+// If unset on Vercel, same-origin /api may be used only when rewrites proxy to the API project.
 // Strip any trailing slash to prevent double-slash URLs like //api/users/me
 const _envUrl = process.env.NEXT_PUBLIC_API_URL
 const API_BASE =

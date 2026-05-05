@@ -8,8 +8,8 @@ import { AgentFeatureCards } from '@/components/agents/agent-feature-cards'
 import { AgentLockedOverlay } from '@/components/agents/agent-locked-overlay'
 import { AgentPromptBox } from '@/components/agents/agent-prompt-box'
 import { useBrandStore } from '@/stores/brand'
-import { useAgentsStore } from '@/stores/agents'
-import { buildWebsitePrompt } from '@/lib/prompt-engine'
+import { useAgentUnlocked } from '@/lib/agent-access'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/ui/page-primitives'
 
@@ -52,11 +52,23 @@ const TOOLS = [
   { label: 'Open in v0', url: 'https://v0.dev' },
 ]
 
+function parseAgentError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Generation failed'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    /* ignore */
+  }
+  return raw
+}
+
 export default function WebsiteBuilderPage() {
   const { currentBrand } = useBrandStore()
-  const { isUnlocked, unlockAgent } = useAgentsStore()
-  const unlocked = isUnlocked('website-builder')
+  const unlocked = useAgentUnlocked('website-builder')
 
+  const [websiteGoal, setWebsiteGoal] = useState('')
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedTool, setSelectedTool] = useState(TOOLS[0])
@@ -68,23 +80,23 @@ export default function WebsiteBuilderPage() {
     }
     setIsLoading(true)
     setPrompt('')
-
-    // Simulate generation delay (replace with API call if backend AI is available)
-    await new Promise((r) => setTimeout(r, 1200))
-
-    const generated = buildWebsitePrompt({
-      name: currentBrand.name,
-      description: currentBrand.voice,
-      industry: currentBrand.industry,
-      voice: currentBrand.voice,
-      goals: currentBrand.goals,
-      audience: currentBrand.audience as Record<string, unknown>,
-      designPrefs: currentBrand.designPrefs as Record<string, unknown>,
-    })
-
-    setPrompt(generated)
-    setIsLoading(false)
-    toast.success('Website prompt generated!')
+    try {
+      const res = await apiCall<{ prompt: string }>('/api/agents/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          agentType: 'website-builder',
+          websiteGoal: websiteGoal.trim() || undefined,
+          websiteSections: ['Hero', 'Social proof', 'Features', 'FAQ', 'CTA'],
+        }),
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
+      })
+      setPrompt(res.prompt || '')
+      toast.success('Website prompt generated!')
+    } catch (e) {
+      toast.error(parseAgentError(e))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -100,13 +112,11 @@ export default function WebsiteBuilderPage() {
 
       <AgentFeatureCards features={FEATURES} />
 
-      {/* Active / Locked state */}
       <div className="relative">
         {!unlocked && (
           <AgentLockedOverlay
             agentName="Website Builder"
             description="Unlock this agent to generate full landing page structures with copy, design direction, and CTA strategy tailored to your brand."
-            onUnlock={() => unlockAgent('website-builder')}
           />
         )}
 
@@ -115,11 +125,10 @@ export default function WebsiteBuilderPage() {
           animate={{ opacity: unlocked ? 1 : 0.3 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Input Section */}
           <div className="rounded-2xl border border-[var(--border-dim)] bg-[var(--bg-card)] p-6 mb-5">
             <h2 className="text-[15px] font-semibold text-[var(--text-1)] mb-1">Brand Context</h2>
             <p className="text-[12.5px] text-[var(--text-3)] mb-5">
-              Auto-filled from your active brand. Adjust below if needed.
+              Pulled from your active brand on the server. Optionally refine the primary goal below.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
@@ -143,6 +152,18 @@ export default function WebsiteBuilderPage() {
 
             <div className="mb-5">
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">
+                Primary goal (optional)
+              </label>
+              <input
+                value={websiteGoal}
+                onChange={(e) => setWebsiteGoal(e.target.value)}
+                placeholder="e.g. Book demo calls from founder-led SaaS traffic"
+                className="w-full rounded-xl border border-[var(--border-dim)] bg-[var(--bg-subtle)] px-4 py-3 text-[13.5px] text-[var(--text-2)] outline-none focus:border-violet-500/50"
+              />
+            </div>
+
+            <div className="mb-5">
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">
                 Goals
               </label>
               <div className="flex flex-wrap gap-2">
@@ -154,7 +175,6 @@ export default function WebsiteBuilderPage() {
               </div>
             </div>
 
-            {/* External tool selector */}
             <div className="mb-5">
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-2">
                 Open In
@@ -163,6 +183,7 @@ export default function WebsiteBuilderPage() {
                 {TOOLS.map((tool) => (
                   <button
                     key={tool.label}
+                    type="button"
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
@@ -177,7 +198,8 @@ export default function WebsiteBuilderPage() {
             </div>
 
             <button
-              onClick={handleGenerate}
+              type="button"
+              onClick={() => void handleGenerate()}
               disabled={isLoading || !currentBrand}
               className="flex items-center gap-2 px-6 py-3 rounded-xl
                          bg-gradient-to-r from-violet-600 to-violet-500 text-white
@@ -190,14 +212,13 @@ export default function WebsiteBuilderPage() {
             </button>
           </div>
 
-          {/* Prompt output */}
           {(prompt || isLoading) && (
             <AgentPromptBox
               prompt={prompt}
               isLoading={isLoading}
               externalToolUrl={selectedTool.url}
               externalToolLabel={selectedTool.label}
-              onRegenerate={handleGenerate}
+              onRegenerate={() => void handleGenerate()}
             />
           )}
         </motion.div>

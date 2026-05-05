@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { addDays, format, startOfWeek } from 'date-fns'
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
@@ -61,12 +61,15 @@ function getSlotIdFromScheduledAt(scheduledAt?: string): string | null {
   return slotIdForLocalDate(d)
 }
 
-/** Next occurrence of this calendar day at default publish hour (local). */
+/** Next occurrence of this calendar day at default publish hour (local wall clock → ISO UTC). */
 function scheduledIsoForDayKey(dayKey: string): string {
-  const parts = dayKey.split('-').map(Number)
-  const [y, m, day] = parts
-  if (!y || !m || !day) return new Date().toISOString()
-  const next = new Date(y, m - 1, day, DEFAULT_SLOT_HOUR, 0, 0, 0)
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dayKey).trim())
+  if (!m) return new Date().toISOString()
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (!y || !mo || !d) return new Date().toISOString()
+  const next = new Date(y, mo - 1, d, DEFAULT_SLOT_HOUR, 0, 0, 0)
   const now = new Date()
   if (next <= now) {
     next.setDate(next.getDate() + 7)
@@ -131,12 +134,18 @@ function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
 
 export default function SchedulerPage() {
   const searchParams = useSearchParams()
+  const { mutate: mutateGlobal } = useSWRConfig()
+  const invalidateAllPostLists = useCallback(
+    () => mutateGlobal((key) => typeof key === 'string' && key.startsWith('/api/posts')),
+    [mutateGlobal],
+  )
+
   const { data, mutate, error, isLoading } = useSWR(
     '/api/posts?limit=30',
     (url: string) => apiCall<{ posts: PostItem[] }>(url),
     { revalidateOnFocus: false },
   )
-  const posts = data?.posts ?? []
+  const posts = useMemo(() => data?.posts ?? [], [data?.posts])
   const sensors = useSensors(useSensor(PointerSensor))
 
   const [slots, setSlots] = useState<Slot[]>(() => buildWeekSlots())
@@ -239,6 +248,7 @@ export default function SchedulerPage() {
         }),
       })
       await mutate()
+      await invalidateAllPostLists()
       setRescheduleOpen(false)
       toast.success('Schedule updated')
     } catch (e) {
@@ -248,7 +258,7 @@ export default function SchedulerPage() {
     }
   }
 
-  const scheduleSelected = async () => {
+  const scheduleSelected = useCallback(async () => {
     if (!selectedPost) return
     const target = slots.find((slot) => slot.postId === selectedPost.id)
     if (!target) {
@@ -266,6 +276,7 @@ export default function SchedulerPage() {
         }),
       })
       await mutate()
+      await invalidateAllPostLists()
       logUxEvent('scheduler_post_scheduled', { postId: selectedPost.id, slotId: target.id })
       toast.success('Post scheduled')
     } catch (error) {
@@ -273,9 +284,9 @@ export default function SchedulerPage() {
     } finally {
       setScheduling(false)
     }
-  }
+  }, [selectedPost, slots, comment, mutate, invalidateAllPostLists])
 
-  const unscheduleSelected = async () => {
+  const unscheduleSelected = useCallback(async () => {
     if (!selectedPost) return
     setScheduling(true)
     try {
@@ -289,15 +300,16 @@ export default function SchedulerPage() {
       })
       setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
       await mutate()
+      await invalidateAllPostLists()
       toast.success('Removed from schedule')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to remove from slot')
     } finally {
       setScheduling(false)
     }
-  }
+  }, [selectedPost, mutate, invalidateAllPostLists])
 
-  const deleteSelected = async () => {
+  const deleteSelected = useCallback(async () => {
     if (!selectedPost) return
     setScheduling(true)
     try {
@@ -312,13 +324,14 @@ export default function SchedulerPage() {
       setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
       setSelectedPostId(null)
       await mutate()
+      await invalidateAllPostLists()
       toast.success('Post moved to draft')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to update post')
     } finally {
       setScheduling(false)
     }
-  }
+  }, [selectedPost, mutate, invalidateAllPostLists])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

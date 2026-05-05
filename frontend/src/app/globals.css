@@ -69,6 +69,15 @@
   --space-5: 20px;
   --space-6: 24px;
   --space-8: 32px;
+  /** Doc / legacy agent UI aliases — map onto Tailwind theme tokens */
+  --text-1: var(--foreground);
+  --text-2: var(--card-foreground);
+  --text-3: var(--muted-foreground);
+  --text-4: var(--muted-foreground);
+  --bg-card: var(--card);
+  --bg-subtle: var(--muted);
+  --bg-canvas: var(--background);
+  --border-dim: var(--border);
 }
 
 .dark {
@@ -91,6 +100,14 @@
   --input: #333338;
   --ring: #4d9fff;
   --gradient-cta: linear-gradient(to right, #0188fd 0%, #2d6bff 35%, #003bff 70%, #001faa 100%);
+  --text-1: var(--foreground);
+  --text-2: var(--card-foreground);
+  --text-3: var(--muted-foreground);
+  --text-4: var(--muted-foreground);
+  --bg-card: var(--card);
+  --bg-subtle: var(--muted);
+  --bg-canvas: var(--background);
+  --border-dim: var(--border);
 }
 
 @keyframes bv-ripple {

@@ -7,6 +7,7 @@ import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-pri
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { toast } from 'sonner'
+import { displayCaption } from '@/lib/caption'
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ??
@@ -128,7 +129,9 @@ export default function CalendarContentPage() {
                   <h3 className="text-base font-semibold text-white">{slot.topic || slot.post_idea}</h3>
                   <p className="text-sm text-white/70">{slot.post_idea}</p>
                   {slot.creative_copy && <p className="text-sm text-white/80 whitespace-pre-wrap">{slot.creative_copy}</p>}
-                  {slot.caption_draft && <p className="text-sm text-white/65 whitespace-pre-wrap">{slot.caption_draft}</p>}
+                  {slot.caption_draft && (
+                    <p className="text-sm text-white/65 whitespace-pre-wrap">{displayCaption(slot.caption_draft)}</p>
+                  )}
                   {hashtags && <p className="text-xs text-white/45">{hashtags}</p>}
                 </div>
                 <div className="min-w-[160px] space-y-2">

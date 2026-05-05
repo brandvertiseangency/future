@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { logUxEvent } from '@/lib/ux-events'
 import { cn } from '@/lib/utils'
+import { displayCaption } from '@/lib/caption'
 
 const PLATFORMS = ['instagram', 'linkedin', 'facebook', 'tiktok']
 const RATIOS = ['1:1', '4:5', '9:16', '16:9'] as const
@@ -418,7 +419,7 @@ function GeneratePageInner() {
                   </div>
                   <div className="p-3">
                     <p className="mb-1 text-xs uppercase text-muted-foreground">{item.platform}</p>
-                    <p className="line-clamp-2 text-sm text-foreground">{item.caption ?? 'No caption'}</p>
+                    <p className="line-clamp-2 text-sm text-foreground">{displayCaption(item.caption, 'No caption')}</p>
                   </div>
                 </div>
               ))}

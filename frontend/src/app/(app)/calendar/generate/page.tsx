@@ -233,7 +233,7 @@ function CalendarGenerateInner() {
                 Complete onboarding before generating a plan. Missing: {missingOnboarding.join(', ')}.
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Link href="/onboarding"><Button size="sm" variant="secondary">Complete Onboarding</Button></Link>
-                  <Link href="/brand"><Button size="sm" variant="secondary">Fix in Brand Page</Button></Link>
+                  <Link href="/settings#brand"><Button size="sm" variant="secondary">Fix in brand settings</Button></Link>
                 </div>
               </div>
             ) : null}

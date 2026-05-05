@@ -52,6 +52,9 @@ router.post('/complete', authMiddleware, async (req, res) => {
   const pool = getPool();
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   const client = await pool.connect();
+  const logStep = (stage, extra = {}) => {
+    logger.info('[onboarding_complete]', { stage, firebaseUid: req.user.uid, ...extra });
+  };
   try {
     const {
       brandName, description, industry, industryLabel, tone, styles,
@@ -108,6 +111,7 @@ router.post('/complete', authMiddleware, async (req, res) => {
     };
     const hasMissing = Object.values(missingBySection).some((fields) => fields.length > 0);
     if (hasMissing) {
+      logStep('validation_failed', { missingBySection });
       return res.status(422).json({
         error: 'ONBOARDING_INCOMPLETE',
         message: 'Complete required onboarding sections before generation.',
@@ -115,6 +119,7 @@ router.post('/complete', authMiddleware, async (req, res) => {
       });
     }
 
+    logStep('begin_transaction');
     await client.query('BEGIN');
 
     // Upsert user
@@ -125,6 +130,7 @@ router.post('/complete', authMiddleware, async (req, res) => {
       [req.user.uid, req.user.email]
     );
     const user = userRows[0];
+    logStep('user_upserted', { userId: user.id });
 
     // Upsert brand with v2 columns
     const { rows: brandRows } = await client.query(
@@ -167,9 +173,11 @@ router.post('/complete', authMiddleware, async (req, res) => {
       ]
     );
     const brand = brandRows[0];
+    logStep('brand_upserted', { brandId: brand.id });
 
     // Save brand style profile if we have extracted data
     if (extractedStyleProfile && brand) {
+      logStep('style_profile_write');
       await client.query(
         `INSERT INTO brand_style_profiles (brand_id, extracted_colors, font_mood_detected,
            layout_style, photography_style, mood_keywords, composition_style,
@@ -201,10 +209,12 @@ router.post('/complete', authMiddleware, async (req, res) => {
           JSON.stringify(extractedStyleProfile),
         ]
       );
+      logStep('style_profile_done');
     }
 
     // Save industry config
     if (industry && brand) {
+      logStep('industry_config_write');
       await client.query(
         `INSERT INTO brand_industry_configs (brand_id, industry, subtype, price_segment,
            usp_keywords, industry_answers)
@@ -218,10 +228,12 @@ router.post('/complete', authMiddleware, async (req, res) => {
           uspKeywords || [], JSON.stringify(industryAnswers || {}),
         ]
       );
+      logStep('industry_config_done');
     }
 
     // Save calendar preferences
     if (brand) {
+      logStep('calendar_prefs_write');
       await client.query(
         `INSERT INTO content_calendar_preferences (brand_id, weekly_post_count, content_type_mix,
            auto_schedule, active_platforms, preferred_posting_times)
@@ -241,13 +253,16 @@ router.post('/complete', authMiddleware, async (req, res) => {
           normalizedPostingTimes,
         ]
       );
+      logStep('calendar_prefs_done');
     }
 
     await client.query(`INSERT INTO user_preferences (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [user.id]);
     await client.query('COMMIT');
+    logStep('commit_success', { brandId: brand?.id, userId: user?.id });
     res.json({ user, brand, success: true });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
+    logStep('transaction_rolled_back', { message: err.message });
     logger.error('Onboarding complete failed', { error: err.message });
     res.status(500).json({ error: 'Failed to save onboarding data.', details: err.message });
   } finally {

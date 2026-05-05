@@ -1,15 +1,15 @@
 'use client'
 
+import Link from 'next/link'
 import { Lock, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface AgentLockedOverlayProps {
   agentName: string
   description: string
-  onUnlock?: () => void
 }
 
-export function AgentLockedOverlay({ agentName, description, onUnlock }: AgentLockedOverlayProps) {
+export function AgentLockedOverlay({ agentName, description }: AgentLockedOverlayProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -34,8 +34,8 @@ export function AgentLockedOverlay({ agentName, description, onUnlock }: AgentLo
             {description}
           </p>
         </div>
-        <button
-          onClick={onUnlock}
+        <Link
+          href="/settings#billing"
           className="flex items-center gap-2 px-6 py-3 rounded-xl
                      bg-gradient-to-r from-violet-600 to-violet-500
                      text-white text-[13.5px] font-semibold
@@ -45,9 +45,9 @@ export function AgentLockedOverlay({ agentName, description, onUnlock }: AgentLo
         >
           <Zap size={15} />
           Unlock Agent
-        </button>
+        </Link>
         <p className="text-[11px] text-[var(--text-4)]">
-          Upgrade to Pro or Business to access all agents
+          Upgrade to Pro or Agency to access all agents
         </p>
       </motion.div>
     </motion.div>

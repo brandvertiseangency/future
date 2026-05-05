@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { apiCall } from '@/lib/api'
 import { displayCaption } from '@/lib/caption'
 import { getFirebaseAuth } from '@/lib/firebase'
@@ -237,7 +237,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
             </p>
           )}
           <p style={{ fontSize: 14, color: '#191919', lineHeight: 1.45, marginBottom: slot.creative_brief ? 8 : 0 }}>
-            {idea}
+            {displayCaption(idea, 'Untitled post idea')}
           </p>
           {slot.creative_copy && (
             <p style={{ fontSize: 11, color: '#374151', lineHeight: 1.35, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
@@ -311,6 +311,7 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
 function CalendarReviewInner() {
   const router = useRouter()
+  const { mutate: mutateKeys } = useSWRConfig()
   const params = useSearchParams()
   const planId = params.get('planId')
   const { data: latestPlanData } = useSWR(
@@ -387,6 +388,7 @@ function CalendarReviewInner() {
       })
       if (!res.ok) throw new Error(await res.text())
       const { jobId } = await res.json()
+      await mutateKeys((key) => typeof key === 'string' && key.startsWith('/api/posts'))
       router.push(`/generate/queue?jobId=${jobId}`)
     } catch (e: any) {
       toast.error(e.message || 'Failed to approve plan')

@@ -6,6 +6,7 @@ import { Calendar, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import useSWR from 'swr'
 import { useOnboardingStore, type OnboardingData } from '@/stores/onboarding'
 import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
+import { getFirebaseAuth } from '@/lib/firebase'
 import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -305,6 +306,8 @@ export function StepFirstPost() {
   }
 
   const completeOnboarding = async () => {
+    const auth = getFirebaseAuth()
+    await auth?.currentUser?.getIdToken(true)
     await apiCall('/api/onboarding/complete', {
       method: 'POST',
       body: JSON.stringify(buildOnboardingCompletePayload(onboardingData)),

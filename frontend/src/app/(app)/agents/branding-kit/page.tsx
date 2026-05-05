@@ -8,8 +8,8 @@ import { AgentFeatureCards } from '@/components/agents/agent-feature-cards'
 import { AgentLockedOverlay } from '@/components/agents/agent-locked-overlay'
 import { AgentPromptBox } from '@/components/agents/agent-prompt-box'
 import { useBrandStore } from '@/stores/brand'
-import { useAgentsStore } from '@/stores/agents'
-import { buildBrandingPrompt } from '@/lib/prompt-engine'
+import { useAgentUnlocked } from '@/lib/agent-access'
+import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { PageContainer } from '@/components/ui/page-primitives'
@@ -66,13 +66,26 @@ const TOOLS = [
   { label: 'Open in DALL-E', url: 'https://openai.com/dall-e-3' },
 ]
 
+function parseAgentError(error: unknown): string {
+  const raw = error instanceof Error ? error.message : 'Generation failed'
+  try {
+    const parsed = JSON.parse(raw)
+    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
+    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
+  } catch {
+    /* ignore */
+  }
+  return raw
+}
+
 export default function BrandingKitPage() {
   const { currentBrand } = useBrandStore()
-  const { isUnlocked, unlockAgent } = useAgentsStore()
-  const unlocked = isUnlocked('branding-kit')
+  const unlocked = useAgentUnlocked('branding-kit')
 
   const [selectedFormat, setSelectedFormat] = useState<FormatOption>(FORMAT_OPTIONS[0])
   const [selectedTool, setSelectedTool] = useState(TOOLS[0])
+  const [occasion, setOccasion] = useState('')
+  const [extraText, setExtraText] = useState('')
   const [prompt, setPrompt] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -83,23 +96,24 @@ export default function BrandingKitPage() {
     }
     setIsLoading(true)
     setPrompt('')
-    await new Promise((r) => setTimeout(r, 1200))
-
-    const generated = buildBrandingPrompt(
-      {
-        name: currentBrand.name,
-        description: currentBrand.voice,
-        industry: currentBrand.industry,
-        voice: currentBrand.voice,
-        goals: currentBrand.goals,
-        designPrefs: currentBrand.designPrefs as Record<string, unknown>,
-      },
-      selectedFormat.id
-    )
-
-    setPrompt(generated)
-    setIsLoading(false)
-    toast.success(`${selectedFormat.label} prompt generated!`)
+    try {
+      const res = await apiCall<{ prompt: string }>('/api/agents/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          agentType: 'branding-kit',
+          brandingFormat: selectedFormat.id,
+          brandingOccasion: occasion.trim() || undefined,
+          brandingText: extraText.trim() || undefined,
+        }),
+        timeoutMs: AI_REQUEST_TIMEOUT_MS,
+      })
+      setPrompt(res.prompt || '')
+      toast.success(`${selectedFormat.label} prompt generated!`)
+    } catch (e) {
+      toast.error(parseAgentError(e))
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -120,7 +134,6 @@ export default function BrandingKitPage() {
           <AgentLockedOverlay
             agentName="Branding Kit"
             description="Unlock this agent to generate professional branding asset briefs — posters, banners, and business cards — tailored to your brand identity."
-            onUnlock={() => unlockAgent('branding-kit')}
           />
         )}
 
@@ -128,7 +141,6 @@ export default function BrandingKitPage() {
           className={!unlocked ? 'opacity-30 pointer-events-none select-none blur-sm' : ''}
           animate={{ opacity: unlocked ? 1 : 0.3 }}
         >
-          {/* Format selection */}
           <div className="rounded-2xl border border-[var(--border-dim)] bg-[var(--bg-card)] p-6 mb-5">
             <h2 className="text-[15px] font-semibold text-[var(--text-1)] mb-1">Select Asset Format</h2>
             <p className="text-[12.5px] text-[var(--text-3)] mb-5">Choose the type of branding asset to generate.</p>
@@ -139,7 +151,11 @@ export default function BrandingKitPage() {
                 return (
                   <motion.button
                     key={fmt.id}
-                    onClick={() => { setSelectedFormat(fmt); setPrompt('') }}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFormat(fmt)
+                      setPrompt('')
+                    }}
                     whileTap={{ scale: 0.97 }}
                     className={cn(
                       'flex flex-col gap-2 p-4 rounded-2xl border text-left transition-all duration-200',
@@ -165,7 +181,27 @@ export default function BrandingKitPage() {
               })}
             </div>
 
-            {/* Brand info display */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">Occasion / campaign (optional)</label>
+                <input
+                  value={occasion}
+                  onChange={(e) => setOccasion(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border-dim)] bg-[var(--bg-subtle)] px-4 py-3 text-[13.5px] text-[var(--text-2)] outline-none focus:border-cyan-500/50"
+                  placeholder="e.g. Diwali sale, product launch"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">On-artwork copy (optional)</label>
+                <input
+                  value={extraText}
+                  onChange={(e) => setExtraText(e.target.value)}
+                  className="w-full rounded-xl border border-[var(--border-dim)] bg-[var(--bg-subtle)] px-4 py-3 text-[13.5px] text-[var(--text-2)] outline-none focus:border-cyan-500/50"
+                  placeholder="Headline or legal line to include"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
               <div>
                 <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-1.5">Brand</label>
@@ -187,13 +223,13 @@ export default function BrandingKitPage() {
               </div>
             </div>
 
-            {/* Tool selector */}
             <div className="mb-5">
               <label className="block text-[11px] font-semibold uppercase tracking-wider text-[var(--text-4)] mb-2">Open In</label>
               <div className="flex flex-wrap gap-2">
                 {TOOLS.map((tool) => (
                   <button
                     key={tool.label}
+                    type="button"
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
@@ -208,7 +244,8 @@ export default function BrandingKitPage() {
             </div>
 
             <button
-              onClick={handleGenerate}
+              type="button"
+              onClick={() => void handleGenerate()}
               disabled={isLoading || !currentBrand}
               className="flex items-center gap-2 px-6 py-3 rounded-xl
                          bg-gradient-to-r from-cyan-600 to-cyan-500 text-white
@@ -227,7 +264,7 @@ export default function BrandingKitPage() {
               isLoading={isLoading}
               externalToolUrl={selectedTool.url}
               externalToolLabel={selectedTool.label}
-              onRegenerate={handleGenerate}
+              onRegenerate={() => void handleGenerate()}
             />
           )}
         </motion.div>
