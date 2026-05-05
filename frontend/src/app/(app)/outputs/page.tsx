@@ -124,63 +124,81 @@ export default function OutputsPage() {
         title="View, refine, and finalize your creatives"
         description="Use quick actions, compare versions, and schedule the best results."
       />
-      <PageHeader title={<>Outputs <span className="text-highlight">Library</span></>} description={`${posts.length} creatives generated`} />
+      <PageHeader
+        variant="compact"
+        title={
+          <>
+            Outputs <span className="text-highlight">library</span>
+          </>
+        }
+        description={`${posts.length} creatives generated`}
+      />
       {error ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
           Could not refresh outputs right now. Showing last available results.
         </div>
       ) : null}
-      {selectedIds.length > 0 ? (
-        <div className="rounded-lg border border-border bg-card px-3 py-2 text-sm">
-          <span className="text-muted-foreground">{selectedIds.length} selected</span>
-          <Button
-            size="sm"
-            className="ml-3"
-            onClick={() => {
-              logUxEvent('outputs_schedule_selected_clicked', { selectedCount: selectedIds.length })
-              router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)
-            }}
-          >
-            Schedule Selected
-          </Button>
-        </div>
-      ) : null}
       <NextStepCard
+        dense
         title={selectedIds.length > 0 ? 'Schedule selected outputs' : 'Select outputs to schedule'}
         reason={selectedIds.length > 0 ? 'Selected outputs are ready. Send them to Scheduler to assign publishing slots.' : 'Choose one or more outputs to unlock fast scheduling handoff.'}
         primaryCta={selectedIds.length > 0 ? { label: 'Schedule Selected', href: `/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}` } : { label: 'Open Scheduler', href: '/scheduler' }}
         secondaryCta={{ label: 'Generate More', href: '/generate' }}
       />
 
-      <SectionCard title="Filters" subtitle="Find outputs quickly by platform, status, or keyword.">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[220px] flex-1">
+      <SectionCard
+        className="app-card-elevated"
+        title="Library toolbar"
+        subtitle="Search, filter, layout. Shortcuts: / focus search, S schedule selected."
+      >
+        <div className="flex flex-col gap-3 xl:flex-row xl:flex-wrap xl:items-center">
+          {selectedIds.length > 0 ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">{selectedIds.length} selected</span>
+              <Button
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  logUxEvent('outputs_schedule_selected_clicked', { selectedCount: selectedIds.length })
+                  router.push(`/scheduler?postIds=${encodeURIComponent(selectedIds.join(','))}`)
+                }}
+              >
+                Schedule selected
+              </Button>
+            </div>
+          ) : null}
+          <div className="relative min-w-[200px] flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={searchRef}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search outputs..."
-              className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-primary"
+              className="h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary"
             />
           </div>
-          {PLATFORM_FILTERS.map((p) => (
-            <FilterPill key={p} active={platform === p} onClick={() => setPlatform(p)}>
-              {p === 'all' ? 'All Platforms' : p}
-            </FilterPill>
-          ))}
-          {STATUS_FILTERS.map((s) => (
-            <FilterPill key={s} active={status === s} onClick={() => setStatus(s)}>
-              {s === 'all' ? 'All Statuses' : s}
-            </FilterPill>
-          ))}
-          <div className="ml-auto rounded-lg border border-border p-1">
-            <button onClick={() => setLayoutMode('grid')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Grid</button>
-            <button onClick={() => setLayoutMode('list')} className={cn('rounded px-2 py-1 text-xs', layoutMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>List</button>
+          <div className="flex flex-wrap items-center gap-2">
+            {PLATFORM_FILTERS.map((p) => (
+              <FilterPill key={p} active={platform === p} onClick={() => setPlatform(p)}>
+                {p === 'all' ? 'All platforms' : p}
+              </FilterPill>
+            ))}
+            {STATUS_FILTERS.map((s) => (
+              <FilterPill key={s} active={status === s} onClick={() => setStatus(s)}>
+                {s === 'all' ? 'All statuses' : s}
+              </FilterPill>
+            ))}
+            <div className="ml-auto flex rounded-lg border border-border bg-muted/30 p-1">
+              <button type="button" onClick={() => setLayoutMode('grid')} className={cn('min-h-9 rounded-md px-3 py-1.5 text-xs font-medium', layoutMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+                Grid
+              </button>
+              <button type="button" onClick={() => setLayoutMode('list')} className={cn('min-h-9 rounded-md px-3 py-1.5 text-xs font-medium', layoutMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+                List
+              </button>
+            </div>
           </div>
         </div>
       </SectionCard>
-      <p className="text-xs text-muted-foreground">Shortcuts: `/` focus search, `S` schedule selected outputs.</p>
 
       <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
       <div>
@@ -210,7 +228,10 @@ export default function OutputsPage() {
                 }}
                 role="button"
                 tabIndex={0}
-                className={cn('group app-card overflow-hidden text-left transition hover:border-primary cursor-pointer', layoutMode === 'list' && 'flex items-center')}
+                className={cn(
+                  'group app-card-elevated cursor-pointer overflow-hidden border border-border/80 text-left shadow-[var(--shadow-card)] transition hover:border-primary/50',
+                  layoutMode === 'list' && 'flex items-center',
+                )}
               >
                 <div className={cn('bg-muted', layoutMode === 'grid' ? 'aspect-square' : 'h-24 w-24 shrink-0')}>
                   {post.image_url ? (
@@ -239,7 +260,7 @@ export default function OutputsPage() {
                     </div>
                   </div>
                   <p className="line-clamp-2 text-sm font-medium text-foreground">{post.slot_topic || 'Untitled output'}</p>
-                  {post.slot_creative_copy ? <p className="line-clamp-2 text-xs text-[#4B5563]">{post.slot_creative_copy}</p> : null}
+                  {post.slot_creative_copy ? <p className="line-clamp-2 text-xs text-muted-foreground">{post.slot_creative_copy}</p> : null}
                   <p className="line-clamp-3 text-xs text-muted-foreground">{displayCaption(post.caption, `${post.platform} ${post.content_type || 'post'}`)}</p>
                   {post.slot_hashtags_draft?.length ? (
                     <p className="line-clamp-1 text-[11px] text-muted-foreground">
@@ -278,7 +299,7 @@ export default function OutputsPage() {
           </div>
         )}
       </div>
-      <SectionCard title="Selected Output" subtitle="Inspect details and versions">
+      <SectionCard className="app-card-elevated xl:sticky xl:top-24" title="Selected output" subtitle="Inspect details and versions">
         {selected ? (
           <div className="space-y-3">
             <div className="overflow-hidden rounded-lg border border-border bg-muted">

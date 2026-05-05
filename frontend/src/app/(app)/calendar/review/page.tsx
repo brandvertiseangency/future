@@ -8,6 +8,7 @@ import { apiCall } from '@/lib/api'
 import { displayCaption } from '@/lib/caption'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { Edit2, Trash2, CheckCircle2, Loader2, ChevronLeft, Check } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { SectionCard } from '@/components/ui/saas-primitives'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -62,35 +63,35 @@ function SlotCard({ slot, selected, onToggle, onDelete, onEdit }: {
 
   return (
     <div
-      className="app-card bg-card border border-border"
-      style={{
-        borderRadius: 12, padding: '12px 14px',
-        borderColor: selected ? '#191919' : undefined,
-        position: 'relative', transition: 'border-color 0.15s',
-      }}
+      className={cn(
+        'app-card-elevated relative border p-3.5 transition-shadow md:p-4',
+        selected ? 'ring-2 ring-primary/40 border-primary/25 shadow-[var(--shadow-card)]' : 'border-border/80',
+      )}
     >
-      {/* Select checkbox */}
       <button
+        type="button"
         onClick={onToggle}
-        style={{
-          position: 'absolute', top: 10, right: 10,
-          width: 18, height: 18, borderRadius: 5,
-          background: selected ? '#191919' : '#fff',
-          border: `1px solid ${selected ? '#191919' : '#D1D5DB'}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'all 0.15s',
-        }}
+        className={cn(
+          'absolute right-2.5 top-2.5 flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border transition-colors',
+          selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background',
+        )}
+        aria-pressed={selected}
       >
-        {selected && <Check size={10} color="#fff" strokeWidth={3} />}
+        {selected && <Check size={10} strokeWidth={3} />}
       </button>
 
-      {/* Date */}
-      <div style={{ marginBottom: 8 }}>
-        <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 500 }}>{day} {dateStr}</span>
-        <span style={{
-          marginLeft: 6, fontSize: 9, padding: '2px 6px', borderRadius: 4,
-          background: styles.bg, border: `1px solid ${styles.border}`, color: styles.text,
-        }}>
+      <div className="mb-2">
+        <span className="text-[10px] font-medium text-muted-foreground">
+          {day} {dateStr}
+        </span>
+        <span
+          className="ml-1.5 inline-block rounded border px-1.5 py-0.5 text-[9px]"
+          style={{
+            background: styles.bg,
+            borderColor: styles.border,
+            color: styles.text,
+          }}
+        >
           {styles.label}
         </span>
       </div>
@@ -339,7 +340,6 @@ function CalendarReviewInner() {
   )
   const creditBalance = creditsData?.balance ?? 0
 
-  const plan = planData?.plan ?? planData
   const allSlots: Slot[] = planData?.slots ?? []
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
@@ -406,30 +406,30 @@ function CalendarReviewInner() {
   }
 
   return (
-    <PageContainer className="max-w-6xl">
-
-      {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-        <div>
+    <PageContainer className="max-w-6xl space-y-6">
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
           <button
+            type="button"
             onClick={() => router.back()}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', marginBottom: 10, fontSize: 12 }}
+            className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft size={14} /> Back
           </button>
           <PageHeader
+            variant="hero"
             title="Review your calendar"
             description={`${slots.length} posts planned. Edit or remove any item before approval.`}
           />
         </div>
 
-        {/* Approve CTA */}
-        <div className="text-right">
+        <div className="w-full shrink-0 rounded-[var(--radius-card-lg)] border border-border/80 bg-card p-4 shadow-[var(--shadow-card)] lg:sticky lg:top-24 lg:w-[280px]">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-primary">Checkout</p>
           <button
             type="button"
             onClick={() => void handleApprove()}
             disabled={approving || slots.length === 0 || insufficientCredits}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-3 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {approving ? (
               <>
@@ -439,30 +439,29 @@ function CalendarReviewInner() {
             ) : (
               <>
                 <CheckCircle2 className="h-4 w-4" />
-                Approve & Generate
+                Approve &amp; generate
               </>
             )}
           </button>
-          <p className="mt-2 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
             Costs {creditsNeeded} credits · Balance {creditBalance}
             {insufficientCredits ? (
               <>
                 {' '}
                 ·{' '}
-                <Link href="/settings#billing" className="font-medium text-red-600 underline-offset-2 hover:underline">
+                <Link href="/settings#billing" className="font-medium text-destructive underline-offset-2 hover:underline">
                   Top up
                 </Link>
               </>
             ) : null}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {selected.size === 0 ? 'All posts selected' : `${selected.size} selected`}
+          <p className="mt-2 text-xs text-muted-foreground">
+            {selected.size === 0 ? 'All posts selected' : `${selected.size} slot(s) selected`}
           </p>
         </div>
       </div>
 
-      {/* Select all */}
-      <SectionCard title="Selection" subtitle="Choose which slots to include in generation." className="mb-4">
+      <SectionCard className="app-card-elevated" title="Selection" subtitle="Choose which slots to include in generation.">
         <label className="flex cursor-pointer items-center gap-3 text-sm text-foreground">
           <input
             type="checkbox"
@@ -478,14 +477,13 @@ function CalendarReviewInner() {
         </label>
       </SectionCard>
 
-      {/* Grid by date */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="flex flex-col gap-8">
         {Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, dateSlots]) => (
           <div key={date}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
               {new Date(date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12 }}>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {dateSlots.map(slot => (
                 <SlotCard
                   key={slot.id}

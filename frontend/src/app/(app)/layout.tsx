@@ -54,7 +54,7 @@ function AppShell({ children }: { children: ReactNode }) {
         initial={{ opacity: 0, y: 4 }}
         animate={{ opacity: 1, y: 0 }}
         transition={MOTION_TRANSITIONS.page}
-        className={isOnboardingRoute ? 'min-h-screen' : 'md:ml-[240px] pt-[96px] pb-20 md:pb-0 min-h-screen'}
+        className={isOnboardingRoute ? 'min-h-screen' : 'md:ml-[260px] pt-[100px] pb-20 md:pb-0 min-h-screen'}
       >
         <PageErrorBoundary>{children}</PageErrorBoundary>
       </motion.main>

@@ -78,6 +78,14 @@
   --bg-subtle: var(--muted);
   --bg-canvas: var(--background);
   --border-dim: var(--border);
+  /** Marketing surfaces (derive from base tokens — primary blue unchanged) */
+  --surface-page: color-mix(in oklch, var(--background) 100%, var(--primary) 1.5%);
+  --surface-hero: color-mix(in oklch, var(--card) 94%, var(--primary) 6%);
+  --surface-elevated: var(--card);
+  --shadow-card: 0 1px 2px rgba(25, 25, 25, 0.04), 0 4px 16px rgba(25, 25, 25, 0.06);
+  --shadow-card-hover: 0 2px 6px rgba(25, 25, 25, 0.06), 0 8px 24px rgba(0, 59, 255, 0.08);
+  --radius-card: 16px;
+  --radius-card-lg: 20px;
 }
 
 .dark {
@@ -108,6 +116,13 @@
   --bg-subtle: var(--muted);
   --bg-canvas: var(--background);
   --border-dim: var(--border);
+  --surface-page: color-mix(in oklch, var(--background) 100%, var(--primary) 2%);
+  --surface-hero: color-mix(in oklch, var(--card) 88%, var(--primary) 12%);
+  --surface-elevated: var(--card);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 20px rgba(0, 0, 0, 0.35);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.25), 0 10px 32px rgba(1, 136, 253, 0.12);
+  --radius-card: 16px;
+  --radius-card-lg: 20px;
 }
 
 @keyframes bv-ripple {
@@ -160,7 +175,65 @@
 }
 
 .app-card {
-  @apply rounded-xl border border-border bg-card shadow-[0_1px_3px_rgba(25,25,25,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)];
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  @apply border border-border bg-card;
+}
+
+/** Elevated marketing card — hover lift */
+.app-card-elevated {
+  border-radius: var(--radius-card-lg);
+  box-shadow: var(--shadow-card);
+  @apply border border-border bg-card transition-shadow duration-200;
+}
+.app-card-elevated:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.bv-surface-hero {
+  background: var(--surface-hero);
+  border-radius: var(--radius-card-lg);
+  border: 1px solid color-mix(in oklch, var(--border) 80%, var(--primary) 20%);
+}
+
+.bv-page-canvas {
+  background: var(--surface-page);
+}
+
+/** Dense data tables (calendar, admin lists) */
+.bv-data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 0.65rem 0.75rem;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted-foreground);
+}
+.bv-data-table tbody td {
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 70%, transparent);
+  padding: 0.65rem 0.75rem;
+  vertical-align: top;
+}
+.bv-data-table tbody tr:hover td {
+  background: color-mix(in oklch, var(--accent) 40%, transparent);
+}
+.bv-data-table tbody tr:nth-child(even) td {
+  background: color-mix(in oklch, var(--muted) 22%, transparent);
+}
+.bv-data-table tbody tr:nth-child(even):hover td {
+  background: color-mix(in oklch, var(--accent) 45%, transparent);
+}
+.bv-data-table tbody tr.bv-row-selected td {
+  background: color-mix(in oklch, var(--primary) 12%, transparent);
+}
+.bv-data-table tbody tr.bv-row-selected:hover td {
+  background: color-mix(in oklch, var(--primary) 16%, transparent);
 }
 
 input:focus-visible,

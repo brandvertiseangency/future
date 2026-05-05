@@ -49,6 +49,7 @@ export default function AgentsPage() {
         description="Each agent produces prompts and briefs grounded in your brand — paste them into your favourite tools."
       />
       <PageHeader
+        variant="hero"
         title={
           <>
             AI <span className="text-pull text-primary">agents</span>
@@ -57,7 +58,7 @@ export default function AgentsPage() {
         description="Website, branding, and presentation workflows. Pro and Agency unlock generation on every agent below."
       />
       {!planUnlocked ? (
-        <div className="rounded-xl border border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+        <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/80 bg-muted/30 p-4 text-sm text-muted-foreground shadow-[var(--shadow-card)]">
           <p className="font-medium text-foreground">Unlock on Pro</p>
           <p className="mt-1">Upgrade to run AI generations from this workspace. You can open each agent from the sidebar to see the interface.</p>
         </div>

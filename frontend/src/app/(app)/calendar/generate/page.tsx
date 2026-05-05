@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
+import { Sparkles, Loader2, ChevronLeft, AlertCircle, RefreshCcw } from 'lucide-react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { apiCall, AI_REQUEST_TIMEOUT_MS } from '@/lib/api'
@@ -152,30 +152,33 @@ function CalendarGenerateInner() {
   }
 
   return (
-    <PageContainer className="max-w-5xl space-y-6">
+    <PageContainer className="max-w-6xl space-y-6">
       <PageIntroModal
         pageKey="calendar-generate"
         title="Plan your content with AI"
         description="Set your monthly content mix and generate a review-ready calendar."
       />
-      <button onClick={() => router.back()} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ChevronLeft className="h-4 w-4" /> Back
-      </button>
-
-      <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1">
-        <div className="flex h-6 w-6 items-center justify-center rounded-md bg-muted">
-          <Calendar className="h-3.5 w-3.5 text-foreground" />
-        </div>
-        <span className="text-xs uppercase tracking-wide text-muted-foreground">Content Calendar</span>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" /> Back
+        </button>
+        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Step 1 · Configure <span className="text-border">→</span> Step 2 · Review plan
+        </p>
       </div>
 
       <PageHeader
-        title={<>Plan your <span className="text-highlight">content</span></>}
-        description="AI creates a full month of post ideas using your Brand DNA. You review and approve before generation."
+        variant="hero"
+        title={<>Plan your <span className="text-pull text-primary">content</span></>}
+        description="AI drafts a month of ideas from your Brand DNA. You review and approve before anything is charged."
       />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
-        <SectionCard title="Plan Configuration" subtitle="Define month, volume, and mix before generation.">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px] xl:items-start">
+        <SectionCard className="app-card-elevated" title="Plan configuration" subtitle="Month, volume, and content mix (must total 100%).">
           <div className="space-y-5">
             <div>
               <label className="mb-1 block text-xs font-medium uppercase tracking-wide text-muted-foreground">Month</label>
@@ -211,7 +214,7 @@ function CalendarGenerateInner() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Summary" subtitle="Credits and quick actions" className="xl:sticky xl:top-20 h-fit">
+        <SectionCard className="app-card-elevated xl:sticky xl:top-24 h-fit" title="Summary" subtitle="Credits and actions">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Plan</span>
@@ -264,18 +267,27 @@ function CalendarGenerateInner() {
                 </Button>
               </div>
             ) : null}
+
+            <div className="border-t border-border pt-4">
+              <Button onClick={handleGenerate} disabled={!canGenerate} className="h-11 w-full">
+                {generating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Planning calendar…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate content plan
+                  </>
+                )}
+              </Button>
+              <p className="mt-2 text-center text-[11px] leading-relaxed text-muted-foreground">
+                Credits are charged only after you approve and confirm in review.
+              </p>
+            </div>
           </div>
         </SectionCard>
-      </div>
-
-      <div className="space-y-2">
-        <Button onClick={handleGenerate} disabled={!canGenerate} className="h-11 w-full">
-          {generating
-            ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Planning calendar...</>
-            : <><Sparkles className="mr-2 h-4 w-4" />Generate Content Plan</>
-          }
-        </Button>
-        <p className="text-center text-xs text-muted-foreground">Credits are charged only after you approve and confirm.</p>
       </div>
     </PageContainer>
   )

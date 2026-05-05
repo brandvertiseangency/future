@@ -20,8 +20,8 @@ export function AgentCard({ title, description, href, icon: Icon, accentClassNam
   return (
     <div
       className={cn(
-        'relative flex flex-col overflow-hidden rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow',
-        locked && 'opacity-95'
+        'app-card-elevated relative flex flex-col overflow-hidden rounded-[var(--radius-card-lg)] border border-border/80 bg-card p-5 shadow-[var(--shadow-card)] transition-shadow hover:shadow-md',
+        locked && 'opacity-95',
       )}
     >
       {locked ? (

@@ -12,6 +12,7 @@ import useSWR, { useSWRConfig } from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
 import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { DataTableShell } from '@/components/ui/data-table-shell'
 import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -68,7 +69,14 @@ export default function CalendarPage() {
     columnHelper.accessor('day', { header: 'Day', cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span> }),
     columnHelper.accessor('type', { header: 'Type', cell: (info) => <span className="capitalize text-sm text-foreground">{info.getValue()}</span> }),
     columnHelper.accessor('idea', { header: 'Idea', cell: (info) => <span className="text-sm text-foreground">{info.getValue()}</span> }),
-    columnHelper.accessor('caption', { header: 'Caption', cell: (info) => <span className="line-clamp-1 text-sm text-muted-foreground">{info.getValue()}</span> }),
+    columnHelper.accessor('caption', {
+      header: 'Caption',
+      cell: (info) => (
+        <span className="line-clamp-2 max-w-[min(280px,32vw)] text-sm leading-snug text-muted-foreground">
+          {displayCaption(String(info.getValue() ?? ''), '—')}
+        </span>
+      ),
+    }),
     columnHelper.accessor('status', {
       header: 'Status',
       cell: (info) => (
@@ -109,7 +117,7 @@ export default function CalendarPage() {
   const selectRow = (row: CalendarRow) => {
     setSelected(row)
     setEditedIdea(row.idea)
-    setEditedCaption(row.caption)
+    setEditedCaption(displayCaption(row.caption, ''))
     setEditedProduct('')
   }
 
@@ -205,21 +213,44 @@ export default function CalendarPage() {
         description="Review each planned post, edit captions, and approve items before creative generation."
       />
       <PageHeader
+        variant="compact"
         title={<>Content <span className="text-highlight">Calendar</span></>}
         description="Review ideas, edit captions, and approve content before generation."
         actions={
-          <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-border p-1">
-              <button onClick={() => setViewMode('table')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Table</button>
-              <button onClick={() => setViewMode('calendar')} className={cn('rounded px-2 py-1 text-xs', viewMode === 'calendar' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>Calendar</button>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex rounded-full border border-border bg-muted/40 p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                  viewMode === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('calendar')}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
+                  viewMode === 'calendar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                Board
+              </button>
             </div>
             <Link href="/calendar/generate">
-              <Button><Sparkles className="mr-2 h-4 w-4" />Generate Calendar</Button>
+              <Button>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Calendar
+              </Button>
             </Link>
           </div>
         }
       />
       <NextStepCard
+        dense
         title={hasApprovedOrScheduled ? 'Move approved posts to scheduler' : 'Approve your first calendar items'}
         reason={hasApprovedOrScheduled ? 'You have approved content. Assign slots in scheduler to lock publishing momentum.' : 'Scheduling is blocked until at least one post is approved.'}
         primaryCta={hasApprovedOrScheduled ? { label: 'Open Scheduler', href: '/scheduler' } : { label: 'Approve in Calendar', href: '/calendar' }}
@@ -240,46 +271,50 @@ export default function CalendarPage() {
               <SkeletonCard lines={4} />
             </div>
           ) : null}
-          {viewMode === 'table' ? <div className="overflow-x-auto">
-            {rows.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-border p-8 text-center">
+          {viewMode === 'table' ? (
+            rows.length === 0 ? (
+              <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-muted/20 p-10 text-center">
                 <p className="text-sm font-medium text-foreground">No content yet</p>
-                <p className="mt-1 text-xs text-muted-foreground">Generate your first calendar to begin approvals.</p>
-                <Link href="/calendar/generate" className="mt-3 inline-block"><Button size="sm">Generate Calendar</Button></Link>
+                <p className="mt-1 text-sm text-muted-foreground">Generate your first calendar to begin approvals.</p>
+                <Link href="/calendar/generate" className="mt-4 inline-block">
+                  <Button size="sm">Generate Calendar</Button>
+                </Link>
               </div>
-            ) : null}
-            <table className="w-full min-w-[720px] border-separate border-spacing-0">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="border-b border-border px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                        {flexRender(header.column.columnDef.header, header.getContext())}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className={cn('cursor-pointer hover:bg-muted/40', selected?.id === row.original.id && 'bg-muted')}
-                    onClick={() => selectRow(row.original)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="border-b border-[#F3F4F6] px-3 py-3 align-top">
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div> : (
+            ) : (
+              <DataTableShell>
+                <thead>
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className={cn('cursor-pointer', selected?.id === row.original.id && 'bv-row-selected')}
+                      onClick={() => selectRow(row.original)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </DataTableShell>
+            )
+          ) : (
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
               {rows.map((row) => (
-                <button key={row.id} onClick={() => selectRow(row)} className="rounded-lg border border-border p-3 text-left hover:bg-muted/40">
+                <button
+                  key={row.id}
+                  type="button"
+                  onClick={() => selectRow(row)}
+                  className="app-card-elevated border border-border/90 p-4 text-left"
+                >
                   <p className="text-xs text-muted-foreground">{row.day}</p>
                   <p className="mt-1 text-sm font-medium text-foreground">{row.idea}</p>
                   <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{displayCaption(row.caption, '—')}</p>

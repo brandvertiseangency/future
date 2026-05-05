@@ -308,40 +308,46 @@ export default function AssetsPage() {
     <PageContainer className="min-h-[calc(100vh-64px)]">
       {/* Header */}
       <BlurFade delay={0}>
-        <div className="flex items-start justify-between mb-7">
-          <PageHeader title="Asset Library" description="Your generated content and brand products" />
-          <div className="flex items-center gap-2.5 -mt-1">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/25 pointer-events-none" />
+        <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <PageHeader
+            variant="compact"
+            title="Asset library"
+            description="Your generated content and brand products."
+          />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[200px] flex-1 sm:max-w-[260px]">
+              <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-xl bg-card/[0.04] border border-white/[0.08] text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.20] transition-colors w-[220px]"
-                placeholder="Search..."
+                className="h-10 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+                placeholder="Search…"
               />
             </div>
 
             {tab === 'assets' ? (
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-card/[0.04] text-white/60 text-sm font-medium hover:bg-card/[0.08] hover:border-white/[0.16] transition-all disabled:opacity-50"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-muted/50 disabled:opacity-50"
               >
                 {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
                 Upload
               </button>
             ) : (
               <button
+                type="button"
                 onClick={() => setShowAddProduct(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.08] bg-card/[0.04] text-white/60 text-sm font-medium hover:bg-card/[0.08] hover:border-white/[0.16] transition-all"
+                className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-primary/35 hover:bg-muted/50"
               >
-                <Plus size={14} /> Add Product
+                <Plus size={14} /> Add product
               </button>
             )}
             <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleUpload(e.target.files)} />
 
             <Link href="/generate">
-              <AIButton className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium">
+              <AIButton className="flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-medium">
                 <Sparkles size={13} className="text-[var(--ai-color)]" />
                 Generate
               </AIButton>
@@ -351,7 +357,7 @@ export default function AssetsPage() {
       </BlurFade>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 mb-6 p-1 rounded-xl bg-card/[0.03] border border-white/[0.07] w-fit">
+      <div className="mb-6 flex w-fit items-center gap-1 rounded-xl border border-border/80 bg-muted/30 p-1">
         {([
           { key: 'assets', label: 'Generated Assets', icon: ImageIcon, count: assets.length },
           { key: 'products', label: 'Products & Services', icon: Package, count: products.length },
@@ -360,15 +366,20 @@ export default function AssetsPage() {
             key={key}
             onClick={() => setTab(key)}
             className={cn(
-              'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all',
               tab === key
-                ? 'bg-card/[0.10] border border-white/[0.15] text-white shadow-sm'
-                : 'text-white/35 hover:text-white/60'
+                ? 'border border-primary/25 bg-primary/10 text-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
             )}
           >
             <Icon size={13} />
             {label}
-            <span className={cn('text-[10px] px-1.5 py-0.5 rounded-full', tab === key ? 'bg-card/10 text-white/70' : 'bg-card/[0.05] text-white/20')}>
+            <span
+              className={cn(
+                'rounded-full px-1.5 py-0.5 text-[10px]',
+                tab === key ? 'bg-primary/15 text-foreground' : 'bg-muted text-muted-foreground',
+              )}
+            >
               {count}
             </span>
           </button>
@@ -377,8 +388,8 @@ export default function AssetsPage() {
 
       {/* Loading */}
       {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 size={24} className="animate-spin text-white/20" />
+        <div className="flex h-64 items-center justify-center">
+          <Loader2 size={24} className="animate-spin text-muted-foreground" />
         </div>
       )}
 

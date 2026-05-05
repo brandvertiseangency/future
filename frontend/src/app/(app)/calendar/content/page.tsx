@@ -3,7 +3,8 @@
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
-import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
+import { cn } from '@/lib/utils'
+import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { toast } from 'sonner'
@@ -84,13 +85,15 @@ export default function CalendarContentPage() {
   }
 
   return (
-    <PageContainer className="max-w-7xl">
+    <PageContainer className="max-w-7xl space-y-6">
       <PageHeader
-        title="Calendar Content Studio"
+        variant="hero"
+        title="Calendar content studio"
         description="All generated calendar content is saved here. Review post details and generate each post one-by-one."
       />
 
-      <SurfaceCard className="p-4 mt-4">
+      <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/80 bg-card p-4 shadow-[var(--shadow-card)] md:p-5">
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Saved plans</p>
         <div className="flex flex-wrap gap-2">
           {plans.map((plan) => {
             const selected = plan.id === resolvedPlanId
@@ -98,59 +101,63 @@ export default function CalendarContentPage() {
             return (
               <button
                 key={plan.id}
+                type="button"
                 onClick={() => setActivePlanId(plan.id)}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 10,
-                  fontSize: 12,
-                  border: selected ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.1)',
-                  background: selected ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)',
-                  color: selected ? '#fff' : 'rgba(255,255,255,0.6)',
-                }}
+                className={cn(
+                  'rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+                  selected
+                    ? 'border-primary bg-primary/10 text-foreground'
+                    : 'border-border bg-muted/40 text-muted-foreground hover:border-primary/35 hover:text-foreground',
+                )}
               >
                 {label}
               </button>
             )
           })}
-          {plans.length === 0 && <p className="text-sm text-white/40">No saved plans yet. Generate one from Content Plan page.</p>}
+          {plans.length === 0 && (
+            <p className="text-sm text-muted-foreground">No saved plans yet. Generate one from the content plan page.</p>
+          )}
         </div>
-      </SurfaceCard>
+      </div>
 
-      <div className="grid gap-3 mt-4">
+      <div className="grid gap-4">
         {slots.map((slot) => {
           const hashtags = (slot.hashtags_draft || []).map((h) => (h.startsWith('#') ? h : `#${h}`)).join(' ')
           return (
-            <SurfaceCard key={slot.id} className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <p className="text-xs uppercase tracking-wide text-white/40">
+            <div
+              key={slot.id}
+              className="app-card-elevated overflow-hidden rounded-[var(--radius-card-lg)] border border-border/80 bg-card shadow-[var(--shadow-card)]"
+            >
+              <div className="flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between md:p-5">
+                <div className="min-w-0 space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
                     {slot.platform} · {slot.content_type} · {slot.format || 'single_image'}
                   </p>
-                  <h3 className="text-base font-semibold text-white">{slot.topic || slot.post_idea}</h3>
-                  <p className="text-sm text-white/70">{slot.post_idea}</p>
-                  {slot.creative_copy && <p className="text-sm text-white/80 whitespace-pre-wrap">{slot.creative_copy}</p>}
-                  {slot.caption_draft && (
-                    <p className="text-sm text-white/65 whitespace-pre-wrap">{displayCaption(slot.caption_draft)}</p>
+                  <h3 className="text-base font-semibold text-foreground">{slot.topic || slot.post_idea}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{displayCaption(slot.post_idea, 'Post idea')}</p>
+                  {slot.creative_copy && (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">{slot.creative_copy}</p>
                   )}
-                  {hashtags && <p className="text-xs text-white/45">{hashtags}</p>}
+                  {slot.caption_draft && (
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">{displayCaption(slot.caption_draft)}</p>
+                  )}
+                  {hashtags ? <p className="text-xs text-muted-foreground">{hashtags}</p> : null}
                 </div>
-                <div className="min-w-[160px] space-y-2">
-                  <p className="text-xs text-white/40">Status: {slot.status}</p>
+                <div className="w-full shrink-0 space-y-2 border-t border-border pt-4 md:w-[200px] md:border-l md:border-t-0 md:pl-5 md:pt-0">
+                  <p className="text-xs text-muted-foreground">
+                    Status: <span className="font-medium text-foreground">{slot.status}</span>
+                  </p>
                   <button
+                    type="button"
                     onClick={() => generateSingle(slot.id)}
                     disabled={busySlotId === slot.id}
-                    className="w-full rounded-lg px-3 py-2 text-sm font-semibold"
-                    style={{
-                      background: 'rgba(255,255,255,0.85)',
-                      color: '#000',
-                      opacity: busySlotId === slot.id ? 0.6 : 1,
-                    }}
+                    className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {busySlotId === slot.id ? 'Starting...' : 'Generate This Post'}
+                    {busySlotId === slot.id ? 'Starting…' : 'Generate this post'}
                   </button>
                 </div>
               </div>
-            </SurfaceCard>
+            </div>
           )
         })}
       </div>

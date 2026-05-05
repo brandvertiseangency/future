@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarDays, ImageIcon, WandSparkles } from 'lucide-react'
+import { CalendarDays, ImageIcon, Wand2, LayoutGrid } from 'lucide-react'
 import { useEffect } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -9,14 +9,21 @@ import { NextStepCard, PageContainer } from '@/components/ui/page-primitives'
 import { SectionCard, StatCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { AppHero } from '@/components/app/app-hero'
+import { QuickActionGrid } from '@/components/app/quick-action-grid'
+import { SectionShell } from '@/components/ui/section-shell'
 import { getDashboardNextStep } from '@/lib/workflow-next-step'
 import { logUxEvent } from '@/lib/ux-events'
 import { displayCaption } from '@/lib/caption'
 import { BrandChat } from '@/components/dashboard/brand-chat'
+import { useAuth } from '@/lib/auth-context'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
 export default function DashboardPage() {
+  const { user } = useAuth()
+  const firstName = user?.displayName?.trim().split(/\s+/)[0] ?? 'there'
+
   const { data: brandData, error: brandError } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
   const { data: creditsData, error: creditsError } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
   const { data: statsData, error: statsError } = useSWR('/api/posts/stats', fetcher, { revalidateOnFocus: false })
@@ -49,29 +56,76 @@ export default function DashboardPage() {
         description="Start with Brand AI below, then move into your content pipeline when you are ready."
       />
 
-      <div className="flex flex-col items-center gap-2 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Studio</p>
-        <h1 className="max-w-2xl text-2xl font-semibold tracking-tight text-foreground md:text-3xl md:leading-[1.12]">
-          {brandName}
-          <span className="text-pull text-primary"> · </span>
-          <span className="text-muted-foreground">home</span>
-        </h1>
-        <p className="max-w-lg text-sm text-muted-foreground">
-          Credits <span className="font-medium text-foreground">{credits}</span>
-          <span className="mx-2 text-border">·</span>
-          Scheduled this week <span className="font-medium text-foreground">{scheduledPosts}</span>
-        </p>
-      </div>
+      <AppHero
+        greeting={<>Hey {firstName}, how can we help today?</>}
+        subtitle={
+          <>
+            You&apos;re in <span className="font-medium text-foreground">{brandName}</span>
+            <span className="mx-1.5 text-muted-foreground/60">·</span>
+            <span className="text-muted-foreground">
+              Credits <span className="font-semibold text-foreground">{credits}</span>
+            </span>
+            <span className="mx-1.5 text-muted-foreground/60">·</span>
+            <span className="text-muted-foreground">
+              Scheduled this week <span className="font-semibold text-foreground">{scheduledPosts}</span>
+            </span>
+          </>
+        }
+      />
 
       {hasDataError ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-[var(--radius-card)] border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100">
           Some dashboard metrics could not be refreshed. Values may be stale; please retry in a moment.
         </div>
       ) : null}
 
-      <BrandChat brand={brand} />
+      <SectionShell
+        title="Jump in"
+        description="Pick a workflow — each opens the right tool for the job."
+        contentClassName="mt-0"
+      >
+        <QuickActionGrid
+          items={[
+            {
+              href: '/calendar/generate',
+              title: 'Plan your month',
+              description: 'Set mix and volume, then generate a review-ready calendar.',
+              icon: Wand2,
+            },
+            {
+              href: '/calendar',
+              title: 'Content calendar',
+              description: 'Review ideas, edit captions, and approve before generation.',
+              icon: CalendarDays,
+            },
+            {
+              href: '/generate',
+              title: 'Quick create',
+              description: 'One-off posts with your brand DNA — not tied to the calendar.',
+              icon: LayoutGrid,
+            },
+            {
+              href: '/outputs',
+              title: 'Outputs',
+              description: 'Browse generated creatives, versions, and download assets.',
+              icon: ImageIcon,
+            },
+          ]}
+        />
+      </SectionShell>
+
+      <div className="app-card-elevated overflow-hidden border border-border/80">
+        <div className="border-b border-border/80 bg-muted/20 px-4 py-3 md:px-6">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Brand AI</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Strategy, captions, and ideas grounded in your profile.</p>
+        </div>
+        <div className="p-3 md:p-5">
+          <BrandChat brand={brand} />
+        </div>
+      </div>
 
       <NextStepCard
+        dense
         title={nextStep.title}
         reason={`${nextStep.reason} You're ${usedPercent}% through this month's workflow.`}
         primaryCta={nextStep.primaryCta}
@@ -85,37 +139,45 @@ export default function DashboardPage() {
         <StatCard label="Workflow" value={`${usedPercent}%`} />
       </div>
 
-      <SectionCard title="Shortcuts" subtitle="Outside the chat — jump straight into tools.">
+      <SectionCard title="More shortcuts" subtitle="Jump straight into tools.">
         <div className="flex flex-wrap gap-2">
           <Link href="/generate">
             <Button size="sm" className="h-9 gap-1.5">
-              <WandSparkles className="h-3.5 w-3.5" />
+              <Wand2 className="h-3.5 w-3.5" />
               Quick generate
             </Button>
           </Link>
           <Link href="/calendar">
             <Button variant="secondary" size="sm" className="h-9 gap-1.5">
               <CalendarDays className="h-3.5 w-3.5" />
-              Content calendar
+              Calendar table
             </Button>
           </Link>
-          <Link href="/brand">
+          <Link href="/settings#brand">
             <Button variant="outline" size="sm" className="h-9">
-              Brand profile
+              Brand identity
             </Button>
           </Link>
         </div>
       </SectionCard>
 
-      <SectionCard title="Recent outputs" subtitle="Latest generated creatives.">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <SectionShell
+        title="Recent outputs"
+        description="Latest generated creatives from your workspace."
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {recentOutputs.length === 0 ? (
-            <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
-              No outputs yet. Try Brand AI above, or open Quick generate.
+            <div className="col-span-full rounded-[var(--radius-card)] border border-dashed border-border bg-muted/25 p-12 text-center">
+              <ImageIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" strokeWidth={1.25} />
+              <p className="text-sm font-medium text-foreground">No outputs yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try Brand AI above, or open Quick generate.</p>
+              <Link href="/generate" className="mt-4 inline-block">
+                <Button size="sm">Create something</Button>
+              </Link>
             </div>
           ) : (
             recentOutputs.map((output) => (
-              <div key={output.id} className="app-card group overflow-hidden transition-shadow hover:shadow-md">
+              <Link key={output.id} href={`/outputs/${output.id}`} className="app-card-elevated group block overflow-hidden">
                 <div className="aspect-[4/3] bg-muted">
                   {output.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -131,16 +193,16 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="line-clamp-2 text-sm text-foreground">{displayCaption(output.caption, 'Untitled output')}</p>
+                  <p className="line-clamp-2 text-sm font-medium text-foreground">{displayCaption(output.caption, 'Untitled output')}</p>
                   <p className="mt-2 text-xs text-muted-foreground">
-                    {output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}
+                    {output.created_at ? new Date(output.created_at).toLocaleDateString() : '—'}
                   </p>
                 </div>
-              </div>
+              </Link>
             ))
           )}
         </div>
-      </SectionCard>
+      </SectionShell>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
         <SectionCard title="Usage" subtitle="Monthly progress">
@@ -172,7 +234,7 @@ export default function DashboardPage() {
           <div className="h-2 rounded-full bg-muted">
             <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
           </div>
-          <Link href="/scheduler" className="mt-4 inline-block text-xs font-medium text-primary hover:underline">
+          <Link href="/scheduler" className="mt-4 inline-block text-xs font-semibold text-primary hover:underline">
             Open scheduler
           </Link>
         </SectionCard>

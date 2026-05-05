@@ -202,12 +202,17 @@ function GeneratePageInner() {
         description="Optional references, product lock-in, and output shape — separate from the content calendar."
       />
       <PageHeader
-        title={<>Quick <span className="text-pull text-primary">generate</span></>}
+        variant="hero"
+        title={
+          <>
+            Quick <span className="text-pull text-primary">generate</span>
+          </>
+        }
         description="Idea-led creatives in one run. Use the content calendar when you want a planned month of posts."
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[440px_1fr]">
-        <SectionCard title="Setup" subtitle="Platform, format, quality, and visual anchors.">
+        <SectionCard className="app-card-elevated" title="Setup" subtitle="Platform, format, quality, and visual anchors.">
           <div className="space-y-5">
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Platforms</label>
@@ -387,7 +392,7 @@ function GeneratePageInner() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Preview" subtitle="Latest generated posts for this session.">
+        <SectionCard className="app-card-elevated min-h-[320px] xl:min-h-[420px]" title="Preview" subtitle="Latest generated posts for this session.">
           {loading ? (
             <div className="min-h-[260px] space-y-3">
               <div className="flex items-center justify-center pt-12 text-muted-foreground">
@@ -399,15 +404,16 @@ function GeneratePageInner() {
               </div>
             </div>
           ) : preview.length === 0 ? (
-            <div className="flex min-h-[260px] flex-col items-center justify-center text-sm text-muted-foreground">
-              <p>No output yet.</p>
-              <p className="mt-1">Configure setup and click Generate.</p>
+            <div className="flex min-h-[280px] flex-col items-center justify-center rounded-[var(--radius-card)] border border-dashed border-border/80 bg-muted/20 px-6 text-center text-sm text-muted-foreground xl:min-h-[360px]">
+              <ImageIcon className="mb-3 h-10 w-10 opacity-40" aria-hidden />
+              <p className="font-medium text-foreground">Preview canvas</p>
+              <p className="mt-1 max-w-sm">Configure setup on the left, then generate. Finished posts land here before you jump to Outputs.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {preview.map((item, idx) => (
-                <div key={`${item.platform}-${idx}`} className="app-card overflow-hidden">
-                  <div className="aspect-[4/3] bg-muted">
+                <div key={`${item.platform}-${idx}`} className="app-card-elevated overflow-hidden border border-border/80 shadow-[var(--shadow-card)]">
+                  <div className="aspect-[4/5] bg-muted sm:aspect-[4/3]">
                     {item.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.image_url} alt="Generated output" className="h-full w-full object-cover" />

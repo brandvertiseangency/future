@@ -89,7 +89,7 @@ function DraggablePost({ post, selected, onSelect }: { post: PostItem; selected:
       {...attributes}
       onClick={onSelect}
       type="button"
-      className={`flex w-full gap-2 rounded-lg border px-2 py-2 text-left ${selected ? 'border-primary bg-muted' : 'border-border bg-card'}`}
+      className={`flex w-full gap-2 rounded-xl border px-2 py-2 text-left shadow-sm transition-colors ${selected ? 'border-primary bg-primary/5 ring-1 ring-primary/15' : 'border-border/80 bg-card hover:border-primary/30'}`}
     >
       {post.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
@@ -111,7 +111,7 @@ function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[88px] rounded-lg border p-2 transition-colors ${isOver ? 'border-dashed border-2 border-primary bg-muted animate-pulse' : 'border-border bg-card'}`}
+      className={`min-h-[92px] rounded-xl border p-2 shadow-[var(--shadow-card)] transition-colors ${isOver ? 'animate-pulse border-2 border-dashed border-primary bg-muted/80' : 'border-border/80 bg-card'}`}
     >
       <p className="mb-2 text-xs text-muted-foreground">{slot.label}</p>
       {post?.image_url ? (
@@ -361,7 +361,12 @@ export default function SchedulerPage() {
         description="Drag content into calendar slots and use AI timing suggestions for better performance."
       />
       <PageHeader
-        title={<>Content <span className="text-highlight">Scheduler</span></>}
+        variant="compact"
+        title={
+          <>
+            Content <span className="text-highlight">scheduler</span>
+          </>
+        }
         description="Drag and drop posts into calendar slots and publish confidently."
       />
       {error ? (
@@ -369,11 +374,19 @@ export default function SchedulerPage() {
           Could not refresh scheduler posts right now. Please retry in a moment.
         </div>
       ) : null}
-      <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground">
-        Timezone: <span className="font-medium text-foreground">{timezone}</span>
-        {offsetStr}
+      <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-card px-4 py-3 text-xs text-muted-foreground shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          Timezone: <span className="font-medium text-foreground">{timezone}</span>
+          {offsetStr}
+        </span>
+        <span className="text-[11px] leading-relaxed sm:text-right">
+          <kbd className="rounded border border-border bg-muted/50 px-1">⌘/Ctrl+Enter</kbd> schedule ·{' '}
+          <kbd className="rounded border border-border bg-muted/50 px-1">U</kbd> unslot ·{' '}
+          <kbd className="rounded border border-border bg-muted/50 px-1">⌫</kbd> draft
+        </span>
       </div>
       <NextStepCard
+        dense
         title={hasSlotForSelected ? 'Schedule selected post now' : 'Assign selected post to a time slot'}
         reason={
           hasSlotForSelected
@@ -383,10 +396,6 @@ export default function SchedulerPage() {
         primaryCta={hasSlotForSelected ? { label: 'Schedule This Post', href: '/scheduler' } : { label: 'Go to Outputs', href: '/outputs' }}
         secondaryCta={{ label: 'Review Calendar', href: '/calendar' }}
       />
-      <p className="text-xs text-muted-foreground">
-        Shortcuts: <kbd className="rounded border border-border px-1">Ctrl/Cmd + Enter</kbd> schedule,{' '}
-        <kbd className="rounded border border-border px-1">U</kbd> remove from slot, <kbd className="rounded border border-border px-1">Backspace</kbd> move to draft.
-      </p>
 
       <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
         <DialogContent className="max-w-md border-border bg-card p-6" showCloseButton>
@@ -414,7 +423,7 @@ export default function SchedulerPage() {
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">
-          <SectionCard title="Posts" subtitle="Ready to schedule">
+          <SectionCard className="app-card-elevated" title="Posts" subtitle="Ready to schedule">
             <div className="space-y-2">
               {isLoading ? (
                 <div className="space-y-2">
@@ -434,7 +443,7 @@ export default function SchedulerPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Calendar Grid" subtitle="This week (Mon–Sun). Default slot time 10:00 when you press Schedule.">
+          <SectionCard className="app-card-elevated" title="Calendar grid" subtitle="This week (Mon–Sun). Default slot time 10:00 when you press Schedule.">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {slots.map((slot) => (
                 <DroppableSlot key={slot.id} slot={slot} post={slot.postId ? postMap.get(slot.postId) : undefined} />
@@ -442,7 +451,7 @@ export default function SchedulerPage() {
             </div>
           </SectionCard>
 
-          <SectionCard title="Selected Post Details" subtitle="Review before scheduling" className="xl:sticky xl:top-20 h-fit">
+          <SectionCard className="app-card-elevated xl:sticky xl:top-24 h-fit" title="Selected post" subtitle="Review before scheduling">
             {selectedPost ? (
               <div className="space-y-3">
                 <div className="relative overflow-hidden rounded-lg border border-border bg-muted">
@@ -494,7 +503,7 @@ export default function SchedulerPage() {
                 <Button variant="secondary" className="w-full" onClick={() => void unscheduleSelected()} disabled={scheduling}>
                   Remove from slot
                 </Button>
-                <Button variant="ghost" className="w-full text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => void deleteSelected()} disabled={scheduling}>
+                <Button variant="ghost" className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => void deleteSelected()} disabled={scheduling}>
                   Move to draft
                 </Button>
               </div>

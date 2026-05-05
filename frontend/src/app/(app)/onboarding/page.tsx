@@ -99,8 +99,8 @@ export default function OnboardingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#F7F7F8] flex items-center justify-center">
-        <Loader2 size={28} className="animate-spin text-[#111111]" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 size={28} className="animate-spin text-muted-foreground" />
       </div>
     )
   }
@@ -130,12 +130,13 @@ export default function OnboardingPage() {
   return (
     <div className="min-h-screen bg-background py-6 text-foreground">
       <PageContainer className="max-w-[1400px]">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Workspace setup</p>
+            <h1 className="mt-1 font-display text-3xl font-normal tracking-tight text-foreground md:text-[2.25rem] md:leading-[1.15]">
               Brand <span className="text-pull text-primary">onboarding</span>
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
               Fullscreen setup flow that powers strategy, generation quality, and publishing relevance.
             </p>
           </div>
@@ -173,7 +174,7 @@ export default function OnboardingPage() {
             </div>
           </div>
           <div className="col-span-12 lg:col-span-6">
-            <div className="min-h-[72vh] rounded-2xl border border-border bg-card p-6">
+            <div className="app-card-elevated min-h-[72vh] rounded-2xl border border-border/80 bg-card p-6 shadow-[var(--shadow-card)]">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Step {step} of {STEPS.length}</p>

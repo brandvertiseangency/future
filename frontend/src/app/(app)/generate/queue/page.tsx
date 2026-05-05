@@ -10,6 +10,7 @@ import { SectionCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { mapJobStatusToWorkflow } from '@/lib/workflow-status'
+import { displayCaption } from '@/lib/caption'
 
 interface Job {
   id: string
@@ -106,12 +107,25 @@ function GenerationQueueInner() {
 
       {/* Header */}
       <PageHeader
-        title={isDone ? (hasFailures ? 'Generation finished with issues' : 'Generation complete') : <>Generating <span className="text-highlight">Images</span></>}
-        description={`${job.completed_slots} of ${job.total_slots} completed${hasFailures ? ` • ${job.failed_slots} failed` : ''}`}
+        variant={isDone ? 'compact' : 'hero'}
+        title={
+          isDone ? (
+            hasFailures ? (
+              'Generation finished with issues'
+            ) : (
+              'Generation complete'
+            )
+          ) : (
+            <>
+              Generating <span className="text-highlight">images</span>
+            </>
+          )
+        }
+        description={`${job.completed_slots} of ${job.total_slots} completed${hasFailures ? ` · ${job.failed_slots} failed` : ''}`}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_320px]">
-        <SectionCard title="Progress" subtitle="Live generation status">
+        <SectionCard className="app-card-elevated" title="Progress" subtitle="Live generation status">
           <div className="space-y-4">
             <div className="text-center">
               <div className="mx-auto mb-3 flex h-32 w-32 items-center justify-center rounded-full border border-border bg-muted/40">
@@ -121,7 +135,7 @@ function GenerationQueueInner() {
               <p className="text-sm text-muted-foreground">{isDone ? 'Completed' : 'Generating...'}</p>
             </div>
 
-            <div className="h-2 rounded-full bg-[#EFEFF1]">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
             </div>
 
@@ -153,23 +167,23 @@ function GenerationQueueInner() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Live Activity" subtitle="Latest queue logs">
+        <SectionCard className="app-card-elevated" title="Live activity" subtitle="Latest queue logs">
           {currentItem && (
-            <div className="mb-3 rounded-lg border border-border bg-card px-3 py-2 text-xs">
+            <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-xs">
               <p className="text-muted-foreground">Currently generating</p>
-              <p className="text-foreground">{currentItem.post_idea}</p>
+              <p className="text-foreground">{displayCaption(currentItem.post_idea, 'Slot')}</p>
             </div>
           )}
           <div className="space-y-2">
             {slots.slice(0, 10).map((slot) => (
-              <div key={slot.id} className="rounded-lg border border-border px-3 py-2 text-sm">
+              <div key={slot.id} className="rounded-lg border border-border/80 bg-card/50 px-3 py-2 text-sm">
                 <div className="flex gap-2">
                   {slot.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={slot.image_url} alt="" className="h-14 w-14 shrink-0 rounded-md object-cover" />
                   ) : null}
                   <div className="min-w-0 flex-1">
-                    <p className="text-foreground line-clamp-2">{slot.post_idea}</p>
+                    <p className="line-clamp-2 text-foreground">{displayCaption(slot.post_idea, 'Post idea')}</p>
                     <p className="text-xs text-muted-foreground">
                       {slot.status}
                       {slot.platform ? ` · ${slot.platform}` : ''}

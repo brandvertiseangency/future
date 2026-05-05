@@ -6,12 +6,23 @@ import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { ChevronLeft, RotateCcw, Download, Check, Loader2 } from 'lucide-react'
-import { PageContainer, SurfaceCard } from '@/components/ui/page-primitives'
+import { PageContainer, PageHeader, SurfaceCard } from '@/components/ui/page-primitives'
+import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { displayCaption } from '@/lib/caption'
+import { cn } from '@/lib/utils'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
-async function getToken() { try { return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null } catch { return null } }
+const API_BASE =
+  process.env.NEXT_PUBLIC_API_URL ??
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
+
+async function getToken() {
+  try {
+    return (await getFirebaseAuth()?.currentUser?.getIdToken()) ?? null
+  } catch {
+    return null
+  }
+}
 
 interface Version {
   id: string
@@ -42,14 +53,12 @@ export default function OutputDetailPage() {
   const [approving, setApproving] = useState(false)
   const [activeVersion, setActiveVersion] = useState<number | null>(null)
 
-  const { data, mutate } = useSWR(
-    `/api/posts/${postId}`,
-    (u: string) => apiCall<{ post: Post; versions: Version[] }>(u),
-    { revalidateOnFocus: false }
-  )
+  const { data, mutate } = useSWR(`/api/posts/${postId}`, (u: string) => apiCall<{ post: Post; versions: Version[] }>(u), {
+    revalidateOnFocus: false,
+  })
   const post: Post | undefined = data?.post
   const versions: Version[] = data?.versions ?? []
-  const displayVersion = versions.find(v => v.version_number === (activeVersion ?? post?.version_number)) ?? versions[0]
+  const displayVersion = versions.find((v) => v.version_number === (activeVersion ?? post?.version_number)) ?? versions[0]
 
   const handleRegenerate = async () => {
     setRegenerate(true)
@@ -62,8 +71,11 @@ export default function OutputDetailPage() {
       })
       setFeedback('')
       mutate()
-    } catch (e: any) { toast.error(e.message || 'Failed to regenerate') }
-    finally { setRegenerate(false) }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to regenerate')
+    } finally {
+      setRegenerate(false)
+    }
   }
 
   const handleApprove = async () => {
@@ -75,178 +87,159 @@ export default function OutputDetailPage() {
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       })
       mutate()
-    } catch (e: any) { toast.error(e.message || 'Failed to approve') }
-    finally { setApproving(false) }
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to approve')
+    } finally {
+      setApproving(false)
+    }
   }
 
-  if (!post) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-      <Loader2 size={22} color="rgba(255,255,255,0.2)" style={{ animation: 'spin 1s linear infinite' }} />
-    </div>
-  )
+  if (!post) {
+    return (
+      <PageContainer className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-label="Loading" />
+      </PageContainer>
+    )
+  }
 
   const isApproved = post.approval_status === 'approved'
+  const activeVer = activeVersion ?? post.version_number
+  const tags = displayVersion?.hashtags ?? post.hashtags ?? []
 
   return (
-    <PageContainer className="max-w-5xl">
-
-      <button onClick={() => router.back()} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', marginBottom: 22, fontSize: 12 }}>
-        <ChevronLeft size={14} /> Back to Outputs
+    <PageContainer className="max-w-5xl space-y-6">
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft size={14} /> Back to outputs
       </button>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 20 }}>
+      <PageHeader
+        variant="compact"
+        title="Output detail"
+        description={`${post.platform} · Version ${displayVersion?.version_number ?? 1}`}
+      />
 
-        {/* Left — image */}
-        <div>
-          <div style={{
-            aspectRatio: '1', borderRadius: 16, overflow: 'hidden',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            {displayVersion?.image_url
-              ? <img src={displayVersion.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: 12, textAlign: 'center', maxWidth: 220 }}>
-                    Image generation failed for this version.
-                    <br />
-                    Try regenerate with feedback.
-                  </p>
-                </div>
-            }
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_1.05fr]">
+        <div className="space-y-4">
+          <div className="app-card-elevated aspect-square overflow-hidden rounded-[var(--radius-card-lg)] border border-border/80 bg-muted shadow-[var(--shadow-card)]">
+            {displayVersion?.image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={displayVersion.image_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center p-6 text-center">
+                <p className="max-w-[240px] text-sm text-muted-foreground">
+                  Image generation failed for this version. Try regenerate with feedback.
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Version history */}
           {versions.length > 1 && (
-            <div style={{ marginTop: 12 }}>
-              <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-                Version history
-              </p>
-              <div style={{ display: 'flex', gap: 6 }}>
-                {versions.map(v => (
-                  <button
-                    key={v.id}
-                    onClick={() => setActiveVersion(v.version_number)}
-                    style={{
-                      width: 40, height: 40, borderRadius: 8, overflow: 'hidden',
-                      border: `1.5px solid ${(activeVersion ?? post.version_number) === v.version_number ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.08)'}`,
-                      cursor: 'pointer', background: 'rgba(255,255,255,0.04)',
-                      position: 'relative', padding: 0,
-                    }}
-                  >
-                    {v.image_url
-                      ? <img src={v.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>v{v.version_number}</span>
-                    }
-                  </button>
-                ))}
+            <div>
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Version history</p>
+              <div className="flex flex-wrap gap-2">
+                {versions.map((v) => {
+                  const sel = activeVer === v.version_number
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => setActiveVersion(v.version_number)}
+                      className={cn(
+                        'relative h-11 w-11 overflow-hidden rounded-lg border-2 bg-muted/50 transition-colors',
+                        sel ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/40',
+                      )}
+                    >
+                      {v.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={v.image_url} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="flex h-full items-center justify-center text-[10px] font-medium text-muted-foreground">v{v.version_number}</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
         </div>
 
-        {/* Right — details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-
-          {/* Status */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{
-              fontSize: 10, padding: '3px 8px', borderRadius: 5,
-              background: isApproved ? 'rgba(200,255,200,0.08)' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${isApproved ? 'rgba(200,255,200,0.2)' : 'rgba(255,255,255,0.1)'}`,
-              color: isApproved ? 'rgba(200,255,200,0.7)' : 'rgba(255,255,255,0.35)',
-              textTransform: 'capitalize',
-            }}>
-              {isApproved ? '✓ Approved' : post.approval_status}
-            </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>
-              v{displayVersion?.version_number ?? 1} · {post.platform}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                'rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide',
+                isApproved
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                  : 'border-border bg-muted/50 text-muted-foreground',
+              )}
+            >
+              {isApproved ? 'Approved' : post.approval_status}
             </span>
           </div>
 
-          {/* Caption */}
-          <SurfaceCard className="p-[14px]">
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Caption</p>
-            <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+          <SurfaceCard className="app-card-elevated p-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Caption</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
               {displayCaption(displayVersion?.caption ?? post.caption, 'No caption')}
             </p>
           </SurfaceCard>
 
-          {/* Hashtags */}
-          {(displayVersion?.hashtags ?? post.hashtags ?? []).length > 0 && (
-            <SurfaceCard className="p-[12px_14px]">
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Hashtags</p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {(displayVersion?.hashtags ?? post.hashtags ?? []).map((tag: string) => (
-                  <span key={tag} style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.04)', padding: '3px 8px', borderRadius: 5, border: '1px solid rgba(255,255,255,0.07)' }}>
-                    #{tag}
+          {tags.length > 0 && (
+            <SurfaceCard className="app-card-elevated p-4">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Hashtags</p>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag: string) => (
+                  <span
+                    key={tag}
+                    className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs text-muted-foreground"
+                  >
+                    #{tag.replace(/^#/, '')}
                   </span>
                 ))}
               </div>
             </SurfaceCard>
           )}
 
-          {/* Regenerate */}
-          <SurfaceCard className="p-[14px]">
-            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 8, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Regenerate with feedback
-            </p>
+          <SurfaceCard className="app-card-elevated p-4">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Regenerate with feedback</p>
             <textarea
               value={feedback}
-              onChange={e => setFeedback(e.target.value)}
-              placeholder="What should change? e.g. more casual tone, different background..."
-              rows={2}
-              style={{
-                width: '100%', background: 'rgba(255,255,255,0.03)',
-                border: '1px solid rgba(255,255,255,0.09)', borderRadius: 8,
-                padding: '8px 10px', color: 'rgba(255,255,255,0.7)', fontSize: 12,
-                resize: 'none', outline: 'none', fontFamily: 'inherit',
-              }}
+              onChange={(e) => setFeedback(e.target.value)}
+              placeholder="What should change? e.g. more casual tone, different background…"
+              rows={3}
+              className="min-h-[72px] w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
             />
-            <button
-              onClick={handleRegenerate}
-              disabled={regenerating}
-              style={{
-                marginTop: 8, width: '100%', padding: '9px', borderRadius: 9,
-                background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)',
-                color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              {regenerating
-                ? <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Regenerating...</>
-                : <><RotateCcw size={13} /> Regenerate</>
-              }
-            </button>
+            <Button type="button" variant="secondary" className="mt-3 w-full" onClick={() => void handleRegenerate()} disabled={regenerating}>
+              {regenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Regenerating…
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Regenerate
+                </>
+              )}
+            </Button>
           </SurfaceCard>
 
-          {/* Approve / Download */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              onClick={handleApprove}
-              disabled={isApproved || approving}
-              className={!isApproved ? 'btn-silver' : ''}
-              style={{
-                flex: 1, padding: '11px', borderRadius: 10, border: 'none',
-                background: isApproved ? 'rgba(200,255,200,0.06)' : undefined,
-                color: isApproved ? 'rgba(200,255,200,0.6)' : undefined,
-                fontSize: 13, fontWeight: 600, cursor: isApproved ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-              }}
-            >
-              <Check size={14} />
-              {isApproved ? 'Approved' : 'Approve'}
-            </button>
+          <div className="flex gap-2">
+            <Button className="min-h-11 flex-1" onClick={() => void handleApprove()} disabled={isApproved || approving}>
+              <Check className="mr-2 h-4 w-4" />
+              {isApproved ? 'Approved' : approving ? 'Saving…' : 'Approve'}
+            </Button>
             {(displayVersion?.image_url || post.image_url) && (
               <a
                 href={displayVersion?.image_url || post.image_url}
                 download
-                style={{
-                  width: 42, height: 42, borderRadius: 10, flexShrink: 0,
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
               >
-                <Download size={14} color="rgba(255,255,255,0.4)" />
+                <Download className="h-4 w-4" />
               </a>
             )}
           </div>

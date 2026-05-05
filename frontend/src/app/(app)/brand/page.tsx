@@ -36,7 +36,7 @@ export default function BrandOverviewPage() {
     return (
       <PageContainer className="space-y-6">
         <PageHeader title="Brand" description="No default brand found yet. Finish onboarding or create a brand profile." />
-        <SectionCard title="Get started" subtitle="Set up your brand so agents and calendars can use your DNA.">
+        <SectionCard className="app-card-elevated" title="Get started" subtitle="Set up your brand so agents and calendars can use your DNA.">
           <Link href="/onboarding" className={cn(buttonVariants())}>
             Continue onboarding
           </Link>
@@ -57,6 +57,7 @@ export default function BrandOverviewPage() {
       />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
+          variant="compact"
           title={
             <>
               <span className="text-highlight">Brand</span> overview
@@ -69,7 +70,7 @@ export default function BrandOverviewPage() {
         </Link>
       </div>
 
-      <SectionCard title="Identity" subtitle="Name, positioning, and audience signals.">
+      <SectionCard className="app-card-elevated" title="Identity" subtitle="Name, positioning, and audience signals.">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <p className="text-xs text-muted-foreground">Brand name</p>
@@ -98,7 +99,7 @@ export default function BrandOverviewPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Goals & channels" subtitle="What we optimise for and where you publish.">
+      <SectionCard className="app-card-elevated" title="Goals & channels" subtitle="What we optimise for and where you publish.">
         <div className="space-y-3">
           <div>
             <p className="text-xs text-muted-foreground">Goals</p>
@@ -125,7 +126,7 @@ export default function BrandOverviewPage() {
         </div>
       </SectionCard>
 
-      <SectionCard title="Visual system" subtitle="Palette and cues we send to creative prompts.">
+      <SectionCard className="app-card-elevated" title="Visual system" subtitle="Palette and cues we send to creative prompts.">
         <div className="flex flex-wrap items-center gap-4">
           {['color_primary', 'color_secondary', 'color_accent'].map((key) => {
             const hex = brand[key] ? String(brand[key]) : null
