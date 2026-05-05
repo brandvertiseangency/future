@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarDays, ImageIcon, Sparkles, WandSparkles } from 'lucide-react'
+import { CalendarDays, ImageIcon, WandSparkles } from 'lucide-react'
 import { useEffect } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
@@ -12,6 +12,7 @@ import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { getDashboardNextStep } from '@/lib/workflow-next-step'
 import { logUxEvent } from '@/lib/ux-events'
 import { displayCaption } from '@/lib/caption'
+import { BrandChat } from '@/components/dashboard/brand-chat'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
 
@@ -28,7 +29,9 @@ export default function DashboardPage() {
   const scheduledPosts = ((scheduledData as { posts?: unknown[] })?.posts ?? []).length
   const postsLeft = Math.max(0, 30 - totalPosts)
   const reelsLeft = Math.max(0, 10 - Math.floor(totalPosts / 3))
-  const recentOutputs = ((outputsData as { posts?: { id: string; caption?: string; image_url?: string; created_at?: string }[] })?.posts ?? []).slice(0, 4)
+  const recentOutputs = (
+    (outputsData as { posts?: { id: string; caption?: string; image_url?: string; created_at?: string }[] })?.posts ?? []
+  ).slice(0, 4)
   const brandName = brand?.name ?? 'My Brand'
   const usedPercent = Math.min(Math.round((totalPosts / 30) * 100), 100)
   const nextStep = getDashboardNextStep({ hasScheduledPosts: scheduledPosts > 0, hasOutputs: recentOutputs.length > 0 })
@@ -43,23 +46,30 @@ export default function DashboardPage() {
       <PageIntroModal
         pageKey="dashboard"
         title="Welcome to your AI Design Hub"
-        description="This is your control center where you track progress and generate content."
+        description="Start with Brand AI below, then move into your content pipeline when you are ready."
       />
-      <header className="relative overflow-hidden rounded-2xl border border-border bg-card px-5 py-8 md:px-10 md:py-12">
-        <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" aria-hidden />
+
+      <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Studio</p>
-        <h1 className="mt-2 max-w-2xl text-3xl font-semibold tracking-tight text-foreground md:text-4xl md:leading-[1.08]">
-          Dashboard <span className="text-pull text-primary">overview</span>
+        <h1 className="max-w-2xl text-2xl font-semibold tracking-tight text-foreground md:text-3xl md:leading-[1.12]">
+          {brandName}
+          <span className="text-pull text-primary"> · </span>
+          <span className="text-muted-foreground">home</span>
         </h1>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-          Welcome back — here&apos;s what&apos;s happening for <span className="font-medium text-foreground">{brandName}</span>.
+        <p className="max-w-lg text-sm text-muted-foreground">
+          Credits <span className="font-medium text-foreground">{credits}</span>
+          <span className="mx-2 text-border">·</span>
+          Scheduled this week <span className="font-medium text-foreground">{scheduledPosts}</span>
         </p>
-      </header>
+      </div>
+
       {hasDataError ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
           Some dashboard metrics could not be refreshed. Values may be stale; please retry in a moment.
         </div>
       ) : null}
+
+      <BrandChat brand={brand} />
 
       <NextStepCard
         title={nextStep.title}
@@ -68,29 +78,40 @@ export default function DashboardPage() {
         secondaryCta={nextStep.secondaryCta}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Posts Remaining" value={postsLeft} />
-        <StatCard label="Reels Remaining" value={reelsLeft} />
-        <StatCard label="Credits Left" value={credits} />
-        <StatCard label="Active Brand" value={brandName} />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard label="Posts left" value={postsLeft} />
+        <StatCard label="Reels left" value={reelsLeft} />
+        <StatCard label="Credits" value={credits} />
+        <StatCard label="Workflow" value={`${usedPercent}%`} />
       </div>
 
-      <SectionCard title="Quick Actions" subtitle="Create your next output in one click.">
-        <div className="flex flex-wrap gap-3">
+      <SectionCard title="Shortcuts" subtitle="Outside the chat — jump straight into tools.">
+        <div className="flex flex-wrap gap-2">
           <Link href="/generate">
-            <Button className="h-10"><WandSparkles className="mr-2 h-4 w-4" />Generate Content</Button>
+            <Button size="sm" className="h-9 gap-1.5">
+              <WandSparkles className="h-3.5 w-3.5" />
+              Quick generate
+            </Button>
+          </Link>
+          <Link href="/calendar">
+            <Button variant="secondary" size="sm" className="h-9 gap-1.5">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Content calendar
+            </Button>
           </Link>
           <Link href="/brand">
-            <Button variant="secondary" className="h-10">Edit Brand</Button>
+            <Button variant="outline" size="sm" className="h-9">
+              Brand profile
+            </Button>
           </Link>
         </div>
       </SectionCard>
 
-      <SectionCard title="Recent Outputs" subtitle="Latest generated creatives.">
+      <SectionCard title="Recent outputs" subtitle="Latest generated creatives.">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {recentOutputs.length === 0 ? (
             <div className="col-span-full rounded-xl border border-dashed border-border bg-muted/30 p-10 text-center text-sm text-muted-foreground">
-              No outputs yet. Start from Generate Content.
+              No outputs yet. Try Brand AI above, or open Quick generate.
             </div>
           ) : (
             recentOutputs.map((output) => (
@@ -98,14 +119,22 @@ export default function DashboardPage() {
                 <div className="aspect-[4/3] bg-muted">
                   {output.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={output.image_url} alt={displayCaption(output.caption, 'Output image')} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
+                    <img
+                      src={output.image_url}
+                      alt={displayCaption(output.caption, 'Output image')}
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                    />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground"><ImageIcon className="h-5 w-5" /></div>
+                    <div className="flex h-full items-center justify-center text-muted-foreground">
+                      <ImageIcon className="h-5 w-5" />
+                    </div>
                   )}
                 </div>
                 <div className="p-3">
                   <p className="line-clamp-2 text-sm text-foreground">{displayCaption(output.caption, 'Untitled output')}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">{output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {output.created_at ? new Date(output.created_at).toLocaleDateString() : '-'}
+                  </p>
                 </div>
               </div>
             ))
@@ -114,7 +143,7 @@ export default function DashboardPage() {
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
-        <SectionCard title="Usage Summary" subtitle="Monthly consumption overview">
+        <SectionCard title="Usage" subtitle="Monthly progress">
           <div className="flex items-center gap-4">
             <div
               className="flex h-24 w-24 items-center justify-center rounded-full border border-border text-sm font-semibold text-foreground"
@@ -122,19 +151,20 @@ export default function DashboardPage() {
                 background: `conic-gradient(var(--primary) ${usedPercent}%, var(--muted) ${usedPercent}% 100%)`,
               }}
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card">
-                {usedPercent}%
-              </div>
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card">{usedPercent}%</div>
             </div>
             <div className="space-y-2 text-sm">
-              <p className="text-muted-foreground">Posts <span className="font-semibold text-foreground">{totalPosts}/30</span></p>
-              <p className="text-muted-foreground">Reels <span className="font-semibold text-foreground">{10 - reelsLeft}/10</span></p>
-              <p className="text-muted-foreground">Credits <span className="font-semibold text-foreground">{credits}/200</span></p>
+              <p className="text-muted-foreground">
+                Posts <span className="font-semibold text-foreground">{totalPosts}/30</span>
+              </p>
+              <p className="text-muted-foreground">
+                Reels <span className="font-semibold text-foreground">{10 - reelsLeft}/10</span>
+              </p>
             </div>
           </div>
         </SectionCard>
 
-        <SectionCard title="Calendar Overview" subtitle="Weekly publishing map">
+        <SectionCard title="Calendar" subtitle="Publishing momentum">
           <div className="mb-3 flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Scheduled this week</span>
             <span className="font-medium text-foreground">{scheduledPosts}</span>
@@ -142,34 +172,8 @@ export default function DashboardPage() {
           <div className="h-2 rounded-full bg-muted">
             <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
           </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarDays className="h-4 w-4" />
-            <Sparkles className="h-4 w-4" />
-            Keep approving content to increase publishing momentum.
-          </div>
-          <div className="mt-4 grid grid-cols-7 gap-1">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-              <div key={day} className="rounded-md border border-border bg-card p-2 text-center">
-                <p className="text-[10px] text-muted-foreground">{day}</p>
-                <p className="text-sm font-semibold text-foreground">{index < scheduledPosts ? 1 : 0}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <SectionCard title="Activity Timeline" subtitle="Recent workflow events">
-          <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="rounded-lg border border-border bg-card px-3 py-2">Brand profile configured</li>
-            <li className="rounded-lg border border-border bg-card px-3 py-2">Calendar plan generated</li>
-            <li className="rounded-lg border border-border bg-card px-3 py-2">Posts approved and ready for creatives</li>
-          </ul>
-        </SectionCard>
-        <SectionCard title="Smart Suggestion" subtitle="AI recommendation based on your activity">
-          <p className="text-sm leading-relaxed text-muted-foreground">Try generating reels this week to improve engagement variety.</p>
-          <Link href="/generate" className="mt-3 inline-block">
-            <Button variant="secondary">Generate Reels</Button>
+          <Link href="/scheduler" className="mt-4 inline-block text-xs font-medium text-primary hover:underline">
+            Open scheduler
           </Link>
         </SectionCard>
       </div>

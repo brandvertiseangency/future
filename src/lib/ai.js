@@ -349,7 +349,13 @@ const extractImagenImageBase64 = (response) => {
  * Gemini native image (generateContent + IMAGE modality).
  * @returns {Promise<{ imageData: string, model: string } | null>}
  */
-const generateImageWithGoogleNative = async (imagePrompt, timeoutMs, aspectRatio, referenceImageUrls) => {
+const generateImageWithGoogleNative = async (
+  imagePrompt,
+  timeoutMs,
+  aspectRatio,
+  referenceImageUrls,
+  nativeQualitySuffixOverride
+) => {
   const { GoogleGenAI } = require('@google/genai');
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
   const inlineParts = [];
@@ -358,7 +364,11 @@ const generateImageWithGoogleNative = async (imagePrompt, timeoutMs, aspectRatio
     const part = await buildInlineImagePartFromUrl(refUrl);
     if (part) inlineParts.push(part);
   }
-  const text = `${imagePrompt}${aspectRatioHint(aspectRatio)}${nativeImageQualitySuffix}`;
+  const qualitySuffix =
+    nativeQualitySuffixOverride !== undefined && nativeQualitySuffixOverride !== null
+      ? String(nativeQualitySuffixOverride)
+      : nativeImageQualitySuffix;
+  const text = `${imagePrompt}${aspectRatioHint(aspectRatio)}${qualitySuffix}`;
   const response = await withTimeout(
     ai.models.generateContent({
       model: GOOGLE_NATIVE_IMAGE_MODEL,
@@ -383,7 +393,12 @@ const generateImageWithGoogleNative = async (imagePrompt, timeoutMs, aspectRatio
  * Google Imagen (generateImages).
  * @returns {Promise<{ imageData: string, model: string } | null>}
  */
-const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio) => {
+/**
+ * @param {object} [imagenOpts]
+ * @param {string} [imagenOpts.modelId] — override Imagen model id for this request
+ * @param {'1K'|'2K'} [imagenOpts.imageSize] — when model supports configurable size
+ */
+const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio, imagenOpts = {}) => {
   const { GoogleGenAI } = require('@google/genai');
   const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_AI_API_KEY });
   const imagenAspect = normalizeAspectRatioForImagen(aspectRatio);
@@ -394,19 +409,29 @@ const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio
   const fullPrompt = `${imagePrompt}${aspectRatioHint(aspectRatio)}${ratioNote}`;
   const promptForImagen = shortenPromptForImagen(fullPrompt);
 
+  const modelId = imagenOpts.modelId && String(imagenOpts.modelId).trim()
+    ? String(imagenOpts.modelId).trim()
+    : GOOGLE_IMAGEN_MODEL;
+  const resolvedImageSize =
+    imagenOpts.imageSize === '1K' || imagenOpts.imageSize === '2K'
+      ? imagenOpts.imageSize
+      : GOOGLE_IMAGEN_IMAGE_SIZE === '2K'
+        ? '2K'
+        : '1K';
+
   const config = {
     numberOfImages: 1,
     aspectRatio: imagenAspect,
     outputMimeType: 'image/jpeg',
     personGeneration: GOOGLE_IMAGEN_PERSON_GENERATION,
   };
-  if (imagenModelSupportsConfigurableImageSize(GOOGLE_IMAGEN_MODEL)) {
-    config.imageSize = GOOGLE_IMAGEN_IMAGE_SIZE === '2K' ? '2K' : '1K';
+  if (imagenModelSupportsConfigurableImageSize(modelId)) {
+    config.imageSize = resolvedImageSize;
   }
 
   const response = await withTimeout(
     ai.models.generateImages({
-      model: GOOGLE_IMAGEN_MODEL,
+      model: modelId,
       prompt: promptForImagen,
       config,
     }),
@@ -415,7 +440,7 @@ const generateImageWithGoogleImagen = async (imagePrompt, timeoutMs, aspectRatio
 
   const b64 = extractImagenImageBase64(response);
   if (!b64) return null;
-  return { imageData: `data:image/jpeg;base64,${b64}`, model: GOOGLE_IMAGEN_MODEL };
+  return { imageData: `data:image/jpeg;base64,${b64}`, model: modelId };
 };
 
 const markGoogleImageRateLimitedIfNeeded = (message) => {
@@ -423,6 +448,47 @@ const markGoogleImageRateLimitedIfNeeded = (message) => {
   if (/resource_exhausted|quota|429|rate.?limit/i.test(m)) {
     googleImageRateLimitedUntil = Date.now() + 60_000;
   }
+};
+
+/**
+ * Per-request quality from API (`fast` | `balanced` | `high`). When omitted, use env defaults.
+ * @returns {{ nativeSuffix: string, imagenModelId: string|null, imagenImageSize: '1K'|'2K'|null }}
+ */
+const resolvePerRequestImageQuality = (imageQuality) => {
+  if (imageQuality == null || String(imageQuality).trim() === '') {
+    return {
+      nativeSuffix: nativeImageQualitySuffix,
+      imagenModelId: null,
+      imagenImageSize: null,
+    };
+  }
+  const q = String(imageQuality).trim().toLowerCase();
+  if (q === 'fast') {
+    return {
+      nativeSuffix: NATIVE_QUALITY_SUFFIX.speed ?? '',
+      imagenModelId: IMAGEN_TIER_MODELS.fast,
+      imagenImageSize: '1K',
+    };
+  }
+  if (q === 'balanced') {
+    return {
+      nativeSuffix: NATIVE_QUALITY_SUFFIX.balanced,
+      imagenModelId: IMAGEN_TIER_MODELS.standard,
+      imagenImageSize: '2K',
+    };
+  }
+  if (q === 'high') {
+    return {
+      nativeSuffix: NATIVE_QUALITY_SUFFIX.detail ?? NATIVE_QUALITY_SUFFIX.balanced,
+      imagenModelId: IMAGEN_TIER_MODELS.ultra,
+      imagenImageSize: '2K',
+    };
+  }
+  return {
+    nativeSuffix: nativeImageQualitySuffix,
+    imagenModelId: null,
+    imagenImageSize: null,
+  };
 };
 
 /**
@@ -452,7 +518,15 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       model: null,
     };
   }
-  const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [] } = opts;
+  const { timeoutMs = DEFAULT_TIMEOUT_MS, aspectRatio = '1:1', referenceImageUrls = [], imageQuality } = opts;
+  const qualityResolved = resolvePerRequestImageQuality(imageQuality);
+  const imagenModelForFallback = qualityResolved.imagenModelId || GOOGLE_IMAGEN_MODEL;
+  const imagenSizeForFallback =
+    qualityResolved.imagenImageSize != null
+      ? qualityResolved.imagenImageSize
+      : GOOGLE_IMAGEN_IMAGE_SIZE === '2K'
+        ? '2K'
+        : '1K';
   const now = Date.now();
   if (googleImageRateLimitedUntil > now) {
     return {
@@ -470,6 +544,7 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
       nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
       imagenFallbackEnabled: GOOGLE_IMAGE_IMAGEN_FALLBACK,
       aspectRatio,
+      imageQuality: imageQuality || null,
       promptPreview: String(imagePrompt || '').slice(0, 120),
     });
     let nativeResult = null;
@@ -478,7 +553,8 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
         imagePrompt,
         timeoutMs,
         aspectRatio,
-        referenceImageUrls
+        referenceImageUrls,
+        qualityResolved.nativeSuffix
       );
     } catch (err) {
       markGoogleImageRateLimitedIfNeeded(err?.message);
@@ -513,10 +589,13 @@ const generateImageDetailed = async (imagePrompt, opts = {}) => {
     try {
       logger.warn('Falling back to Imagen after native image miss/failure', {
         nativeModel: GOOGLE_NATIVE_IMAGE_MODEL,
-        imagenModel: GOOGLE_IMAGEN_MODEL,
+        imagenModel: imagenModelForFallback,
         nativeError: lastError || null,
       });
-      const imagenResult = await generateImageWithGoogleImagen(imagePrompt, timeoutMs, aspectRatio);
+      const imagenResult = await generateImageWithGoogleImagen(imagePrompt, timeoutMs, aspectRatio, {
+        modelId: qualityResolved.imagenModelId || undefined,
+        imageSize: imagenSizeForFallback,
+      });
       if (imagenResult?.imageData) {
         logger.info('Imagen fallback succeeded', { imagenModel: imagenResult.model });
         return {

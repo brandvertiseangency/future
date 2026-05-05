@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { IconSend, IconSparkles, IconCalendarEvent, IconArrowUpRight } from '@tabler/icons-react'
+import { Send, Sparkles, CalendarDays, ArrowUpRight, Target, Megaphone, Lightbulb, MessagesSquare } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -12,27 +13,69 @@ interface Message {
   id: string
 }
 
-const QUICK_PROMPTS = [
-  { label: 'Post ideas for this week', icon: '💡' },
-  { label: 'Write a caption for Instagram', icon: '✍️' },
-  { label: 'Plan next month\'s content', icon: '📅' },
+type QuickAction = {
+  label: string
+  icon: React.ReactNode
+  action: 'fill' | 'calendar' | 'generate'
+  value?: string
+}
+
+type BrandChatBrand = { name?: string | null } | null | undefined
+
+const QUICK_ACTIONS: QuickAction[] = [
+  {
+    label: 'Brand strategy',
+    icon: <Target className="h-3.5 w-3.5" />,
+    action: 'fill',
+    value:
+      'Given our full brand context, suggest 3 strategic priorities for the next quarter and how content should support each.',
+  },
+  {
+    label: 'Campaign plan',
+    icon: <Megaphone className="h-3.5 w-3.5" />,
+    action: 'fill',
+    value:
+      'Outline a simple campaign structure (objective, audience, key messages, channels, 2-week timeline) for our next push.',
+  },
+  {
+    label: 'Content ideas',
+    icon: <Lightbulb className="h-3.5 w-3.5" />,
+    action: 'fill',
+    value: 'Give me 5 scroll-stopping post ideas for this week with a one-line hook each.',
+  },
+  {
+    label: 'Brainstorm',
+    icon: <MessagesSquare className="h-3.5 w-3.5" />,
+    action: 'fill',
+    value: 'Brainstorm angles and taglines for our core offer; keep options short and distinctive.',
+  },
+  {
+    label: 'Calendar',
+    icon: <CalendarDays className="h-3.5 w-3.5" />,
+    action: 'calendar',
+    value: 'Plan my content calendar for the next month based on our goals and audience.',
+  },
 ]
 
 async function getToken(): Promise<string | null> {
   try {
     const auth = getFirebaseAuth()
     return (await auth?.currentUser?.getIdToken()) ?? null
-  } catch { return null }
+  } catch {
+    return null
+  }
 }
 
-export function BrandChat({ brand }: { brand: any }) {
+export function BrandChat({ brand }: { brand: BrandChatBrand }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
+  const API_BASE =
+    process.env.NEXT_PUBLIC_API_URL ??
+    (typeof window !== 'undefined' && window.location.hostname !== 'localhost' ? '' : 'http://localhost:4000')
 
   useEffect(() => {
     if (!textareaRef.current) return
@@ -44,11 +87,13 @@ export function BrandChat({ brand }: { brand: any }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  // Pick up prefill from ideas grid
   useEffect(() => {
     if (typeof window === 'undefined') return
     const prefill = sessionStorage.getItem('bv_chat_prefill')
-    if (prefill) { setInput(prefill); sessionStorage.removeItem('bv_chat_prefill') }
+    if (prefill) {
+      setInput(prefill)
+      sessionStorage.removeItem('bv_chat_prefill')
+    }
   }, [])
 
   const sendMessage = async () => {
@@ -58,138 +103,187 @@ export function BrandChat({ brand }: { brand: any }) {
       return
     }
     const userMsg: Message = { role: 'user', content: input, id: Date.now().toString() }
-    setMessages(prev => [...prev, userMsg])
+    setMessages((prev) => [...prev, userMsg])
     setInput('')
     setLoading(true)
     try {
       const token = await getToken()
+      const history = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }))
       const res = await fetch(`${API_BASE}/api/chat/brand`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ messages: [...messages, userMsg].map(m => ({ role: m.role, content: m.content })) }),
+        body: JSON.stringify({ messages: history }),
       })
       const data = await res.json()
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.response ?? "I couldn't connect right now. Please try again.",
-        id: Date.now().toString(),
-      }])
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: data.response ?? "I couldn't connect right now. Please try again.",
+          id: Date.now().toString(),
+        },
+      ])
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: "Couldn't connect. Please try again.", id: Date.now().toString() }])
-    } finally { setLoading(false) }
+      setMessages((prev) => [
+        ...prev,
+        { role: 'assistant', content: "Couldn't connect. Please try again.", id: Date.now().toString() },
+      ])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      void sendMessage()
+    }
+  }
+
+  const runQuickAction = (qa: QuickAction) => {
+    if (qa.action === 'calendar') {
+      const q = qa.value ?? ''
+      router.push('/calendar/generate' + (q ? `?brief=${encodeURIComponent(q)}` : ''))
+      return
+    }
+    if (qa.action === 'generate') {
+      const q = qa.value ?? ''
+      router.push('/generate' + (q ? `?brief=${encodeURIComponent(q)}` : ''))
+      return
+    }
+    if (qa.value) {
+      setInput(qa.value)
+      setTimeout(() => textareaRef.current?.focus(), 50)
+    }
   }
 
   const brandName = brand?.name ?? 'your brand'
 
   return (
-    <div className="bento-hero" style={{ padding: 1 }}>
-    <div className="bento-hero-inner" style={{ background: '#0a0a0a' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 border-b border-white/[0.06]">
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-xl bg-white/[0.07] border border-white/[0.12] flex items-center justify-center">
-            <IconSparkles size={12} className="text-white/70" />
-          </div>
-          <span className="text-[13px] font-semibold text-white/85">Brand AI</span>
-          <span className="flex items-center gap-1.5 text-[10.5px] text-white/35 ml-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/70 animate-pulse-glow" />
-            Ready
-          </span>
-        </div>
-        <button
-          onClick={() => router.push('/calendar/generate')}
-          className="flex items-center gap-1.5 text-[11px] text-white/30 hover:text-white/60 transition-colors"
-        >
-          <IconCalendarEvent size={11} />
-          Generate calendar
-          <IconArrowUpRight size={10} />
-        </button>
-      </div>
+    <div className="relative mx-auto w-full max-w-3xl overflow-hidden rounded-2xl border border-border shadow-[0_1px_3px_rgba(25,25,25,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.35)]">
+      <div className="bv-chat-surface-grid relative rounded-2xl">
+        <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/[0.04] to-transparent" aria-hidden />
 
-      {/* Messages */}
-      {messages.length > 0 && (
-        <div className="max-h-72 overflow-y-auto px-4 py-4 flex flex-col gap-3 scrollbar-hide">
-          {messages.map(msg => (
-            <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-              <div className={cn(
-                'max-w-[84%] px-3.5 py-2.5 text-[13px] leading-relaxed whitespace-pre-wrap',
-                msg.role === 'user'
-                  ? 'rounded-[14px_14px_4px_14px] text-black font-medium'
-                  : 'rounded-[14px_14px_14px_4px] text-white/70 border border-white/[0.07] bg-white/[0.04]'
-              )}
-              style={msg.role === 'user' ? { background: 'linear-gradient(135deg, #ffffff 0%, #d8d8d8 100%)' } : undefined}
+        <div className="relative border-b border-border px-5 py-4 md:px-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col items-center text-center sm:block sm:text-left">
+              <div
+                className="bv-gradient-border mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-card sm:mb-2"
+                aria-hidden
               >
-                {msg.content}
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
+              <p className="font-display text-lg font-medium tracking-tight text-foreground md:text-xl">
+                Hey! I&apos;m your <span className="text-primary">Brand AI</span>
+              </p>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                Strategy, campaigns, captions, and ideas — everything I know comes from your onboarding and brand profile.
+                For images, use{' '}
+                <button
+                  type="button"
+                  onClick={() => router.push('/generate')}
+                  className="font-medium text-primary underline-offset-2 hover:underline"
+                >
+                  Quick generate
+                </button>{' '}
+                or the content calendar.
+              </p>
             </div>
-          ))}
-          {loading && (
-            <div className="flex">
-              <div className="dot-loader flex gap-1 items-center px-3.5 py-2.5 bg-white/[0.04] rounded-[14px_14px_14px_4px] border border-white/[0.07]">
-                <span /><span /><span />
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      )}
-
-      {/* Quick prompts — show only when no messages */}
-      {messages.length === 0 && (
-        <div className="flex gap-2 px-4 pt-4 pb-2 flex-wrap">
-          {QUICK_PROMPTS.map(({ label, icon }) => (
-            <button
-              key={label}
-              onClick={() => { setInput(label); setTimeout(() => textareaRef.current?.focus(), 50) }}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-white/[0.09] bg-white/[0.04]
-                         text-[11.5px] text-white/50 hover:text-white/80 hover:border-white/[0.18] hover:bg-white/[0.07] transition-all"
+            <Button
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5 self-center sm:self-start"
+              onClick={() => router.push('/calendar/generate')}
             >
-              <span className="text-[13px]">{icon}</span>
-              {label}
-            </button>
-          ))}
+              <CalendarDays className="h-3.5 w-3.5" />
+              Calendar
+              <ArrowUpRight className="h-3 w-3 opacity-60" />
+            </Button>
+          </div>
         </div>
-      )}
 
-      {/* Input area */}
-      <div className="px-4 pt-4 pb-2 border-t border-white/[0.04] mt-1">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            messages.length === 0
-              ? `Ask anything about ${brandName}...`
-              : 'Continue the conversation...'
-          }
-          rows={1}
-          className="w-full bg-transparent border-none outline-none text-white/75 text-[14px] resize-none font-sans leading-relaxed placeholder:text-white/22"
-          style={{ minHeight: 40 }}
-        />
-      </div>
+        {messages.length > 0 && (
+          <div className="scrollbar-hide relative max-h-72 overflow-y-auto px-4 py-4 md:px-6">
+            <div className="flex flex-col gap-3">
+              {messages.map((msg) => (
+                <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
+                  <div
+                    className={cn(
+                      'max-w-[88%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-[13px] leading-relaxed md:max-w-[84%]',
+                      msg.role === 'user'
+                        ? 'rounded-br-md bg-primary text-primary-foreground'
+                        : 'rounded-bl-md border border-border bg-muted/50 text-foreground',
+                    )}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bv-chat-dot-loader flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-border bg-muted/50 px-3.5 py-3">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+        )}
 
-      {/* Footer bar */}
-      <div className="flex items-center justify-between px-3.5 pb-3.5">
-        <p className="text-[10.5px] text-white/18">↵ Enter to send · Shift+Enter for newline</p>
-        <button
-          onClick={sendMessage}
-          disabled={!input.trim() || loading}
-          className={cn(
-            'w-8 h-8 rounded-xl flex items-center justify-center transition-all',
-            input.trim()
-              ? 'bg-white text-black hover:opacity-90'
-              : 'bg-white/[0.05] text-white/20 cursor-default'
-          )}
-        >
-          <IconSend size={13} strokeWidth={2} />
-        </button>
+        {messages.length === 0 && (
+          <div className="relative flex flex-wrap justify-center gap-2 px-4 pb-2 pt-2 md:px-6">
+            {QUICK_ACTIONS.map((qa) => (
+              <button
+                key={qa.label}
+                type="button"
+                onClick={() => runQuickAction(qa)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 py-2 text-left text-[11.5px] font-medium text-muted-foreground shadow-sm transition-colors hover:border-primary/30 hover:bg-accent/50 hover:text-foreground"
+              >
+                {qa.icon}
+                {qa.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="relative border-t border-border px-4 pb-2 pt-3 md:px-6">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              messages.length === 0 ? `Ask anything about ${brandName}…` : 'Continue the conversation…'
+            }
+            rows={1}
+            className="w-full resize-none border-0 bg-transparent py-1 text-sm leading-relaxed text-foreground outline-none placeholder:text-muted-foreground md:text-[15px]"
+            style={{ minHeight: 44 }}
+          />
+        </div>
+
+        <div className="relative flex items-center justify-between gap-3 px-4 pb-4 md:px-6">
+          <p className="text-[10.5px] text-muted-foreground">
+            Enter to send · Shift+Enter newline · Brand AI can make mistakes; verify important details.
+          </p>
+          <button
+            type="button"
+            onClick={() => void sendMessage()}
+            disabled={!input.trim() || loading}
+            className={cn(
+              'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
+              input.trim()
+                ? 'bg-primary text-primary-foreground hover:opacity-90'
+                : 'cursor-not-allowed bg-muted text-muted-foreground',
+            )}
+            aria-label="Send message"
+          >
+            <Send className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-    </div>
     </div>
   )
 }

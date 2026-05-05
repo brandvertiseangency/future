@@ -78,6 +78,20 @@ const getProductById = async (pool, userId, brandId, productId) => {
   }
 };
 
+/** HTTPS URLs from client for this generation only; max 3 after merge. */
+const sanitizeClientReferenceUrls = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  for (const u of raw) {
+    const s = String(u || '').trim();
+    if (!/^https:\/\//i.test(s) || s.length > 2048) continue;
+    if (out.includes(s)) continue;
+    out.push(s);
+    if (out.length >= 3) break;
+  }
+  return out;
+};
+
 const getBrandReferenceImages = async (pool, userId, brandId) => {
   try {
     const { rows } = await pool.query(
@@ -207,10 +221,22 @@ router.post('/', authMiddleware, async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Database unavailable.' });
   const client = await pool.connect();
   try {
-    const { platform, contentType, brief, mood, theme, campaign, ratio, selectedProductId } = req.body;
+    const {
+      platform,
+      contentType,
+      brief,
+      mood,
+      theme,
+      campaign,
+      ratio,
+      selectedProductId,
+      referenceImageUrls: referenceImageUrlsBody,
+      imageQuality,
+    } = req.body;
     const allowedPlatforms = ['instagram', 'facebook', 'linkedin', 'x', 'twitter', 'tiktok', 'youtube', 'pinterest'];
     const allowedContentTypes = ['post', 'reel', 'carousel', 'story'];
     const allowedRatios = ['1:1', '4:5', '9:16', '16:9'];
+    const allowedImageQuality = ['fast', 'balanced', 'high'];
     if (!platform || !allowedPlatforms.includes(String(platform).toLowerCase())) {
       return res.status(400).json({ error: 'platform is invalid' });
     }
@@ -222,6 +248,9 @@ router.post('/', authMiddleware, async (req, res) => {
     }
     if (ratio && !allowedRatios.includes(String(ratio))) {
       return res.status(400).json({ error: 'ratio is invalid' });
+    }
+    if (imageQuality != null && String(imageQuality).trim() !== '' && !allowedImageQuality.includes(String(imageQuality).toLowerCase())) {
+      return res.status(400).json({ error: 'imageQuality is invalid' });
     }
 
     const user = await getUserWithBrand(req.user.uid);
@@ -281,7 +310,11 @@ router.post('/', authMiddleware, async (req, res) => {
     const primaryRefs = await getPrimaryProductReferenceImages(pool, user.id, user.brand_id || null);
     const brandRefs = await getBrandReferenceImages(pool, user.id, user.brand_id || null);
     const selectedRefs = Array.isArray(selectedProduct?.images) ? selectedProduct.images.filter(Boolean).slice(0, 3) : [];
-    const referenceImageUrls = [...selectedRefs, ...brandRefs, ...primaryRefs].filter(Boolean).slice(0, 3);
+    const clientRefs = sanitizeClientReferenceUrls(referenceImageUrlsBody);
+    const referenceImageUrls = [...new Set([...clientRefs, ...selectedRefs, ...brandRefs, ...primaryRefs].filter(Boolean))].slice(
+      0,
+      3
+    );
 
     const overlayHeadline = words(brief || caption, 8);
     const overlaySupport = words(caption, 14);
@@ -320,10 +353,15 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // Generate image — use ratio from request, fallback to content-type logic
     const aspectRatio = ratio || (contentType === 'reel' || contentType === 'story' ? '9:16' : '1:1');
+    const normalizedQuality =
+      imageQuality != null && String(imageQuality).trim() !== ''
+        ? String(imageQuality).toLowerCase()
+        : undefined;
     const imageResult = await generateImageDetailed(enrichedImagePrompt, {
       aspectRatio,
       referenceImageUrls,
       timeoutMs: 120_000,
+      imageQuality: normalizedQuality,
     });
     const rawImage = imageResult?.imageData || null;
     if (!rawImage) {

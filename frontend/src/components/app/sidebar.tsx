@@ -13,6 +13,10 @@ import {
   Settings,
   BriefcaseBusiness,
   LogOut,
+  FileStack,
+  ClipboardCheck,
+  Wand2,
+  ChevronDown,
 } from 'lucide-react'
 import { useBrandStore } from '@/stores/brand'
 import { useAuth } from '@/lib/auth-context'
@@ -21,27 +25,69 @@ import { cn } from '@/lib/utils'
 import useSWR from 'swr'
 import { apiCall } from '@/lib/api'
 import { Button } from '@/components/ui/button'
+import { useEffect, useMemo, useState } from 'react'
 
 type NavIcon = React.ComponentType<{ size?: number; className?: string }>
 
-const NAV_ITEMS: { href: string; label: string; icon: NavIcon }[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/calendar', label: 'Content Calendar', icon: CalendarDays },
-  { href: '/generate', label: 'Generation', icon: Sparkles },
-  { href: '/outputs', label: 'Outputs', icon: ImageIcon },
-  { href: '/scheduler', label: 'Scheduler', icon: Clock3 },
-  { href: '/agents', label: 'Agents', icon: Bot },
-  { href: '/settings', label: 'Settings', icon: Settings },
+type NavLeaf = { href: string; label: string; icon: NavIcon; match: (pathname: string) => boolean }
+
+const STUDIO_ITEMS: NavLeaf[] = [
+  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/dashboard' },
+  { href: '/agents', label: 'Agents', icon: Bot, match: (p) => p === '/agents' || p.startsWith('/agents/') },
+  { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p === '/settings' || p.startsWith('/settings/') },
+]
+
+const PIPELINE_ITEMS: NavLeaf[] = [
+  {
+    href: '/calendar',
+    label: 'Calendar',
+    icon: CalendarDays,
+    match: (p) => p === '/calendar' || p === '/calendar/',
+  },
+  {
+    href: '/calendar/generate',
+    label: 'Generate plan',
+    icon: Wand2,
+    match: (p) => p.startsWith('/calendar/generate'),
+  },
+  {
+    href: '/calendar/content',
+    label: 'Content',
+    icon: FileStack,
+    match: (p) => p.startsWith('/calendar/content'),
+  },
+  {
+    href: '/calendar/review',
+    label: 'Review',
+    icon: ClipboardCheck,
+    match: (p) => p.startsWith('/calendar/review'),
+  },
+]
+
+const SHIP_ITEMS: NavLeaf[] = [
+  { href: '/outputs', label: 'Outputs', icon: ImageIcon, match: (p) => p === '/outputs' || p.startsWith('/outputs/') },
+  { href: '/scheduler', label: 'Scheduler', icon: Clock3, match: (p) => p === '/scheduler' || p.startsWith('/scheduler/') },
 ]
 
 function NavItem({
-  href, label, icon: Icon, active,
-}: { href: string; label: string; icon: NavIcon; active: boolean }) {
+  href,
+  label,
+  icon: Icon,
+  active,
+  indent,
+}: {
+  href: string
+  label: string
+  icon: NavIcon
+  active: boolean
+  indent?: boolean
+}) {
   return (
     <Link
       href={href}
       className={cn(
         'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors duration-150',
+        indent && 'pl-4',
         active
           ? 'border border-primary/25 bg-primary/10 text-foreground'
           : 'text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -53,6 +99,39 @@ function NavItem({
   )
 }
 
+function NavSection({
+  title,
+  defaultOpen,
+  children,
+  highlighted,
+}: {
+  title: string
+  defaultOpen: boolean
+  children: React.ReactNode
+  highlighted?: boolean
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  useEffect(() => {
+    if (defaultOpen) setOpen(true)
+  }, [defaultOpen])
+
+  return (
+    <details open={open} onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary
+        className={cn(
+          'flex cursor-pointer list-none items-center justify-between rounded-lg px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground',
+          highlighted && 'text-primary',
+        )}
+      >
+        {title}
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
+      </summary>
+      <div className="mt-1 space-y-0.5 pl-0.5">{children}</div>
+    </details>
+  )
+}
+
 export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
@@ -60,10 +139,12 @@ export function Sidebar() {
   const { currentBrand } = useBrandStore()
   const { signOut } = useAuth()
 
+  const pipelineOpen = useMemo(() => PIPELINE_ITEMS.some((i) => i.match(pathname)), [pathname])
+
   const { data: creditsData } = useSWR(
     '/api/credits/balance',
     (url: string) => apiCall<{ balance: number; plan?: string; trial_days_left?: number }>(url),
-    { revalidateOnFocus: false }
+    { revalidateOnFocus: false },
   )
   const credits = creditsData?.balance ?? 0
   const plan = creditsData?.plan ?? 'trial'
@@ -72,6 +153,8 @@ export function Sidebar() {
   const pct = Math.min((credits / maxCredits) * 100, 100)
   const initials = currentBrand?.name?.slice(0, 2).toUpperCase() ?? 'BV'
   const brandName = currentBrand?.name ?? 'My Brand'
+
+  const quickGenActive = pathname === '/generate'
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[240px] flex-col border-r border-border bg-card">
@@ -86,18 +169,30 @@ export function Sidebar() {
         />
       </div>
 
-      <div className="scrollbar-hide flex-1 overflow-y-auto px-3 py-4">
-        <nav className="space-y-1">
-          {NAV_ITEMS.map(({ href, label, icon }) => (
-            <NavItem
-              key={href}
-              href={href}
-              label={label}
-              icon={icon}
-              active={pathname === href || (href !== '/dashboard' && pathname.startsWith(href))}
-            />
+      <div className="scrollbar-hide flex-1 space-y-4 overflow-y-auto px-3 py-4">
+        <nav className="space-y-0.5">
+          {STUDIO_ITEMS.map(({ href, label, icon, match }) => (
+            <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} />
           ))}
         </nav>
+
+        <NavSection title="Content pipeline" defaultOpen={pipelineOpen} highlighted={pipelineOpen}>
+          {PIPELINE_ITEMS.map(({ href, label, icon, match }) => (
+            <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} indent />
+          ))}
+        </NavSection>
+
+        <NavSection title="Ship" defaultOpen={SHIP_ITEMS.some((i) => i.match(pathname))}>
+          {SHIP_ITEMS.map(({ href, label, icon, match }) => (
+            <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} indent />
+          ))}
+        </NavSection>
+
+        <div className="space-y-1">
+          <p className="px-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Quick generate</p>
+          <p className="px-2 text-[10px] leading-snug text-muted-foreground/90">Not tied to the content calendar — your own briefs.</p>
+          <NavItem href="/generate" label="Studio generate" icon={Sparkles} active={quickGenActive} />
+        </div>
       </div>
 
       <div className="space-y-3 border-t border-border px-3 py-3">
@@ -108,7 +203,7 @@ export function Sidebar() {
           <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-primary text-[10px] font-bold text-primary-foreground">
             {initials}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-[12px] font-medium leading-tight text-foreground">{brandName}</p>
             <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">{planLabel} plan</p>
           </div>
@@ -130,15 +225,14 @@ export function Sidebar() {
             <span className="text-[10px] font-medium text-muted-foreground">{Math.round(pct)}%</span>
           </div>
           <div className="h-[4px] overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-all duration-700"
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
           </div>
         </button>
 
         <div className="flex items-center gap-2">
-          <Button onClick={() => router.push('/pricing')} className="w-full flex-1 text-[11px]">Upgrade</Button>
+          <Button onClick={() => router.push('/pricing')} className="w-full flex-1 text-[11px]">
+            Upgrade
+          </Button>
           <button
             onClick={signOut}
             title="Sign out"

@@ -69,13 +69,50 @@ function normalizeChatResponse(raw) {
 
 async function getBrandForUser(uid, pool) {
   const { rows } = await pool.query(
-    `SELECT b.*, u.id as user_db_id FROM brands b
+    `SELECT b.*, u.id as user_db_id,
+            bsp.extracted_colors, bsp.font_mood_detected, bsp.layout_style,
+            bsp.photography_style, bsp.mood_keywords, bsp.composition_style,
+            bsp.dominant_aesthetic, bsp.reference_image_urls,
+            bic.industry_answers AS bic_industry_answers,
+            ccp.weekly_post_count, ccp.content_type_mix, ccp.active_platforms, ccp.preferred_posting_times
+     FROM brands b
      JOIN users u ON u.id = b.user_id
+     LEFT JOIN brand_style_profiles bsp ON bsp.brand_id = b.id
+     LEFT JOIN brand_industry_configs bic ON bic.brand_id = b.id
+     LEFT JOIN content_calendar_preferences ccp ON ccp.brand_id = b.id
      WHERE u.firebase_uid = $1 AND b.is_default = TRUE LIMIT 1`,
     [uid]
   );
   if (!rows[0]) return null;
   const b = rows[0];
+  const industryAnswers =
+    b.bic_industry_answers &&
+    typeof b.bic_industry_answers === 'object' &&
+    !Array.isArray(b.bic_industry_answers)
+      ? b.bic_industry_answers
+      : null;
+  const visualDNA =
+    b.dominant_aesthetic ||
+    (b.mood_keywords && b.mood_keywords.length) ||
+    (b.extracted_colors && b.extracted_colors.length) ||
+    b.photography_style
+      ? {
+          colorPalette: Array.isArray(b.extracted_colors) ? b.extracted_colors : [],
+          aestheticStyle: b.dominant_aesthetic || undefined,
+          moodKeywords: Array.isArray(b.mood_keywords) ? b.mood_keywords : [],
+          contentStyle: b.photography_style || undefined,
+          designElements: [b.layout_style, b.composition_style].filter(Boolean),
+        }
+      : null;
+  const calendarPrefs =
+    b.weekly_post_count != null || b.content_type_mix || (b.active_platforms && b.active_platforms.length)
+      ? {
+          postsPerWeek: b.weekly_post_count,
+          contentMix: b.content_type_mix,
+          primaryPlatforms: b.active_platforms,
+          bestTimes: b.preferred_posting_times,
+        }
+      : null;
   return {
     id: b.id,
     name: b.name,
@@ -88,12 +125,21 @@ async function getBrandForUser(uid, pool) {
     audienceAgeMax: b.audience_age_max,
     audienceGender: b.audience_gender,
     audienceInterests: b.audience_interests,
+    audienceLocation: b.audience_location,
     brandColors: [b.color_primary, b.color_secondary, b.color_accent].filter(Boolean),
-    fontMood: b.font_mood,
+    fontMood: b.font_mood || b.font_mood_detected,
     usp: b.usp_keywords,
     wordsToAvoid: b.words_to_avoid,
+    wordsToUse: b.words_to_use,
     persona: b.brand_persona,
+    mission: b.brand_mission || b.mission,
+    competitors: b.competitor_brands || b.competitors,
+    painPoints: b.pain_points,
+    motivations: b.audience_motivations || b.motivations,
     userDbId: b.user_db_id,
+    visualDNA,
+    industryConfig: industryAnswers,
+    calendarPrefs,
   };
 }
 
