@@ -34,16 +34,20 @@ export function StatCard({
   label,
   value,
   sublabel,
+  delta,
 }: {
   label: string
   value: string | number
   sublabel?: string
+  /** Optional trend line (e.g. from analytics); use neutral copy if unknown */
+  delta?: string
 }) {
   return (
-    <div className="app-card p-4 md:p-5">
+    <div className="app-card-elevated border border-border/80 p-4 shadow-[var(--shadow-card)] md:p-5">
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-2 text-[26px] font-semibold leading-none text-foreground md:text-[28px]">{value}</p>
       {sublabel ? <p className="mt-1 text-xs text-muted-foreground">{sublabel}</p> : null}
+      {delta ? <p className="mt-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">{delta}</p> : null}
     </div>
   )
 }

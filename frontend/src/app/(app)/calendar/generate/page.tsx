@@ -158,23 +158,46 @@ function CalendarGenerateInner() {
         title="Plan your content with AI"
         description="Set your monthly content mix and generate a review-ready calendar."
       />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={() => router.back()}
+      <div className="flex flex-col gap-4">
+        <Link
+          href="/calendar"
           className="inline-flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
-          <ChevronLeft className="h-4 w-4" /> Back
-        </button>
-        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Step 1 · Configure <span className="text-border">→</span> Step 2 · Review plan
-        </p>
+          <ChevronLeft className="h-4 w-4" /> Back to calendar
+        </Link>
+
+        <nav aria-label="Plan steps" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {[
+            { n: 1, title: 'Configure', sub: 'Set your preferences', state: 'current' as const },
+            { n: 2, title: 'Review plan', sub: 'See your content ideas', state: 'next' as const },
+            { n: 3, title: 'Approve', sub: 'Finalize and continue', state: 'next' as const },
+          ].map((s) => (
+            <div
+              key={s.n}
+              className={cn(
+                'rounded-xl border px-3 py-3 text-left transition-colors',
+                s.state === 'current' ? 'border-primary bg-primary/[0.07] ring-1 ring-primary/15' : 'border-border/80 bg-card/80',
+              )}
+            >
+              <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Step {s.n}</p>
+              <p className="mt-1 text-sm font-semibold text-foreground">{s.title}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">{s.sub}</p>
+            </div>
+          ))}
+        </nav>
       </div>
 
       <PageHeader
         variant="hero"
-        title={<>Plan your <span className="text-pull text-primary">content</span></>}
-        description="AI drafts a month of ideas from your Brand DNA. You review and approve before anything is charged."
+        title={
+          <span className="inline-flex items-center gap-2">
+            <Sparkles className="h-7 w-7 text-primary md:h-8 md:w-8" />
+            <span>
+              Generate <span className="text-pull text-primary">content plan</span>
+            </span>
+          </span>
+        }
+        description="Create a full month of content ideas tailored to your brand. Review and approve before credits are used."
       />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_300px] xl:items-start">
@@ -236,7 +259,7 @@ function CalendarGenerateInner() {
                 Complete onboarding before generating a plan. Missing: {missingOnboarding.join(', ')}.
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Link href="/onboarding"><Button size="sm" variant="secondary">Complete Onboarding</Button></Link>
-                  <Link href="/settings#brand"><Button size="sm" variant="secondary">Fix in brand settings</Button></Link>
+                  <Link href="/brand/edit"><Button size="sm" variant="secondary">Fix in brand setup</Button></Link>
                 </div>
               </div>
             ) : null}
@@ -267,6 +290,14 @@ function CalendarGenerateInner() {
                 </Button>
               </div>
             ) : null}
+
+            <div className="rounded-lg border border-border/80 bg-muted/30 p-3">
+              <p className="text-xs font-semibold text-foreground">Need help?</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Guides for mix, frequency, and approvals.</p>
+              <Link href="/dashboard" className="mt-2 inline-block text-xs font-semibold text-primary hover:underline">
+                View guide
+              </Link>
+            </div>
 
             <div className="border-t border-border pt-4">
               <Button onClick={handleGenerate} disabled={!canGenerate} className="h-11 w-full">

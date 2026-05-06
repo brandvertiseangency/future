@@ -32,42 +32,53 @@ type NavIcon = LucideIcon
 
 type NavLeaf = { href: string; label: string; icon: NavIcon; match: (pathname: string) => boolean }
 
-const STUDIO_ITEMS: NavLeaf[] = [
+/** Primary app entry (mockup: single home item above agent). */
+const PRIMARY_NAV: NavLeaf[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, match: (p) => p === '/dashboard' },
-  { href: '/agents', label: 'Agents', icon: Bot, match: (p) => p === '/agents' || p.startsWith('/agents/') },
-  { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p === '/settings' || p.startsWith('/settings/') },
 ]
 
-const PIPELINE_ITEMS: NavLeaf[] = [
-  {
-    href: '/calendar',
-    label: 'Calendar',
-    icon: CalendarDays,
-    match: (p) => p === '/calendar' || p === '/calendar/',
-  },
+/** Mockup “Social media agent” — four core routes. */
+const SOCIAL_AGENT_ITEMS: NavLeaf[] = [
   {
     href: '/calendar/generate',
-    label: 'Generate plan',
+    label: 'Generate content calendar',
     icon: Wand2,
     match: (p) => p.startsWith('/calendar/generate'),
   },
   {
-    href: '/calendar/content',
-    label: 'Content',
-    icon: FileStack,
-    match: (p) => p.startsWith('/calendar/content'),
+    href: '/calendar',
+    label: 'Review content calendar',
+    icon: CalendarDays,
+    match: (p) =>
+      (p === '/calendar' || p.startsWith('/calendar/')) &&
+      !p.startsWith('/calendar/generate') &&
+      !p.startsWith('/calendar/content') &&
+      !p.startsWith('/calendar/review'),
   },
+  { href: '/outputs', label: 'Outputs', icon: ImageIcon, match: (p) => p === '/outputs' || p.startsWith('/outputs/') },
+  { href: '/scheduler', label: 'Schedule', icon: Clock3, match: (p) => p === '/scheduler' || p.startsWith('/scheduler/') },
+]
+
+/** Secondary calendar flows (plan approval + per-slot studio). */
+const PLAN_MORE_ITEMS: NavLeaf[] = [
   {
     href: '/calendar/review',
-    label: 'Review',
+    label: 'Approve plan',
     icon: ClipboardCheck,
     match: (p) => p.startsWith('/calendar/review'),
   },
+  {
+    href: '/calendar/content',
+    label: 'Content studio',
+    icon: FileStack,
+    match: (p) => p.startsWith('/calendar/content'),
+  },
 ]
 
-const SHIP_ITEMS: NavLeaf[] = [
-  { href: '/outputs', label: 'Outputs', icon: ImageIcon, match: (p) => p === '/outputs' || p.startsWith('/outputs/') },
-  { href: '/scheduler', label: 'Scheduler', icon: Clock3, match: (p) => p === '/scheduler' || p.startsWith('/scheduler/') },
+const TOOLS_ITEMS: NavLeaf[] = [
+  { href: '/generate', label: 'Generate studio', icon: Sparkles, match: (p) => p === '/generate' || p.startsWith('/generate/') },
+  { href: '/agents', label: 'Agents', icon: Bot, match: (p) => p === '/agents' || p.startsWith('/agents/') },
+  { href: '/settings', label: 'Settings', icon: Settings, match: (p) => p === '/settings' || p.startsWith('/settings/') },
 ]
 
 function NavItem({
@@ -94,8 +105,8 @@ function NavItem({
           : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
       )}
     >
-      <Icon size={17} strokeWidth={active ? 2 : 1.65} className="opacity-90" />
-      <span>{label}</span>
+      <Icon size={17} strokeWidth={active ? 2 : 1.65} className="shrink-0 opacity-90" />
+      <span className="leading-snug">{label}</span>
     </Link>
   )
 }
@@ -140,7 +151,9 @@ export function Sidebar() {
   const { currentBrand } = useBrandStore()
   const { signOut } = useAuth()
 
-  const pipelineOpen = useMemo(() => PIPELINE_ITEMS.some((i) => i.match(pathname)), [pathname])
+  const socialOpen = useMemo(() => SOCIAL_AGENT_ITEMS.some((i) => i.match(pathname)), [pathname])
+  const planMoreOpen = useMemo(() => PLAN_MORE_ITEMS.some((i) => i.match(pathname)), [pathname])
+  const toolsOpen = useMemo(() => TOOLS_ITEMS.some((i) => i.match(pathname)), [pathname])
 
   const { data: creditsData } = useSWR(
     '/api/credits/balance',
@@ -154,8 +167,6 @@ export function Sidebar() {
   const pct = Math.min((credits / maxCredits) * 100, 100)
   const initials = currentBrand?.name?.slice(0, 2).toUpperCase() ?? 'BV'
   const brandName = currentBrand?.name ?? 'My Brand'
-
-  const quickGenActive = pathname === '/generate'
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-border/80 bg-card shadow-[var(--shadow-card)]">
@@ -182,28 +193,28 @@ export function Sidebar() {
 
       <div className="scrollbar-hide flex-1 space-y-4 overflow-y-auto px-3 py-2">
         <nav className="space-y-0.5">
-          {STUDIO_ITEMS.map(({ href, label, icon, match }) => (
+          {PRIMARY_NAV.map(({ href, label, icon, match }) => (
             <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} />
           ))}
         </nav>
 
-        <NavSection title="Content pipeline" defaultOpen={pipelineOpen} highlighted={pipelineOpen}>
-          {PIPELINE_ITEMS.map(({ href, label, icon, match }) => (
+        <NavSection title="Social media agent" defaultOpen={socialOpen || planMoreOpen} highlighted={socialOpen || planMoreOpen}>
+          {SOCIAL_AGENT_ITEMS.map(({ href, label, icon, match }) => (
             <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} indent />
           ))}
         </NavSection>
 
-        <NavSection title="Ship" defaultOpen={SHIP_ITEMS.some((i) => i.match(pathname))}>
-          {SHIP_ITEMS.map(({ href, label, icon, match }) => (
+        <NavSection title="Plan workflow" defaultOpen={planMoreOpen} highlighted={planMoreOpen}>
+          {PLAN_MORE_ITEMS.map(({ href, label, icon, match }) => (
             <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} indent />
           ))}
         </NavSection>
 
-        <div className="space-y-1">
-          <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Quick generate</p>
-          <p className="px-2 text-[10px] leading-snug text-muted-foreground/85">One-off posts — not tied to the calendar.</p>
-          <NavItem href="/generate" label="Studio generate" icon={Sparkles} active={quickGenActive} />
-        </div>
+        <NavSection title="Tools" defaultOpen={toolsOpen} highlighted={toolsOpen}>
+          {TOOLS_ITEMS.map(({ href, label, icon, match }) => (
+            <NavItem key={href} href={href} label={label} icon={icon} active={match(pathname)} indent />
+          ))}
+        </NavSection>
       </div>
 
       <div className="border-t border-border/80 p-3">
@@ -224,11 +235,11 @@ export function Sidebar() {
 
           <button
             type="button"
-            onClick={() => router.push('/settings#brand')}
+            onClick={() => router.push('/brand/edit')}
             className="flex w-full items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-left text-[12px] font-medium text-foreground transition-colors hover:bg-muted/60"
           >
             <BriefcaseBusiness size={14} className="text-muted-foreground" />
-            Edit brand
+            Brand setup
           </button>
 
           <div>

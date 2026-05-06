@@ -1,24 +1,32 @@
 'use client'
 
-import { CalendarDays, ImageIcon, Wand2, LayoutGrid } from 'lucide-react'
-import { useEffect } from 'react'
+import { CalendarDays, ImageIcon, Clock3, Upload, ArrowRight, Sparkles } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
 import { apiCall } from '@/lib/api'
 import { NextStepCard, PageContainer } from '@/components/ui/page-primitives'
-import { SectionCard, StatCard } from '@/components/ui/saas-primitives'
+import { StatCard } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { AppHero } from '@/components/app/app-hero'
-import { QuickActionGrid } from '@/components/app/quick-action-grid'
 import { SectionShell } from '@/components/ui/section-shell'
 import { getDashboardNextStep } from '@/lib/workflow-next-step'
 import { logUxEvent } from '@/lib/ux-events'
 import { displayCaption } from '@/lib/caption'
 import { BrandChat } from '@/components/dashboard/brand-chat'
 import { useAuth } from '@/lib/auth-context'
+import { WorkflowStepperCard } from '@/components/app/workflow-stepper-card'
+import { cn } from '@/lib/utils'
 
 const fetcher = (url: string) => apiCall<Record<string, unknown>>(url)
+
+const QUICK_LINKS = [
+  { href: '/assets', label: 'Upload assets', icon: Upload },
+  { href: '/generate', label: 'Generate content', icon: Sparkles },
+  { href: '/scheduler', label: 'Open scheduler', icon: Clock3 },
+  { href: '/calendar', label: 'View calendar', icon: CalendarDays },
+] as const
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -27,12 +35,19 @@ export default function DashboardPage() {
   const { data: brandData, error: brandError } = useSWR('/api/brands/current', fetcher, { revalidateOnFocus: false })
   const { data: creditsData, error: creditsError } = useSWR('/api/credits/balance', fetcher, { revalidateOnFocus: false })
   const { data: statsData, error: statsError } = useSWR('/api/posts/stats', fetcher, { revalidateOnFocus: false })
-  const { data: scheduledData, error: scheduledError } = useSWR('/api/posts/scheduled?week=current', fetcher, { revalidateOnFocus: false })
+  const { data: scheduledData, error: scheduledError } = useSWR('/api/posts/scheduled?week=current', fetcher, {
+    revalidateOnFocus: false,
+  })
   const { data: outputsData, error: outputsError } = useSWR('/api/posts?limit=4', fetcher, { revalidateOnFocus: false })
 
   const brand = (brandData as { brand?: { name?: string } })?.brand
-  const credits = (creditsData as { balance?: number })?.balance ?? 0
+  const credits = (creditsData as { balance?: number; plan?: string })?.balance ?? 0
+  const plan = (creditsData as { plan?: string })?.plan ?? 'trial'
+  const maxCredits = plan === 'pro' ? 5000 : plan === 'agency' ? 15000 : 500
+  const creditsUsedPct = Math.min(Math.round((credits / Math.max(maxCredits, 1)) * 100), 100)
+
   const totalPosts = (statsData as { total?: number })?.total ?? 0
+  const scheduledCount = (statsData as { scheduled?: number })?.scheduled ?? 0
   const scheduledPosts = ((scheduledData as { posts?: unknown[] })?.posts ?? []).length
   const postsLeft = Math.max(0, 30 - totalPosts)
   const reelsLeft = Math.max(0, 10 - Math.floor(totalPosts / 3))
@@ -44,12 +59,17 @@ export default function DashboardPage() {
   const nextStep = getDashboardNextStep({ hasScheduledPosts: scheduledPosts > 0, hasOutputs: recentOutputs.length > 0 })
   const hasDataError = Boolean(brandError || creditsError || statsError || scheduledError || outputsError)
 
+  const engagementPlaceholder = useMemo(
+    () => ({ value: '—', sub: 'Connect analytics to see engagement', delta: undefined as string | undefined }),
+    [],
+  )
+
   useEffect(() => {
     logUxEvent('dashboard_next_step_rendered', { title: nextStep.title })
   }, [nextStep.title])
 
   return (
-    <PageContainer className="space-y-8 md:space-y-10">
+    <PageContainer className="space-y-6 md:space-y-8">
       <PageIntroModal
         pageKey="dashboard"
         title="Welcome to your AI Design Hub"
@@ -79,165 +99,157 @@ export default function DashboardPage() {
         </div>
       ) : null}
 
-      <SectionShell
-        title="Jump in"
-        description="Pick a workflow — each opens the right tool for the job."
-        contentClassName="mt-0"
-      >
-        <QuickActionGrid
-          items={[
-            {
-              href: '/calendar/generate',
-              title: 'Plan your month',
-              description: 'Set mix and volume, then generate a review-ready calendar.',
-              icon: Wand2,
-            },
-            {
-              href: '/calendar',
-              title: 'Content calendar',
-              description: 'Review ideas, edit captions, and approve before generation.',
-              icon: CalendarDays,
-            },
-            {
-              href: '/generate',
-              title: 'Quick create',
-              description: 'One-off posts with your brand DNA — not tied to the calendar.',
-              icon: LayoutGrid,
-            },
-            {
-              href: '/outputs',
-              title: 'Outputs',
-              description: 'Browse generated creatives, versions, and download assets.',
-              icon: ImageIcon,
-            },
-          ]}
-        />
-      </SectionShell>
-
-      <div className="app-card-elevated overflow-hidden border border-border/80">
-        <div className="border-b border-border/80 bg-muted/20 px-4 py-3 md:px-6">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Brand AI</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">Strategy, captions, and ideas grounded in your profile.</p>
-        </div>
-        <div className="p-3 md:p-5">
-          <BrandChat brand={brand} />
-        </div>
-      </div>
-
-      <NextStepCard
-        dense
-        title={nextStep.title}
-        reason={`${nextStep.reason} You're ${usedPercent}% through this month's workflow.`}
-        primaryCta={nextStep.primaryCta}
-        secondaryCta={nextStep.secondaryCta}
-      />
-
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Posts left" value={postsLeft} />
-        <StatCard label="Reels left" value={reelsLeft} />
-        <StatCard label="Credits" value={credits} />
-        <StatCard label="Workflow" value={`${usedPercent}%`} />
-      </div>
-
-      <SectionCard title="More shortcuts" subtitle="Jump straight into tools.">
-        <div className="flex flex-wrap gap-2">
-          <Link href="/generate">
-            <Button size="sm" className="h-9 gap-1.5">
-              <Wand2 className="h-3.5 w-3.5" />
-              Quick generate
-            </Button>
-          </Link>
-          <Link href="/calendar">
-            <Button variant="secondary" size="sm" className="h-9 gap-1.5">
-              <CalendarDays className="h-3.5 w-3.5" />
-              Calendar table
-            </Button>
-          </Link>
-          <Link href="/settings#brand">
-            <Button variant="outline" size="sm" className="h-9">
-              Brand identity
-            </Button>
-          </Link>
-        </div>
-      </SectionCard>
-
-      <SectionShell
-        title="Recent outputs"
-        description="Latest generated creatives from your workspace."
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {recentOutputs.length === 0 ? (
-            <div className="col-span-full rounded-[var(--radius-card)] border border-dashed border-border bg-muted/25 p-12 text-center">
-              <ImageIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" strokeWidth={1.25} />
-              <p className="text-sm font-medium text-foreground">No outputs yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Try Brand AI above, or open Quick generate.</p>
-              <Link href="/generate" className="mt-4 inline-block">
-                <Button size="sm">Create something</Button>
-              </Link>
+      <div className="flex flex-col gap-8 xl:grid xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
+        <div className="min-w-0 space-y-6 md:space-y-8">
+          <div className="bv-surface-hero app-card-elevated overflow-hidden rounded-[var(--radius-card-lg)] border border-primary/15 shadow-[var(--shadow-card)]">
+            <div className="border-b border-border/60 bg-gradient-to-r from-primary/[0.06] to-transparent px-4 py-3 md:px-6">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">Brand AI</p>
+              <h3 className="font-display text-xl font-normal tracking-tight text-foreground md:text-2xl">Ask your Brand AI</h3>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Strategy, campaigns, captions, and ideas grounded in your brand profile.
+              </p>
             </div>
-          ) : (
-            recentOutputs.map((output) => (
-              <Link key={output.id} href={`/outputs/${output.id}`} className="app-card-elevated group block overflow-hidden">
-                <div className="aspect-[4/3] bg-muted">
-                  {output.image_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={output.image_url}
-                      alt={displayCaption(output.caption, 'Output image')}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-muted-foreground">
-                      <ImageIcon className="h-5 w-5" />
+            <div className="bg-card/40 p-3 md:p-4">
+              <BrandChat brand={brand} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Content credits"
+              value={`${credits} / ${maxCredits}`}
+              sublabel={`${creditsUsedPct}% of plan headroom`}
+              delta={undefined}
+            />
+            <StatCard
+              label="Content generated"
+              value={totalPosts}
+              sublabel="All-time posts in workspace"
+              delta={totalPosts > 0 ? 'Trends available in analytics soon' : undefined}
+            />
+            <StatCard
+              label="Posts scheduled"
+              value={scheduledCount}
+              sublabel="Total scheduled in library"
+              delta={scheduledPosts > 0 ? `+${scheduledPosts} this week` : undefined}
+            />
+            <StatCard
+              label="Engagement (avg.)"
+              value={engagementPlaceholder.value}
+              sublabel={engagementPlaceholder.sub}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:gap-5">
+            <div className="lg:col-span-5">
+              <NextStepCard
+                dense
+                title={nextStep.title}
+                reason={`${nextStep.reason} You're ${usedPercent}% through this month's workflow.`}
+                primaryCta={nextStep.primaryCta}
+                secondaryCta={nextStep.secondaryCta}
+              />
+            </div>
+            <div className="lg:col-span-4">
+              <SectionShell
+                title="Recent outputs"
+                description="Latest creatives."
+                contentClassName="mt-0"
+              >
+                <div className="flex gap-3 overflow-x-auto pb-1 pt-1 [-webkit-overflow-scrolling:touch]">
+                  {recentOutputs.length === 0 ? (
+                    <div className="min-w-[200px] flex-1 rounded-xl border border-dashed border-border bg-muted/20 p-6 text-center">
+                      <ImageIcon className="mx-auto mb-2 h-8 w-8 text-muted-foreground/50" />
+                      <p className="text-xs text-muted-foreground">No outputs yet</p>
+                      <Link href="/generate" className="mt-2 inline-block text-xs font-semibold text-primary">
+                        Generate
+                      </Link>
                     </div>
+                  ) : (
+                    recentOutputs.map((output) => (
+                      <Link
+                        key={output.id}
+                        href={`/outputs/${output.id}`}
+                        className="group w-[140px] shrink-0 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm transition hover:border-primary/40"
+                      >
+                        <div className="aspect-square bg-muted">
+                          {output.image_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={output.image_url}
+                              alt=""
+                              className="h-full w-full object-cover transition group-hover:scale-[1.03]"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-muted-foreground">
+                              <ImageIcon className="h-5 w-5" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="line-clamp-2 p-2 text-[11px] font-medium leading-snug text-foreground">
+                          {displayCaption(output.caption, 'Output')}
+                        </p>
+                      </Link>
+                    ))
                   )}
                 </div>
-                <div className="p-3">
-                  <p className="line-clamp-2 text-sm font-medium text-foreground">{displayCaption(output.caption, 'Untitled output')}</p>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {output.created_at ? new Date(output.created_at).toLocaleDateString() : '—'}
-                  </p>
-                </div>
-              </Link>
-            ))
-          )}
+              </SectionShell>
+            </div>
+            <div className="lg:col-span-3">
+              <div className="app-card-elevated h-full rounded-[var(--radius-card-lg)] border border-border/80 p-4 shadow-[var(--shadow-card)]">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Quick actions</p>
+                <ul className="mt-3 space-y-1">
+                  {QUICK_LINKS.map(({ href, label, icon: Icon }) => (
+                    <li key={href}>
+                      <Link
+                        href={href}
+                        className="flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-foreground transition hover:bg-muted/70"
+                      >
+                        <Icon className="h-4 w-4 text-muted-foreground" />
+                        {label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/agents"
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                >
+                  Explore all tools
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:hidden">
+            <StatCard label="Posts left" value={postsLeft} />
+            <StatCard label="Reels left" value={reelsLeft} />
+            <StatCard label="Credits" value={credits} />
+            <StatCard label="Workflow" value={`${usedPercent}%`} />
+          </div>
         </div>
-      </SectionShell>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[360px_1fr]">
-        <SectionCard title="Usage" subtitle="Monthly progress">
-          <div className="flex items-center gap-4">
-            <div
-              className="flex h-24 w-24 items-center justify-center rounded-full border border-border text-sm font-semibold text-foreground"
-              style={{
-                background: `conic-gradient(var(--primary) ${usedPercent}%, var(--muted) ${usedPercent}% 100%)`,
-              }}
-            >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-card">{usedPercent}%</div>
-            </div>
-            <div className="space-y-2 text-sm">
-              <p className="text-muted-foreground">
-                Posts <span className="font-semibold text-foreground">{totalPosts}/30</span>
-              </p>
-              <p className="text-muted-foreground">
-                Reels <span className="font-semibold text-foreground">{10 - reelsLeft}/10</span>
-              </p>
-            </div>
-          </div>
-        </SectionCard>
+        <WorkflowStepperCard className="xl:sticky xl:top-24" />
+      </div>
 
-        <SectionCard title="Calendar" subtitle="Publishing momentum">
-          <div className="mb-3 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Scheduled this week</span>
-            <span className="font-medium text-foreground">{scheduledPosts}</span>
+      <div
+        className={cn(
+          'flex flex-col gap-3 rounded-[var(--radius-card-lg)] border border-primary/20 bg-primary/[0.06] px-4 py-4 md:flex-row md:items-center md:justify-between md:px-6',
+        )}
+      >
+        <div className="flex items-start gap-3">
+          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">Want better results?</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Complete your brand setup and upload more assets to improve AI accuracy.
+            </p>
           </div>
-          <div className="h-2 rounded-full bg-muted">
-            <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.min((scheduledPosts / 10) * 100, 100)}%` }} />
-          </div>
-          <Link href="/scheduler" className="mt-4 inline-block text-xs font-semibold text-primary hover:underline">
-            Open scheduler
-          </Link>
-        </SectionCard>
+        </div>
+        <Link href="/brand/edit">
+          <Button className="w-full shrink-0 md:w-auto">Improve brand setup</Button>
+        </Link>
       </div>
     </PageContainer>
   )

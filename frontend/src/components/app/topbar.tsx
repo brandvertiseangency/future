@@ -15,10 +15,11 @@ import { Button } from '@/components/ui/button'
 const PAGE_META: Record<string, { title: string; sub?: string }> = {
   '/dashboard': { title: 'Dashboard', sub: 'Overview' },
   '/calendar': { title: 'Content Calendar', sub: 'Ideas and approvals' },
-  '/generate': { title: 'Generation', sub: 'Create content' },
+  '/generate': { title: 'Generate studio', sub: 'Create on-brand content at scale' },
   '/generate/queue': { title: 'Generation Queue', sub: 'Live progress' },
   '/outputs': { title: 'Outputs', sub: 'Generated creatives' },
   '/brand': { title: 'Brand', sub: 'Overview' },
+  '/brand/edit': { title: 'Brand edit', sub: 'Identity, voice, and visual system' },
   '/scheduler': { title: 'Scheduler', sub: 'Schedule and publish' },
   '/settings': { title: 'Settings', sub: 'Account and billing' },
   '/agents': { title: 'Agents', sub: 'Automation tools' },

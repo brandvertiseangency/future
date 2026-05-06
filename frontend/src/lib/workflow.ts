@@ -5,7 +5,7 @@ export type WorkflowStep = {
 }
 
 export const WORKFLOW_STEPS: WorkflowStep[] = [
-  { id: 'brand', label: 'Brand Setup', href: '/brand' },
+  { id: 'brand', label: 'Brand Setup', href: '/brand/edit' },
   { id: 'calendar', label: 'Calendar', href: '/calendar/generate' },
   { id: 'approve', label: 'Approve Content', href: '/calendar' },
   { id: 'generate', label: 'Generate', href: '/generate' },

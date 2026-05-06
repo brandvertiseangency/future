@@ -53,7 +53,7 @@ export default function BrandOverviewPage() {
       <PageIntroModal
         pageKey="brand"
         title="Your brand at a glance"
-        description="This overview reflects what is stored for your workspace. Edit details in Settings → Brand identity."
+        description="This overview reflects what is stored for your workspace. Edit details in Brand setup."
       />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <PageHeader
@@ -65,8 +65,8 @@ export default function BrandOverviewPage() {
           }
           description="Read-only summary of your default brand. Changes apply across generation, calendar, and agents."
         />
-        <Link href="/settings#brand" className={cn(buttonVariants(), 'shrink-0 sm:mt-1')}>
-          Edit brand identity
+        <Link href="/brand/edit" className={cn(buttonVariants(), 'shrink-0 sm:mt-1')}>
+          Edit brand setup
         </Link>
       </div>
 

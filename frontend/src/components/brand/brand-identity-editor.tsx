@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { logUxEvent } from '@/lib/ux-events'
+import { BrandIdentityTabbedLeft } from '@/components/brand/brand-identity-tabbed-left'
 
 const styleOptions = ['minimal', 'luxury', 'bold'] as const
 const toneOptions = ['Neutral', 'Warm', 'Professional', 'Friendly'] as const
@@ -50,7 +51,7 @@ const schema = z.object({
   website: z.string().optional(),
 })
 
-type FormValues = z.infer<typeof schema>
+export type FormValues = z.infer<typeof schema>
 
 const field = 'h-10 w-full rounded-lg border border-border bg-card px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground/80 focus:border-primary'
 
@@ -90,13 +91,14 @@ function parseApiError(error: unknown): string {
   return raw
 }
 
-export function BrandIdentityEditor({ embedded = false }: { embedded?: boolean }) {
+export function BrandIdentityEditor({ embedded = false, variant = 'default' }: { embedded?: boolean; variant?: 'default' | 'tabbed' }) {
   const { mutate: globalMutate } = useSWRConfig()
   const { setBrand } = useBrandStore()
   const [saving, setSaving] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [brandTab, setBrandTab] = useState('identity')
   const [logoUrl, setLogoUrl] = useState('')
   const [uploadingLogo, setUploadingLogo] = useState(false)
 
@@ -308,6 +310,44 @@ export function BrandIdentityEditor({ embedded = false }: { embedded?: boolean }
   ].filter(Boolean).length
   const qualityScore = Math.round((qualityParts / 9) * 100)
 
+  const previewCard = (
+    <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="h-fit xl:sticky xl:top-20">
+      <div className="space-y-4">
+        <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
+          <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-lg font-semibold text-foreground">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
+            ) : (
+              (form.watch('name') || 'BV').slice(0, 2).toUpperCase()
+            )}
+          </div>
+          <p className="text-sm font-semibold text-foreground">{form.watch('name') || 'Brand Name'}</p>
+          <p className="text-xs text-muted-foreground">{form.watch('industry') || 'Industry'}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">Goals</p>
+          <div className="flex flex-wrap gap-2">
+            {(watchedGoals.length ? watchedGoals : ['No goals selected']).slice(0, 4).map((goal) => (
+              <span key={goal} className="rounded-full border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                {goal}
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-3">
+          <div className="mb-1 flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground">Brand Quality Score</p>
+            <p className="text-xs font-semibold text-foreground">{qualityScore}%</p>
+          </div>
+          <div className="h-2 rounded-full bg-muted">
+            <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${qualityScore}%` }} />
+          </div>
+        </div>
+      </div>
+    </SectionCard>
+  )
+
   if (loadingBrandMe || loadingCurrent) {
     const skeleton = (
       <>
@@ -323,7 +363,7 @@ export function BrandIdentityEditor({ embedded = false }: { embedded?: boolean }
     return <PageContainer className="space-y-4">{skeleton}</PageContainer>
   }
 
-  const formBlock = (
+  const legacyFormBlock = (
       <form onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
         <SectionCard title="Brand Profile" subtitle="This data is pulled from onboarding and remains editable.">
           <div className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-3">
@@ -527,41 +567,48 @@ export function BrandIdentityEditor({ embedded = false }: { embedded?: boolean }
           </p>
         </SectionCard>
 
-        <SectionCard title="Brand Preview" subtitle="Live preview from current form values." className="xl:sticky xl:top-20 h-fit">
-          <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-muted/40 p-4 text-center">
-              <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-border bg-card text-lg font-semibold text-foreground">
-                {logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={logoUrl} alt="Brand logo" className="h-full w-full object-cover" />
-                ) : (
-                  (form.watch('name') || 'BV').slice(0, 2).toUpperCase()
-                )}
-              </div>
-              <p className="text-sm font-semibold text-foreground">{form.watch('name') || 'Brand Name'}</p>
-              <p className="text-xs text-muted-foreground">{form.watch('industry') || 'Industry'}</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-3">
-              <p className="mb-2 text-xs font-medium text-muted-foreground">Goals</p>
-              <div className="flex flex-wrap gap-2">
-                {(watchedGoals.length ? watchedGoals : ['No goals selected']).slice(0, 4).map((goal) => (
-                  <span key={goal} className="rounded-full border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">{goal}</span>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-3">
-              <div className="mb-1 flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground">Brand Quality Score</p>
-                <p className="text-xs font-semibold text-foreground">{qualityScore}%</p>
-              </div>
-              <div className="h-2 rounded-full bg-[#EFEFF1]">
-                <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${qualityScore}%` }} />
-              </div>
-            </div>
-          </div>
-        </SectionCard>
+        {previewCard}
       </form>
   )
+
+  const tabbedForm = (
+    <form id="brand-identity-form" onSubmit={form.handleSubmit(onSubmit)} className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_340px]">
+      <div className="space-y-4">
+        <BrandIdentityTabbedLeft
+          brandTab={brandTab}
+          onBrandTabChange={setBrandTab}
+          form={form}
+          errors={errors}
+          isSubmitted={isSubmitted}
+          field={field}
+          fieldWithError={fieldWithError}
+          logoUrl={logoUrl}
+          uploadingLogo={uploadingLogo}
+          onLogoFile={(file) => void handleLogoUpload(file)}
+          toggleGoal={toggleGoal}
+          goalOptions={goalOptions}
+          watchedGoals={watchedGoals}
+        />
+        <div className="flex flex-col items-end gap-2 border-t border-border pt-4">
+          <Button type="submit" disabled={saving}>
+            {saving ? 'Saving...' : 'Save brand'}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            {saveState === 'saving'
+              ? 'Saving changes...'
+              : saveState === 'saved'
+                ? `Saved at ${lastSavedAt}`
+                : saveState === 'error'
+                  ? 'Save failed. Please retry.'
+                  : 'No recent save.'}
+          </p>
+        </div>
+      </div>
+      {previewCard}
+    </form>
+  )
+
+  const formBlock = variant === 'tabbed' ? tabbedForm : legacyFormBlock
 
   if (embedded) {
     return <div className="space-y-4">{formBlock}</div>
