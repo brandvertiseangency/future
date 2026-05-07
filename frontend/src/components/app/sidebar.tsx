@@ -117,13 +117,11 @@ function NavItem({
   label,
   icon: Icon,
   active,
-  indent,
 }: {
   href: string
   label: string
   icon: NavIcon
   active: boolean
-  indent?: boolean
 }) {
   const { state } = useSidebar()
   const collapsed = state === 'collapsed'
@@ -132,15 +130,14 @@ function NavItem({
       href={href}
       title={collapsed ? label : undefined}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[13px] font-medium transition-colors duration-150',
-        indent && !collapsed && 'pl-4',
+        'relative flex h-9 items-center gap-2.5 rounded-lg px-3 text-[13px] font-medium transition-colors duration-150',
         collapsed && 'justify-center px-2',
         active
-          ? 'bg-primary/[0.11] text-foreground before:absolute before:left-0 before:top-1/2 before:h-8 before:w-[4px] before:-translate-y-1/2 before:rounded-full before:bg-primary'
-          : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+          ? 'bg-primary/10 text-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-[3px] before:-translate-y-1/2 before:rounded-full before:bg-primary'
+          : 'text-muted-foreground hover:bg-muted/70 hover:text-foreground',
       )}
     >
-      <Icon size={17} strokeWidth={active ? 2 : 1.65} className="shrink-0 opacity-90" />
+      <Icon size={17} strokeWidth={active ? 2 : 1.6} className="shrink-0 opacity-90" />
       <span className={cn('leading-snug', collapsed && 'hidden')}>{label}</span>
     </Link>
   )
@@ -160,23 +157,21 @@ function NavGroup({
   const { state } = useSidebar()
   const collapsed = state === 'collapsed'
   return (
-    <SidebarGroup className={cn(collapsed ? 'py-0.5' : 'py-1')}>
-      <SidebarGroupLabel
-        className={cn(
-          'flex items-center gap-1.5 pb-1',
-          collapsed && 'hidden',
-          highlighted ? 'text-primary' : 'text-muted-foreground',
-        )}
-      >
-        <Icon size={12} className="shrink-0 opacity-85" />
-        {title}
-      </SidebarGroupLabel>
-      <SidebarGroupContent className={cn('relative', collapsed ? 'pl-0' : 'pl-0.5')}>
-        {!collapsed ? (
-          <div className="pointer-events-none absolute bottom-1 left-[9px] top-1 w-px bg-border/85" aria-hidden />
-        ) : null}
-        <div className={cn('space-y-0.5', !collapsed && 'pl-1.5')}>{children}</div>
-      </SidebarGroupContent>
+    <SidebarGroup>
+      {!collapsed ? (
+        <SidebarGroupLabel
+          className={cn(
+            // Same horizontal indent (px-3) as NavItem so section icons sit in the
+            // exact same column as sub-page icons.
+            'h-7 px-3 mb-0',
+            highlighted ? 'text-primary' : 'text-muted-foreground',
+          )}
+        >
+          <Icon size={13} className="shrink-0 opacity-90" />
+          {title}
+        </SidebarGroupLabel>
+      ) : null}
+      <SidebarGroupContent>{children}</SidebarGroupContent>
     </SidebarGroup>
   )
 }
@@ -244,8 +239,8 @@ export function Sidebar() {
           href="/generate"
           title="Create content"
           className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-2.5 font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 active:opacity-90',
-            collapsed ? 'px-2 text-xs' : 'px-4 text-sm',
+            'flex h-9 w-full items-center justify-center gap-2 rounded-lg bg-primary font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 active:opacity-90',
+            collapsed ? 'px-2 text-xs' : 'px-3 text-[13px]',
           )}
         >
           <Sparkles className="h-4 w-4" strokeWidth={2} />
@@ -265,7 +260,7 @@ export function Sidebar() {
         <NavGroup title="Publish" icon={Megaphone} highlighted={publishActive}>
           {PUBLISH_ITEMS.map(({ href, label, icon, match }) => (
             <SidebarMenuItem key={href}>
-              <NavItem href={href} label={label} icon={icon} active={match(pathname)} indent />
+              <NavItem href={href} label={label} icon={icon} active={match(pathname)} />
             </SidebarMenuItem>
           ))}
         </NavGroup>
@@ -273,7 +268,7 @@ export function Sidebar() {
         <NavGroup title="Plan" icon={ClipboardList} highlighted={planActive}>
           {PLAN_ITEMS.map(({ href, label, icon, match }) => (
             <SidebarMenuItem key={href}>
-              <NavItem href={href} label={label} icon={icon} active={match(pathname)} indent />
+              <NavItem href={href} label={label} icon={icon} active={match(pathname)} />
             </SidebarMenuItem>
           ))}
         </NavGroup>
@@ -281,7 +276,7 @@ export function Sidebar() {
         <NavGroup title="Tools" icon={Wrench} highlighted={toolsActive}>
           {TOOLS_ITEMS.map(({ href, label, icon, match }) => (
             <SidebarMenuItem key={href}>
-              <NavItem href={href} label={label} icon={icon} active={match(pathname)} indent />
+              <NavItem href={href} label={label} icon={icon} active={match(pathname)} />
             </SidebarMenuItem>
           ))}
         </NavGroup>
@@ -383,7 +378,7 @@ export function Sidebar() {
             onClick={() => router.push('/brand/edit')}
             title="Brand setup"
             className={cn(
-              'flex w-full items-center rounded-lg border border-border bg-card py-2 text-left font-medium text-foreground transition-colors hover:bg-muted/60',
+              'flex h-8 w-full items-center rounded-lg border border-border bg-background text-left font-medium text-foreground transition-colors hover:bg-muted/60',
               collapsed ? 'justify-center px-1 text-[11px]' : 'gap-2 px-2.5 text-[12px]',
             )}
           >
@@ -404,7 +399,7 @@ export function Sidebar() {
             </div>
           </div>
 
-          <Button onClick={() => router.push('/pricing')} className={cn('h-9 min-h-9 text-xs', collapsed ? 'w-full px-0' : 'w-full')}>
+          <Button onClick={() => router.push('/pricing')} size="sm" className={cn('w-full', collapsed && 'px-0')}>
             Upgrade
           </Button>
         </div>

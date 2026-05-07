@@ -5,6 +5,8 @@ import { useRef, useState } from 'react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+export type LiquidMetalSize = 'xs' | 'sm' | 'default' | 'lg'
+
 interface LiquidMetalButtonProps {
   children?: React.ReactNode
   label?: string
@@ -13,11 +15,20 @@ interface LiquidMetalButtonProps {
   className?: string
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
+  size?: LiquidMetalSize
   onClick?: React.MouseEventHandler<HTMLButtonElement>
+}
+
+const SIZE_CLASS: Record<LiquidMetalSize, string> = {
+  xs: 'h-7 px-3 text-xs rounded-lg',
+  sm: 'h-8 px-3 text-[13px] rounded-lg',
+  default: 'h-9 px-4 text-sm rounded-lg',
+  lg: 'h-11 px-5 text-sm rounded-xl',
 }
 
 /**
  * Primary CTA — Behance-style blue gradient (tokens in globals.css).
+ * Sizes are aligned with Button variants so the primary and secondary CTAs match in height.
  */
 export function LiquidMetalButton({
   children,
@@ -28,6 +39,7 @@ export function LiquidMetalButton({
   className,
   disabled = false,
   type = 'button',
+  size = 'default',
 }: LiquidMetalButtonProps) {
   const [ripples, setRipples] = useState<Array<{ x: number; y: number; id: number }>>([])
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -58,12 +70,13 @@ export function LiquidMetalButton({
       onClick={handleClick}
       disabled={disabled}
       className={cn(
-        'relative overflow-hidden rounded-xl px-5 py-2.5 font-medium text-white shadow-md transition-transform duration-200',
-        'hover:brightness-105 hover:shadow-lg active:scale-[0.99]',
+        'group/button relative overflow-hidden font-medium text-white shadow-sm transition-transform duration-150',
+        'hover:brightness-105 hover:shadow-md active:translate-y-px',
         'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ring)]',
         'disabled:pointer-events-none disabled:opacity-50',
-        fullWidth ? 'w-full' : 'inline-flex min-h-11 min-w-[120px] items-center justify-center',
-        className
+        SIZE_CLASS[size],
+        fullWidth ? 'w-full inline-flex items-center justify-center' : 'inline-flex items-center justify-center',
+        className,
       )}
       style={{
         backgroundImage: 'var(--gradient-cta)',
@@ -71,7 +84,7 @@ export function LiquidMetalButton({
       }}
       aria-label={typeof label === 'string' ? label : undefined}
     >
-      <span className="relative z-[1] inline-flex items-center justify-center gap-2">{content}</span>
+      <span className="relative z-[1] inline-flex items-center justify-center gap-1.5 [&_svg]:size-4 [&_svg]:shrink-0">{content}</span>
       {ripples.map((r) => (
         <span
           key={r.id}

@@ -78,15 +78,15 @@ export function SidebarFooter({ className, ...props }: React.ComponentProps<'div
 }
 
 export function SidebarGroup({ className, ...props }: React.ComponentProps<'section'>) {
-  return <section data-slot="sidebar-group" className={cn('relative py-0.5', className)} {...props} />
+  return <section data-slot="sidebar-group" className={cn('relative py-1', className)} {...props} />
 }
 
-export function SidebarGroupLabel({ className, ...props }: React.ComponentProps<'p'>) {
+export function SidebarGroupLabel({ className, ...props }: React.ComponentProps<'div'>) {
   return (
-    <p
+    <div
       data-slot="sidebar-group-label"
       className={cn(
-        'mb-1 pl-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-opacity group-data-[state=collapsed]/sidebar:opacity-0',
+        'mb-1 flex h-7 items-center gap-2 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground transition-opacity group-data-[state=collapsed]/sidebar:opacity-0',
         className,
       )}
       {...props}
@@ -95,7 +95,7 @@ export function SidebarGroupLabel({ className, ...props }: React.ComponentProps<
 }
 
 export function SidebarGroupContent({ className, ...props }: React.ComponentProps<'div'>) {
-  return <div data-slot="sidebar-group-content" className={cn('space-y-0.5 pl-1', className)} {...props} />
+  return <div data-slot="sidebar-group-content" className={cn('space-y-0.5', className)} {...props} />
 }
 
 export function SidebarMenu({ className, ...props }: React.ComponentProps<'nav'>) {

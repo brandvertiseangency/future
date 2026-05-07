@@ -15,7 +15,7 @@ export default function BrandEditPage() {
           variant="compact"
           title={
             <>
-              Brand <span className="text-highlight">setup</span>
+              Brand <span className="text-pull text-primary">setup</span>
             </>
           }
           description="Edit identity, audience, visuals, and channel defaults. Changes apply across the studio, calendar, and agents."

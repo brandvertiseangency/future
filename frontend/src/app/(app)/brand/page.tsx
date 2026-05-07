@@ -60,7 +60,7 @@ export default function BrandOverviewPage() {
           variant="compact"
           title={
             <>
-              <span className="text-highlight">Brand</span> overview
+              <span className="text-pull text-primary">Brand</span> overview
             </>
           }
           description="Read-only summary of your default brand. Changes apply across generation, calendar, and agents."

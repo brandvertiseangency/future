@@ -117,7 +117,7 @@ function GenerationQueueInner() {
             )
           ) : (
             <>
-              Generating <span className="text-highlight">images</span>
+              Generating <span className="text-pull text-primary">images</span>
             </>
           )
         }

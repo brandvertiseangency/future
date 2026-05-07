@@ -326,7 +326,7 @@ export default function AssetsPage() {
         <div className="mb-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <PageHeader
             variant="compact"
-            title="Asset library"
+            title={<>Asset <span className="text-pull text-primary">library</span></>}
             description="Your generated content and brand products."
           />
           <div className="flex flex-wrap items-center gap-2">

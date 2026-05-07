@@ -88,7 +88,7 @@ export default function CalendarContentPage() {
     <PageContainer className="max-w-7xl space-y-6">
       <PageHeader
         variant="hero"
-        title="Calendar content studio"
+        title={<>Content <span className="text-pull text-primary">studio</span></>}
         description="All generated calendar content is saved here. Review post details and generate each post one-by-one."
       />
 

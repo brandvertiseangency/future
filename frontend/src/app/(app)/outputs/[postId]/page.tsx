@@ -118,7 +118,7 @@ export default function OutputDetailPage() {
 
       <PageHeader
         variant="compact"
-        title="Output detail"
+        title={<>Output <span className="text-pull text-primary">detail</span></>}
         description={`${post.platform} · Version ${displayVersion?.version_number ?? 1}`}
       />
 

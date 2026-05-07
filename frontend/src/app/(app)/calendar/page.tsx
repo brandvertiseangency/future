@@ -236,7 +236,7 @@ export default function CalendarPage() {
       />
       <PageHeader
         variant="hero"
-        title={<>Review content <span className="text-highlight">calendar</span></>}
+        title={<>Review content <span className="text-pull text-primary">calendar</span></>}
         description="Review, refine, and approve your content ideas before scheduling."
         actions={
           <div className="flex flex-wrap items-center gap-2">

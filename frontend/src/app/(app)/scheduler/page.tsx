@@ -521,7 +521,7 @@ export default function SchedulerPage() {
         variant="compact"
         title={
           <>
-            Content <span className="text-highlight">scheduler</span>
+            Content <span className="text-pull text-primary">scheduler</span>
           </>
         }
         description="Drag and drop posts into calendar slots and publish confidently."

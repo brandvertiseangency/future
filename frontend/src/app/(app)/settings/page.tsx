@@ -207,7 +207,11 @@ export default function SettingsPage() {
         title="Configure your workspace settings"
         description="Profile, brand identity, billing, notifications, and security live in one place."
       />
-      <PageHeader variant="compact" title="Settings" description="Manage profile, brand identity, billing, notifications, and security." />
+      <PageHeader
+        variant="compact"
+        title={<>Workspace <span className="text-pull text-primary">settings</span></>}
+        description="Manage profile, brand identity, billing, notifications, and security."
+      />
 
       <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
         <TabsList className="grid h-auto w-full max-w-3xl grid-cols-2 gap-1 rounded-xl border border-border/65 bg-card/70 p-1 backdrop-blur-sm sm:grid-cols-5">

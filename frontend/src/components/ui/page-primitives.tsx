@@ -35,19 +35,20 @@ export function PageHeader({
     <div
       className={cn(
         'flex items-start justify-between gap-4',
-        isHero ? 'mb-8 md:mb-10' : isCompact ? 'mb-5 md:mb-6' : 'mb-8 md:mb-10',
+        isHero ? 'mb-7 md:mb-9' : isCompact ? 'mb-5 md:mb-6' : 'mb-6 md:mb-8',
       )}
     >
-      <div className={cn('min-w-0', isHero ? 'max-w-3xl' : 'max-w-3xl')}>
+      <div className="min-w-0 max-w-3xl">
         {eyebrow && (
           <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</div>
         )}
         <h1
           className={cn(
-            'tracking-tight text-foreground',
-            isHero && 'font-display text-3xl font-normal md:text-[2.25rem] md:leading-[1.15]',
-            !isHero && !isCompact && 'text-[28px] font-semibold md:text-[36px] md:leading-[1.1]',
-            isCompact && 'text-xl font-semibold md:text-2xl',
+            // Inter base + DM Serif italic accents via <span class="text-pull">…</span>
+            'font-sans font-semibold tracking-tight text-foreground',
+            isHero && 'text-[28px] leading-[1.15] md:text-[34px]',
+            !isHero && !isCompact && 'text-2xl leading-[1.2] md:text-[28px]',
+            isCompact && 'text-xl leading-[1.2] md:text-[22px]',
           )}
         >
           {title}
@@ -56,7 +57,7 @@ export function PageHeader({
           <p
             className={cn(
               'leading-relaxed text-muted-foreground',
-              isHero ? 'mt-3 text-base md:text-[17px]' : isCompact ? 'mt-1.5 text-sm' : 'mt-3 text-base md:text-[17px]',
+              isHero ? 'mt-2.5 text-[15px] md:text-base' : isCompact ? 'mt-1.5 text-sm' : 'mt-2 text-[14px] md:text-[15px]',
             )}
           >
             {description}
