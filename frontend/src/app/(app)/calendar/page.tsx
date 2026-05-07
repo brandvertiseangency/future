@@ -1,537 +1,596 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 import {
-  getCoreRowModel,
-  useReactTable,
-  flexRender,
-  createColumnHelper,
-} from '@tanstack/react-table'
-import { Check, Sparkles, RefreshCcw, Pencil, Search, LayoutGrid, Rows3 } from 'lucide-react'
+  Check,
+  Sparkles,
+  Search,
+  Filter,
+  Calendar,
+  MoreHorizontal,
+  CheckCheck,
+  ChevronRight,
+  X,
+  Archive,
+  ThumbsDown,
+} from 'lucide-react'
 import useSWR, { useSWRConfig } from 'swr'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { apiCall } from '@/lib/api'
-import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
-import { DataTableShell } from '@/components/ui/data-table-shell'
-import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
+import { PageContainer } from '@/components/ui/page-primitives'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
-import { PageIntroModal } from '@/components/app/page-intro-modal'
-import { CalendarWorkflowStepper } from '@/components/app/calendar-workflow-stepper'
 import { toast } from 'sonner'
-import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
 import { displayCaption } from '@/lib/caption'
+import { SocialIcon } from '@/components/ui/social-icon'
+
+type PostStatus = 'draft' | 'needs_review' | 'approved' | 'rejected' | 'scheduled' | 'published' | 'failed' | 'archived'
 
 type CalendarRow = {
   id: string
   day: string
+  rawDate: Date | null
   type: string
   idea: string
   caption: string
-  status: 'draft' | 'approved' | 'scheduled' | 'published' | 'failed'
-  approvalStatus?: 'pending' | 'approved'
+  status: PostStatus
+  approvalStatus?: 'pending' | 'approved' | 'rejected'
   platform: string
+  pillar?: string
+  imageUrl?: string
 }
 
-const fetcher = (url: string) => apiCall<{ posts?: Array<{ id: string; title?: string; content_type?: string; caption?: string; status?: CalendarRow['status']; approval_status?: CalendarRow['approvalStatus']; platform?: string; scheduled_at?: string }> }>(url)
+const STATUS_TABS = [
+  { id: 'all', label: 'All Ideas' },
+  { id: 'needs_review', label: 'Needs Review' },
+  { id: 'approved', label: 'Approved' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'draft', label: 'Draft' },
+  { id: 'archived', label: 'Archived' },
+] as const
 
-export default function CalendarPage() {
+type TabId = (typeof STATUS_TABS)[number]['id']
+
+const STATUS_COLORS: Record<string, string> = {
+  approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  needs_review: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  draft: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  rejected: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20',
+  scheduled: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/20',
+  published: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20',
+  archived: 'bg-muted text-muted-foreground border-border',
+}
+
+const STATUS_ICONS: Record<string, React.ReactNode> = {
+  approved: <Check size={11} strokeWidth={2.5} />,
+  needs_review: <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />,
+  draft: <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />,
+  rejected: <X size={11} strokeWidth={2.5} />,
+  scheduled: <span className="h-1.5 w-1.5 rounded-full bg-purple-500" />,
+  published: <Check size={11} strokeWidth={2.5} />,
+  archived: <Archive size={11} />,
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const colorClass = STATUS_COLORS[status] ?? 'bg-muted text-muted-foreground border-border'
+  const label = status === 'needs_review' ? 'Needs Review' : status.charAt(0).toUpperCase() + status.slice(1)
+  return (
+    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold', colorClass)}>
+      {STATUS_ICONS[status]}
+      {label}
+    </span>
+  )
+}
+
+function getEffectiveStatus(status?: string, approvalStatus?: string): PostStatus {
+  if (approvalStatus === 'approved') return 'approved'
+  if (approvalStatus === 'rejected') return 'rejected'
+  if (!status || status === 'draft') return approvalStatus === 'pending' ? 'needs_review' : 'draft'
+  return (status as PostStatus) || 'draft'
+}
+
+const fetcher = (url: string) =>
+  apiCall<{ posts?: Array<{ id: string; title?: string; content_type?: string; caption?: string; status?: string; approval_status?: string; platform?: string; scheduled_at?: string; image_url?: string; content_pillar?: string }> }>(url)
+
+function CalendarPageInner() {
   const { mutate: mutateKeys } = useSWRConfig()
+  const searchParams = useSearchParams()
+  // planId param is available if navigated from generate page
+  const _planId = searchParams.get('planId')
+
   const { data, mutate } = useSWR('/api/posts?limit=100', fetcher, { revalidateOnFocus: false })
   const invalidatePostCaches = useCallback(
     () => mutateKeys((key) => typeof key === 'string' && key.startsWith('/api/posts')),
-    [mutateKeys]
+    [mutateKeys],
   )
-  const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table')
-  const [selected, setSelected] = useState<CalendarRow | null>(null)
-  const [editedIdea, setEditedIdea] = useState('')
-  const [editedCaption, setEditedCaption] = useState('')
-  const [editedProduct, setEditedProduct] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [bulkSaving, setBulkSaving] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'draft' | 'approved' | 'scheduled' | 'published' | 'failed'
-  >('all')
+
+  const [activeTab, setActiveTab] = useState<TabId>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
-  const pageSize = 10
+  const [selected, setSelected] = useState<CalendarRow | null>(null)
+  const [editedCaption, setEditedCaption] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [bulkSaving, setBulkSaving] = useState(false)
+  const pageSize = 8
 
+  // Date range display (approximate — first and last scheduled date)
   const rows: CalendarRow[] = useMemo(() => {
     return (data?.posts ?? []).map((post) => ({
       id: post.id,
-      day: post.scheduled_at ? new Date(post.scheduled_at).toLocaleDateString() : 'TBD',
+      day: post.scheduled_at ? new Date(post.scheduled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD',
+      rawDate: post.scheduled_at ? new Date(post.scheduled_at) : null,
       type: post.content_type ?? 'post',
       idea: post.title ?? 'Untitled idea',
       caption: post.caption ?? '',
-      status: getEffectivePostStatus(post.status, post.approval_status),
-      approvalStatus: post.approval_status ?? 'pending',
+      status: getEffectiveStatus(post.status, post.approval_status),
+      approvalStatus: (post.approval_status as CalendarRow['approvalStatus']) ?? 'pending',
       platform: post.platform ?? 'instagram',
+      pillar: post.content_pillar ?? undefined,
+      imageUrl: post.image_url ?? undefined,
     }))
   }, [data?.posts])
-  const hasApprovedOrScheduled = rows.some((row) => row.status === 'approved' || row.status === 'scheduled' || row.status === 'published')
 
   const statusCounts = useMemo(() => {
-    const c = { all: rows.length, draft: 0, approved: 0, scheduled: 0, published: 0, failed: 0 }
+    const c: Record<TabId, number> = { all: rows.length, needs_review: 0, approved: 0, rejected: 0, draft: 0, archived: 0 }
     for (const r of rows) {
-      if (r.status === 'draft') c.draft++
-      else if (r.status === 'approved') c.approved++
-      else if (r.status === 'scheduled') c.scheduled++
-      else if (r.status === 'published') c.published++
-      else if (r.status === 'failed') c.failed++
+      if (r.status === 'needs_review') c.needs_review++
+      else if (r.status === 'approved' || r.status === 'scheduled' || r.status === 'published') c.approved++
+      else if (r.status === 'rejected') c.rejected++
+      else if (r.status === 'archived') c.archived++
+      else c.draft++
     }
     return c
   }, [rows])
 
+  // Content mix for summary donut
+  const contentMix = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const r of rows) {
+      const k = r.pillar ?? r.type ?? 'Other'
+      counts[k] = (counts[k] ?? 0) + 1
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+  }, [rows])
+
   const filteredRows = useMemo(() => {
     let r = rows
-    if (statusFilter !== 'all') r = r.filter((x) => x.status === statusFilter)
+    if (activeTab !== 'all') {
+      if (activeTab === 'approved') {
+        r = r.filter((x) => x.status === 'approved' || x.status === 'scheduled' || x.status === 'published')
+      } else {
+        r = r.filter((x) => x.status === activeTab)
+      }
+    }
     const q = searchQuery.trim().toLowerCase()
     if (q) {
       r = r.filter((row) =>
-        [row.idea, displayCaption(row.caption, ''), row.platform, row.type, row.day].join(' ').toLowerCase().includes(q),
+        [row.idea, displayCaption(row.caption, ''), row.platform, row.type, row.pillar ?? ''].join(' ').toLowerCase().includes(q),
       )
     }
     return r
-  }, [rows, statusFilter, searchQuery])
+  }, [rows, activeTab, searchQuery])
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize))
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * pageSize
-    return filteredRows.slice(start, start + pageSize)
-  }, [filteredRows, page, pageSize])
+  const paginatedRows = useMemo(() => filteredRows.slice((page - 1) * pageSize, page * pageSize), [filteredRows, page])
 
-  useEffect(() => {
-    setPage(1)
-  }, [statusFilter, searchQuery])
-
-  const approvedPct = rows.length ? Math.round(((statusCounts.approved + statusCounts.scheduled + statusCounts.published) / rows.length) * 100) : 0
-
-  const columnHelper = createColumnHelper<CalendarRow>()
-  const columns = [
-    columnHelper.accessor('day', { header: 'Day', cell: (info) => <span className="text-sm text-muted-foreground">{info.getValue()}</span> }),
-    columnHelper.accessor('type', { header: 'Type', cell: (info) => <span className="capitalize text-sm text-foreground">{info.getValue()}</span> }),
-    columnHelper.accessor('idea', { header: 'Idea', cell: (info) => <span className="text-sm text-foreground">{info.getValue()}</span> }),
-    columnHelper.accessor('caption', {
-      header: 'Caption',
-      cell: (info) => (
-        <span className="line-clamp-2 max-w-[min(280px,32vw)] text-sm leading-snug text-muted-foreground">
-          {displayCaption(String(info.getValue() ?? ''), '—')}
-        </span>
-      ),
-    }),
-    columnHelper.accessor('status', {
-      header: 'Status',
-      cell: (info) => (
-        <StatusBadge tone={getPostStatusTone(info.getValue())}>
-          <span title={getPostStatusHint(info.getValue())}>{info.getValue()}</span>
-        </StatusBadge>
-      ),
-    }),
-    columnHelper.display({
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <button
-            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
-            onClick={(e) => { e.stopPropagation(); selectRow(row.original) }}
-          >
-            <Pencil className="h-3 w-3" />
-          </button>
-          <button
-            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
-            onClick={(e) => { e.stopPropagation(); void approveById(row.original) }}
-          >
-            <Check className="h-3 w-3" />
-          </button>
-          <button
-            className="rounded border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
-            onClick={(e) => { e.stopPropagation(); }}
-          >
-            <RefreshCcw className="h-3 w-3" />
-          </button>
-        </div>
-      ),
-    }),
-  ]
-  const table = useReactTable({ data: paginatedRows, columns, getCoreRowModel: getCoreRowModel() })
+  useEffect(() => { setPage(1) }, [activeTab, searchQuery])
 
   const selectRow = (row: CalendarRow) => {
     setSelected(row)
-    setEditedIdea(row.idea)
     setEditedCaption(displayCaption(row.caption, ''))
-    setEditedProduct('')
   }
-
-  const approve = useCallback(async () => {
-    if (!selected) return
-    setSaving(true)
-    try {
-      await apiCall(`/api/posts/${selected.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          caption: editedCaption,
-          approval_status: 'approved',
-        }),
-      })
-      setSelected((prev) => prev ? { ...prev, caption: editedCaption, status: 'approved', approvalStatus: 'approved' } : prev)
-      await mutate()
-      await invalidatePostCaches()
-      toast.success('Post approved')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to approve post')
-    } finally {
-      setSaving(false)
-    }
-  }, [selected, editedCaption, mutate, invalidatePostCaches])
 
   const approveById = useCallback(async (row: CalendarRow) => {
     setSaving(true)
     try {
-      await apiCall(`/api/posts/${row.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ approval_status: 'approved' }),
-      })
-      if (selected?.id === row.id) {
-        setSelected((prev) => prev ? { ...prev, status: 'approved', approvalStatus: 'approved' } : prev)
-      }
-      await mutate()
-      await invalidatePostCaches()
+      await apiCall(`/api/posts/${row.id}`, { method: 'PATCH', body: JSON.stringify({ approval_status: 'approved' }) })
+      if (selected?.id === row.id) setSelected((p) => p ? { ...p, status: 'approved', approvalStatus: 'approved' } : p)
+      await mutate(); await invalidatePostCaches()
       toast.success('Post approved')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to approve post')
-    } finally {
-      setSaving(false)
-    }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') } finally { setSaving(false) }
   }, [selected, mutate, invalidatePostCaches])
+
+  const rejectById = useCallback(async (row: CalendarRow) => {
+    setSaving(true)
+    try {
+      await apiCall(`/api/posts/${row.id}`, { method: 'PATCH', body: JSON.stringify({ approval_status: 'rejected' }) })
+      if (selected?.id === row.id) setSelected((p) => p ? { ...p, status: 'rejected', approvalStatus: 'rejected' } : p)
+      await mutate(); await invalidatePostCaches()
+      toast.success('Post rejected')
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') } finally { setSaving(false) }
+  }, [selected, mutate, invalidatePostCaches])
+
+  const saveCaption = useCallback(async () => {
+    if (!selected) return
+    setSaving(true)
+    try {
+      await apiCall(`/api/posts/${selected.id}`, { method: 'PATCH', body: JSON.stringify({ caption: editedCaption, approval_status: 'approved' }) })
+      setSelected((p) => p ? { ...p, caption: editedCaption, status: 'approved', approvalStatus: 'approved' } : p)
+      await mutate(); await invalidatePostCaches()
+      toast.success('Post approved')
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') } finally { setSaving(false) }
+  }, [selected, editedCaption, mutate, invalidatePostCaches])
 
   const approveAll = useCallback(async () => {
     if (!filteredRows.length) return
     setBulkSaving(true)
     try {
-      await Promise.all(
-        filteredRows.map((row) =>
-          apiCall(`/api/posts/${row.id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ approval_status: 'approved' }),
-          })
-        )
-      )
-      await mutate()
-      await invalidatePostCaches()
-      toast.success('All posts approved')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to approve all posts')
-    } finally {
-      setBulkSaving(false)
-    }
+      await Promise.all(filteredRows.map((r) => apiCall(`/api/posts/${r.id}`, { method: 'PATCH', body: JSON.stringify({ approval_status: 'approved' }) })))
+      await mutate(); await invalidatePostCaches()
+      toast.success(`${filteredRows.length} posts approved`)
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed') } finally { setBulkSaving(false) }
   }, [filteredRows, mutate, invalidatePostCaches])
 
-  return (
-    <PageContainer className="space-y-6">
-      <PageIntroModal
-        pageKey="calendar"
-        title="Review and approve your content"
-        description="Review each planned post, edit captions, and approve items before creative generation."
-      />
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div />
-        <CalendarWorkflowStepper />
-      </div>
-      <PageHeader
-        variant="hero"
-        title={<>Review content <span className="text-pull text-primary">calendar</span></>}
-        description="Review, refine, and approve your content ideas before scheduling."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex rounded-full border border-border bg-muted/40 p-1">
-              <button
-                type="button"
-                onClick={() => setViewMode('table')}
-                className={cn(
-                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                  viewMode === 'table' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                List view
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('calendar')}
-                className={cn(
-                  'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors',
-                  viewMode === 'calendar' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                Grid view
-              </button>
-            </div>
-            <Link href="/calendar/generate">
-              <Button>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate plan
-              </Button>
-            </Link>
-          </div>
-        }
-      />
+  const dateRange = useMemo(() => {
+    const dated = rows.filter((r) => r.rawDate).sort((a, b) => (a.rawDate?.getTime() ?? 0) - (b.rawDate?.getTime() ?? 0))
+    if (!dated.length) return null
+    const fmt = (d: Date) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return dated.length === 1 ? fmt(dated[0].rawDate!) : `${fmt(dated[0].rawDate!)} – ${fmt(dated[dated.length - 1].rawDate!)}`
+  }, [rows])
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-        {(
-          [
-            { id: 'all' as const, label: 'All ideas' },
-            { id: 'draft' as const, label: 'Draft' },
-            { id: 'approved' as const, label: 'Approved' },
-            { id: 'scheduled' as const, label: 'Scheduled' },
-            { id: 'published' as const, label: 'Published' },
-            { id: 'failed' as const, label: 'Failed' },
-          ] as const
-        ).map((tab) => {
-          const count = tab.id === 'all' ? statusCounts.all : statusCounts[tab.id]
-          const active = statusFilter === tab.id
+  const hasApproved = rows.some((r) => r.status === 'approved' || r.status === 'scheduled' || r.status === 'published')
+
+  return (
+    <PageContainer className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Review Content Calendar</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Review, refine and approve your content ideas before scheduling.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {dateRange && (
+            <div className="flex items-center gap-1.5 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <Calendar size={13} />
+              {dateRange}
+            </div>
+          )}
+          <Link href="/calendar/generate">
+            <Button>
+              <Sparkles className="mr-2 h-4 w-4" />
+              Generate Plan
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Status tabs */}
+      <div className="flex items-center gap-0 border-b border-border overflow-x-auto scrollbar-hide">
+        {STATUS_TABS.map(({ id, label }) => {
+          const count = id === 'all' ? statusCounts.all : statusCounts[id] ?? 0
           return (
             <button
-              key={tab.id}
+              key={id}
               type="button"
-              onClick={() => setStatusFilter(tab.id)}
+              onClick={() => setActiveTab(id)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                active ? 'border-primary bg-primary/10 text-foreground' : 'border-transparent text-muted-foreground hover:bg-muted/70',
+                'flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap',
+                activeTab === id
+                  ? 'border-primary text-foreground'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               )}
             >
-              {tab.label} ({count})
+              {label}
+              <span className={cn('rounded-full px-1.5 py-0.5 text-[11px] font-bold', activeTab === id ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground')}>
+                {count}
+              </span>
             </button>
           )
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start">
-        <div className="min-w-0 space-y-4">
-          <SectionCard
-            className="app-card-elevated"
-            title="Content ideas"
-            subtitle="Click a row to edit in the side panel."
-            actions={
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="relative min-w-[180px] max-w-[240px]">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search ideas…"
-                    className="h-9 w-full rounded-lg border border-border bg-background py-1 pl-8 pr-2 text-xs outline-none focus:border-primary"
-                  />
-                </div>
-                <div className="inline-flex rounded-lg border border-border p-0.5">
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                    aria-label="List"
-                    onClick={() => setViewMode('table')}
-                  >
-                    <Rows3 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
-                    aria-label="Grid"
-                    onClick={() => setViewMode('calendar')}
-                  >
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            }
-          >
-            {!hasApprovedOrScheduled && rows.length > 0 ? (
-              <div className="mb-3 rounded-lg border border-amber-300/60 bg-card/75 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm dark:border-amber-700/50 dark:bg-card/60 dark:text-amber-200 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-                No approved content yet. Approve one or more posts to unlock scheduling.
-              </div>
-            ) : null}
-            {!data ? (
-              <div className="space-y-2">
-                <SkeletonCard lines={4} />
-                <SkeletonCard lines={4} />
-              </div>
-            ) : null}
-            {viewMode === 'table' ? (
-              filteredRows.length === 0 ? (
-                <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-muted/20 p-10 text-center">
-                  <p className="text-sm font-medium text-foreground">No matching ideas</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Try another tab or clear search.</p>
-                </div>
-              ) : (
-                <>
-                  <DataTableShell>
-                    <thead>
-                      {table.getHeaderGroups().map((headerGroup) => (
-                        <tr key={headerGroup.id}>
-                          {headerGroup.headers.map((header) => (
-                            <th key={header.id}>{flexRender(header.column.columnDef.header, header.getContext())}</th>
-                          ))}
-                        </tr>
-                      ))}
-                    </thead>
-                    <tbody>
-                      {table.getRowModel().rows.map((row) => (
-                        <tr
-                          key={row.id}
-                          className={cn('cursor-pointer', selected?.id === row.original.id && 'bv-row-selected')}
-                          onClick={() => selectRow(row.original)}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </DataTableShell>
-                  <div className="mt-4 flex flex-col gap-2 border-t border-border pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                    <span>
-                      {filteredRows.length === 0
-                        ? 'No results'
-                        : `Showing ${(page - 1) * pageSize + 1} to ${Math.min(page * pageSize, filteredRows.length)} of ${filteredRows.length} results`}
-                    </span>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="secondary" size="sm" className="h-8" disabled={page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
-                        Previous
-                      </Button>
-                      <span className="text-foreground">
-                        Page {page} of {Math.max(totalPages, 1)}
-                      </span>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        className="h-8"
-                        disabled={page >= totalPages}
-                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      >
-                        Next
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )
-            ) : filteredRows.length === 0 ? (
-              <div className="rounded-[var(--radius-card)] border border-dashed border-border bg-muted/20 p-10 text-center text-sm text-muted-foreground">
-                No ideas match this filter.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                {filteredRows.map((row) => (
-                  <button
-                    key={row.id}
-                    type="button"
-                    onClick={() => selectRow(row)}
-                    className="app-card-elevated border border-border/90 p-4 text-left"
-                  >
-                    <p className="text-xs text-muted-foreground">{row.day}</p>
-                    <p className="mt-1 text-sm font-medium text-foreground">{row.idea}</p>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{displayCaption(row.caption, '—')}</p>
-                  </button>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <Link href="/calendar/generate">
-              <Button variant="secondary">Regenerate plan</Button>
-            </Link>
-            <Button onClick={approveAll} disabled={bulkSaving || filteredRows.length === 0}>
-              {bulkSaving ? 'Approving…' : `Approve all filtered (${filteredRows.length})`}
-            </Button>
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_280px] xl:items-start">
+        {/* ── Left: table ── */}
+        <div className="space-y-4">
+          {/* Search + filter bar */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by content, pillar, platform…"
+                className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <button
+              type="button"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm font-medium text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <Filter size={14} /> Filter
+            </button>
           </div>
+
+          {/* Table */}
+          {!data ? (
+            <div className="space-y-2">
+              <SkeletonCard lines={4} />
+              <SkeletonCard lines={4} />
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/20 py-16 text-center">
+              <p className="text-sm font-semibold text-foreground">No content ideas found</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try a different filter or generate a new plan.</p>
+              <Link href="/calendar/generate" className="mt-4">
+                <Button size="sm">
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Generate Plan
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-hidden rounded-xl border border-border">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Content Idea
+                      </th>
+                      <th className="hidden px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground md:table-cell">
+                        Pillar
+                      </th>
+                      <th className="hidden px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground sm:table-cell">
+                        Platform
+                      </th>
+                      <th className="px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        Status
+                      </th>
+                      <th className="hidden px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground lg:table-cell">
+                        Date
+                      </th>
+                      <th className="w-10 px-3 py-3" />
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {paginatedRows.map((row) => (
+                      <tr
+                        key={row.id}
+                        onClick={() => selectRow(row)}
+                        className={cn(
+                          'cursor-pointer transition-colors hover:bg-muted/30',
+                          selected?.id === row.id && 'bg-primary/5',
+                        )}
+                      >
+                        <td className="px-4 py-3">
+                          <p className="text-sm font-medium text-foreground leading-snug">{row.idea}</p>
+                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{displayCaption(row.caption, '')}</p>
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+                              {row.type}
+                            </span>
+                            {row.pillar && (
+                              <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                {row.pillar}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="hidden px-3 py-3 md:table-cell">
+                          <span className="text-sm text-muted-foreground">{row.pillar ?? '—'}</span>
+                        </td>
+                        <td className="hidden px-3 py-3 sm:table-cell">
+                          <div className="flex items-center gap-1.5">
+                            <SocialIcon platform={row.platform} size={15} />
+                            <span className="text-xs font-medium capitalize text-muted-foreground">{row.platform}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3">
+                          <StatusBadge status={row.status} />
+                        </td>
+                        <td className="hidden px-3 py-3 lg:table-cell">
+                          <span className="text-xs text-muted-foreground">{row.day}</span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => void approveById(row)}
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-500 transition-colors"
+                              title="Approve"
+                            >
+                              <Check size={12} strokeWidth={2.5} />
+                            </button>
+                            <button
+                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
+                              title="More options"
+                            >
+                              <MoreHorizontal size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination + bulk */}
+              <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
+                <span>
+                  Showing {Math.min((page - 1) * pageSize + 1, filteredRows.length)}–{Math.min(page * pageSize, filteredRows.length)} of {filteredRows.length} results
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Previous</Button>
+                  <div className="flex gap-1">
+                    {Array.from({ length: Math.min(totalPages, 4) }, (_, i) => i + 1).map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setPage(n)}
+                        className={cn('h-8 w-8 rounded-lg text-sm font-medium transition-colors', page === n ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground')}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                    {totalPages > 4 && <span className="px-1 text-muted-foreground">…</span>}
+                  </div>
+                  <Button variant="secondary" size="sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button>
+                </div>
+              </div>
+
+              {/* Bulk action */}
+              <div className="flex justify-end">
+                <Button onClick={approveAll} disabled={bulkSaving || filteredRows.length === 0} variant="secondary">
+                  <CheckCheck className="mr-2 h-4 w-4" />
+                  {bulkSaving ? 'Approving…' : `Approve All & Continue →`}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="flex flex-col gap-4 xl:sticky xl:top-24">
-          <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/65 bg-card/82 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Summary</p>
-            <div className="mt-3 flex items-center gap-4">
-              <div
-                className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-border text-xs font-semibold text-foreground"
-                style={{
-                  background: `conic-gradient(var(--primary) ${approvedPct}%, var(--muted) ${approvedPct}% 100%)`,
-                }}
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-card text-center text-[10px] leading-tight">
-                  {rows.length}
-                  <br />
-                  total
+        {/* ── Right: Summary ── */}
+        <div className="space-y-4 xl:sticky xl:top-6">
+          {/* Summary card */}
+          <div className="app-card-elevated p-4 space-y-4">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Summary</p>
+
+            {/* Content mix */}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">Content Mix</p>
+              {/* Simple conic gradient donut */}
+              {rows.length > 0 ? (
+                <div className="flex items-center gap-3">
+                  <div className="relative h-16 w-16 shrink-0">
+                    <svg viewBox="0 0 36 36" className="h-16 w-16 -rotate-90">
+                      {(() => {
+                        const total = rows.length
+                        let offset = 0
+                        const colors = ['#4a7dff', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+                        return contentMix.map(([, count], i) => {
+                          const pct = (count / total) * 100
+                          const stroke = colors[i % colors.length]
+                          const el = (
+                            <circle
+                              key={i}
+                              cx="18" cy="18" r="14"
+                              fill="none"
+                              stroke={stroke}
+                              strokeWidth="6"
+                              strokeDasharray={`${pct * 0.879646} 87.9646`}
+                              strokeDashoffset={-offset * 0.879646}
+                            />
+                          )
+                          offset += pct
+                          return el
+                        })
+                      })()}
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-foreground">{rows.length}</span>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    {contentMix.map(([label, count], i) => {
+                      const colors = ['#4a7dff', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6']
+                      return (
+                        <div key={label} className="flex items-center gap-1.5 text-xs">
+                          <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colors[i % colors.length] }} />
+                          <span className="text-muted-foreground truncate max-w-[90px]">{label}</span>
+                          <span className="ml-auto font-semibold text-foreground">{Math.round((count / rows.length) * 100)}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-              </div>
-              <ul className="min-w-0 flex-1 space-y-1.5 text-xs">
-                {(['approved', 'scheduled', 'draft', 'published', 'failed'] as const).map((k) => (
-                  <li key={k} className="flex justify-between gap-2">
-                    <span className="capitalize text-muted-foreground">{k}</span>
-                    <span className="font-medium text-foreground">{statusCounts[k]}</span>
-                  </li>
+              ) : (
+                <p className="text-xs text-muted-foreground">No content yet.</p>
+              )}
+            </div>
+
+            {/* Status overview */}
+            <div>
+              <p className="mb-2 text-xs font-semibold text-muted-foreground">Status Overview</p>
+              <div className="space-y-1.5">
+                {[
+                  { label: 'Approved', count: statusCounts.approved, color: 'text-emerald-500' },
+                  { label: 'Needs Review', count: statusCounts.needs_review, color: 'text-amber-500' },
+                  { label: 'Draft', count: statusCounts.draft, color: 'text-blue-500' },
+                  { label: 'Rejected', count: statusCounts.rejected, color: 'text-red-500' },
+                  { label: 'Archived', count: statusCounts.archived, color: 'text-muted-foreground' },
+                ].map(({ label, count, color }) => (
+                  <div key={label} className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-muted-foreground">
+                      <span className={cn('font-medium', color)}>{label}</span>
+                    </span>
+                    <span className="font-semibold text-foreground">{count}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
 
-          <NextStepCard
-            dense
-            title={hasApprovedOrScheduled ? 'Ready for scheduling' : 'Approve to continue'}
-            reason={
-              hasApprovedOrScheduled
-                ? 'Approved content can move to the scheduler when you are ready.'
-                : 'Approve ideas you want to produce, then generate assets from the content studio.'
-            }
-            primaryCta={
-              hasApprovedOrScheduled
-                ? { label: 'Open scheduler', href: '/scheduler' }
-                : { label: 'Plan approval', href: '/calendar/review' }
-            }
-            secondaryCta={{ label: 'Generate plan', href: '/calendar/generate' }}
-          />
+          {/* Next step */}
+          <div className="app-card-elevated p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Sparkles size={15} className="text-primary" />
+              <p className="text-sm font-semibold text-foreground">Next Step</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {hasApproved
+                ? 'Looks good! Approve content to move to scheduling.'
+                : 'Review and approve your content ideas to continue to scheduling.'}
+            </p>
+            {hasApproved ? (
+              <Link href="/scheduler">
+                <Button size="sm" className="w-full gap-1.5">
+                  Approve All & Continue <ChevronRight size={13} />
+                </Button>
+              </Link>
+            ) : (
+              <Button size="sm" className="w-full" variant="secondary" onClick={approveAll} disabled={bulkSaving || rows.length === 0}>
+                <CheckCheck size={13} className="mr-1.5" />
+                {bulkSaving ? 'Approving…' : 'Approve All'}
+              </Button>
+            )}
+          </div>
 
-          <SectionCard className="app-card-elevated h-fit" title="Post editor" subtitle="Selected row">
-            {selected ? (
-              <div className="space-y-3">
-                <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                  #{rows.findIndex((r) => r.id === selected.id) + 1} · {selected.platform}
-                </p>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Idea</label>
-                  <input
-                    value={editedIdea}
-                    disabled
-                    className="h-10 w-full rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Caption</label>
-                  <textarea
-                    value={editedCaption}
-                    onChange={(e) => setEditedCaption(e.target.value)}
-                    className="min-h-24 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Product</label>
-                  <input
-                    value={editedProduct}
-                    onChange={(e) => setEditedProduct(e.target.value)}
-                    placeholder="Optional"
-                    className="h-10 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-primary"
-                  />
-                </div>
-                <Button className="w-full" onClick={approve} disabled={saving}>
-                  <Check className="mr-2 h-4 w-4" />
-                  {saving ? 'Approving…' : 'Approve'}
+          {/* Inline editor */}
+          {selected && (
+            <div className="app-card-elevated p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">Edit Post</p>
+                <button type="button" onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground">
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <SocialIcon platform={selected.platform} size={14} />
+                <span className="text-xs font-medium capitalize text-muted-foreground">{selected.platform}</span>
+                <StatusBadge status={selected.status} />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Caption</p>
+                <textarea
+                  value={editedCaption}
+                  onChange={(e) => setEditedCaption(e.target.value)}
+                  className="min-h-24 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button className="flex-1" size="sm" onClick={saveCaption} disabled={saving}>
+                  <Check size={13} className="mr-1.5" />
+                  {saving ? 'Saving…' : 'Approve'}
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => void rejectById(selected)} disabled={saving}>
+                  <ThumbsDown size={13} />
                 </Button>
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Select an idea from the list.</p>
-            )}
-          </SectionCard>
+            </div>
+          )}
         </div>
       </div>
     </PageContainer>
   )
 }
 
+export default function CalendarPage() {
+  return (
+    <Suspense>
+      <CalendarPageInner />
+    </Suspense>
+  )
+}

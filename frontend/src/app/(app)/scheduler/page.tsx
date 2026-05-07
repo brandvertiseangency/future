@@ -1,27 +1,31 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, Suspense } from 'react'
 import Link from 'next/link'
-import { addDays, format, startOfWeek } from 'date-fns'
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors, useDraggable, useDroppable } from '@dnd-kit/core'
 import useSWR, { useSWRConfig } from 'swr'
-import { useSearchParams } from 'next/navigation'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
-import { NextStepCard, PageContainer, PageHeader } from '@/components/ui/page-primitives'
-import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
-import { Button, buttonVariants } from '@/components/ui/button'
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { PageContainer } from '@/components/ui/page-primitives'
+import { Button } from '@/components/ui/button'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
-import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
-import { logUxEvent } from '@/lib/ux-events'
 import { displayCaption } from '@/lib/caption'
+import { getEffectivePostStatus } from '@/lib/post-status'
 import { cn } from '@/lib/utils'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { CalendarClock } from 'lucide-react'
+import { SocialIcon, getPlatformLabel } from '@/components/ui/social-icon'
+import {
+  Filter,
+  MoreHorizontal,
+  Clock,
+  CalendarDays,
+  CheckCircle2,
+  Layers,
+  Sparkles,
+  Edit3,
+  Calendar,
+  X,
+} from 'lucide-react'
 
-const DEFAULT_SLOT_HOUR = 10
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type PostItem = {
   id: string
@@ -31,12 +35,86 @@ type PostItem = {
   status: string
   approval_status?: string
   scheduled_at?: string
-  slot_topic?: string
+  content_type?: string
+  title?: string
+  social_account?: string
 }
 
-type SchedulerMainTab = 'schedule' | 'queue' | 'calendar' | 'posted'
+type SchedulerTab = 'schedule' | 'queue' | 'calendar' | 'posted'
 
-function SchedulerListCard({
+const TABS: { id: SchedulerTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'schedule', label: 'Schedule Content', icon: <Clock size={15} /> },
+  { id: 'queue', label: 'Publishing Queue', icon: <Layers size={15} /> },
+  { id: 'calendar', label: 'Calendar View', icon: <CalendarDays size={15} /> },
+  { id: 'posted', label: 'Posted', icon: <CheckCircle2 size={15} /> },
+]
+
+const SORT_OPTIONS = [
+  { value: 'soonest', label: 'Soonest' },
+  { value: 'latest', label: 'Latest' },
+  { value: 'platform', label: 'Platform' },
+]
+
+// Best time to post heuristic by platform
+const BEST_TIMES: Record<string, { time: string; day: string }> = {
+  instagram: { time: '10:00 AM – 12:00 PM', day: 'Wednesday' },
+  linkedin: { time: '9:00 AM – 11:00 AM', day: 'Tuesday' },
+  facebook: { time: '1:00 PM – 3:00 PM', day: 'Thursday' },
+  twitter: { time: '8:00 AM – 10:00 AM', day: 'Wednesday' },
+  tiktok: { time: '7:00 PM – 9:00 PM', day: 'Friday' },
+}
+
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
+function StatusPill({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    approved: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+    scheduled: 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/20',
+    published: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/20',
+    needs_review: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+    draft: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    rejected: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20',
+    failed: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/20',
+  }
+  const labels: Record<string, string> = {
+    approved: 'Ready to Schedule',
+    needs_review: 'Needs Review',
+    draft: 'Draft',
+  }
+  const colorClass = styles[status] ?? 'bg-muted text-muted-foreground border-border'
+  const label = labels[status] ?? (status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' '))
+  return (
+    <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold', colorClass)}>
+      {label}
+    </span>
+  )
+}
+
+// ─── Schedule button ─────────────────────────────────────────────────────────
+
+function ScheduleButton({ post, onScheduled }: { post: PostItem; onScheduled: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const schedule = async () => {
+    setBusy(true)
+    try {
+      const scheduledAt = post.scheduled_at || new Date(Date.now() + 3600_000).toISOString()
+      await apiCall(`/api/posts/${post.id}`, { method: 'PATCH', body: JSON.stringify({ status: 'scheduled', scheduled_at: scheduledAt }) })
+      toast.success('Post scheduled')
+      onScheduled()
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Failed to schedule') } finally { setBusy(false) }
+  }
+  const eff = getEffectivePostStatus(post.status, post.approval_status)
+  if (eff === 'scheduled' || eff === 'published') return null
+  return (
+    <Button size="sm" disabled={busy || post.approval_status === 'rejected'} onClick={schedule} className="h-8 text-xs">
+      {busy ? 'Scheduling…' : 'Schedule'}
+    </Button>
+  )
+}
+
+// ─── Row item ─────────────────────────────────────────────────────────────────
+
+function PostRow({
   post,
   selected,
   onSelect,
@@ -45,671 +123,415 @@ function SchedulerListCard({
   selected: boolean
   onSelect: () => void
 }) {
-  const cap = displayCaption(post.caption, 'Untitled post')
-  const eff = getEffectivePostStatus(post.status, post.approval_status)
+  const caption = displayCaption(post.caption, post.title ?? 'Untitled post')
+  const status = getEffectivePostStatus(post.status, post.approval_status)
+  const scheduledDate = post.scheduled_at ? new Date(post.scheduled_at) : null
+
   return (
     <div
       className={cn(
-        'rounded-xl border px-3 py-2.5 shadow-[var(--shadow-card)] transition-colors',
-        selected ? 'border-primary bg-primary/5 ring-1 ring-primary/15' : 'border-border/80 bg-card hover:border-primary/30',
+        'flex cursor-pointer items-center gap-4 rounded-xl border px-4 py-3.5 transition-all',
+        selected
+          ? 'border-primary/50 bg-primary/5 ring-1 ring-primary/20'
+          : 'border-border bg-card hover:border-primary/30 hover:bg-muted/20',
       )}
+      onClick={onSelect}
     >
-      <button type="button" onClick={onSelect} className="flex w-full gap-3 text-left">
+      {/* Thumbnail */}
+      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
         {post.image_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.image_url} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" />
+          <img src={post.image_url} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="h-14 w-14 shrink-0 rounded-lg bg-muted" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="line-clamp-2 text-sm font-medium text-foreground">{post.slot_topic || cap}</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] capitalize text-muted-foreground">{post.platform}</span>
-            <StatusBadge tone={getPostStatusTone(eff)}>
-              <span title={getPostStatusHint(eff)}>{eff}</span>
-            </StatusBadge>
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
+            <Layers size={20} />
           </div>
-          {post.scheduled_at ? (
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              {new Date(post.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-            </p>
-          ) : null}
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[13px] font-semibold text-foreground">{caption.split('\n')[0].slice(0, 70) || 'Untitled post'}</p>
+        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{caption.slice(0, 80)}</p>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1">
+            <SocialIcon platform={post.platform} size={13} />
+            <span className="text-[11px] font-medium text-muted-foreground capitalize">
+              {post.social_account ? `@${post.social_account}` : getPlatformLabel(post.platform)}
+            </span>
+          </div>
+          {post.content_type && (
+            <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] capitalize text-muted-foreground">
+              {post.content_type.replace('_', ' ')}
+            </span>
+          )}
         </div>
-      </button>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <Link href={`/outputs/${post.id}`} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'h-8')}>
-          Edit content
-        </Link>
+      </div>
+
+      {/* Schedule for */}
+      <div className="hidden shrink-0 flex-col items-end gap-1 sm:flex">
+        <p className="text-[11px] font-medium text-muted-foreground">Schedule for</p>
+        {scheduledDate ? (
+          <>
+            <p className="text-sm font-semibold text-foreground">
+              {scheduledDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Not set</p>
+        )}
+      </div>
+
+      {/* Status + actions */}
+      <div className="flex shrink-0 flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+        <StatusPill status={status} />
+        <div className="flex items-center gap-1">
+          <ScheduleButton post={post} onScheduled={() => {}} />
+          <button
+            type="button"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors"
+          >
+            <MoreHorizontal size={13} />
+          </button>
+        </div>
       </div>
     </div>
   )
 }
 
-function SchedulerPreviewRail({
-  selectedPost,
-  comment,
-  setComment,
-  scheduling,
-  onSchedule,
-  onReschedule,
-  onUnschedule,
-  onDraft,
-}: {
-  selectedPost?: PostItem
-  comment: string
-  setComment: (v: string) => void
-  scheduling: boolean
-  onSchedule: () => void
-  onReschedule: () => void
-  onUnschedule: () => void
-  onDraft: () => void
-}) {
-  const eff = selectedPost ? getEffectivePostStatus(selectedPost.status, selectedPost.approval_status) : null
-  const published = eff === 'published'
+// ─── Preview panel ────────────────────────────────────────────────────────────
+
+function PreviewPanel({ post, onClose }: { post: PostItem; onClose: () => void }) {
+  const caption = displayCaption(post.caption, post.title ?? '')
+  const scheduledDate = post.scheduled_at ? new Date(post.scheduled_at) : null
+  const bestTime = BEST_TIMES[post.platform?.toLowerCase()] ?? { time: '9:00 AM – 11:00 AM', day: 'Tuesday' }
+
   return (
-    <div className="flex flex-col gap-4 xl:sticky xl:top-24 xl:self-start">
-      <SectionCard className="app-card-elevated" title="Best time to post" subtitle="Heuristic suggestion">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Weekday mornings (9–11) and early evenings (18–20) are strong defaults for most brands. Refine using native analytics for{' '}
-          <span className="font-medium text-foreground">{selectedPost?.platform ?? 'each platform'}</span>.
-        </p>
-      </SectionCard>
-      <SectionCard className="app-card-elevated h-fit" title="Selected post" subtitle="Review before scheduling">
-        {selectedPost ? (
-          <div className="space-y-3">
-            <div className="relative overflow-hidden rounded-lg border border-border bg-muted">
-              {selectedPost.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={selectedPost.image_url}
-                  alt={displayCaption(selectedPost.caption, 'Selected post')}
-                  className="h-52 w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-52 items-center justify-center text-muted-foreground/80">No image</div>
-              )}
-              <div className="pointer-events-none absolute left-2 top-2 rounded bg-card/85 px-2 py-0.5 text-[10px] font-medium capitalize text-foreground shadow-sm">
-                {selectedPost.platform}
+    <div className="app-card-elevated flex flex-col space-y-4 p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Content Preview</p>
+        <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground">
+          <X size={14} />
+        </button>
+      </div>
+
+      {/* Image */}
+      <div className="aspect-square w-full overflow-hidden rounded-xl border border-border bg-muted">
+        {post.image_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={post.image_url} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground/30">
+            <Layers size={40} />
+          </div>
+        )}
+      </div>
+
+      {/* Caption */}
+      {caption && (
+        <div>
+          <p className="text-sm leading-relaxed text-foreground line-clamp-4">{caption}</p>
+        </div>
+      )}
+
+      {/* Scheduling details */}
+      <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Scheduling Details</p>
+        {[
+          {
+            label: 'Platform',
+            value: (
+              <span className="flex items-center gap-1.5">
+                <SocialIcon platform={post.platform} size={14} />
+                <span className="font-medium capitalize">{getPlatformLabel(post.platform)}</span>
+              </span>
+            ),
+          },
+          { label: 'Post Type', value: post.content_type?.replace('_', ' ') ?? 'Image Post' },
+          {
+            label: 'Date',
+            value: scheduledDate
+              ? scheduledDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+              : 'Not set',
+          },
+          {
+            label: 'Time',
+            value: scheduledDate
+              ? scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+              : '—',
+          },
+          { label: 'Time Zone', value: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span className="font-medium text-foreground text-right">{value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Edit content button */}
+      <Link href={`/outputs/${post.id}`}>
+        <Button variant="secondary" size="sm" className="w-full gap-1.5">
+          <Edit3 size={13} /> Edit Content
+        </Button>
+      </Link>
+
+      {/* Best time to post */}
+      <div className="rounded-xl border border-border/60 bg-primary/5 p-3 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <Sparkles size={13} className="text-primary" />
+          <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Best Time to Post</p>
+        </div>
+        <p className="text-[11px] text-muted-foreground">Based on your audience activity</p>
+        <p className="text-sm font-bold text-primary">{bestTime.time}</p>
+        <p className="text-xs text-muted-foreground">{bestTime.day}</p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Calendar View (simple week grid) ────────────────────────────────────────
+
+function CalendarView({ posts }: { posts: PostItem[] }) {
+  const today = new Date()
+  const weekDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() + i)
+    return d
+  })
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="grid min-w-[640px] grid-cols-7 gap-2">
+        {weekDays.map((day) => {
+          const dayPosts = posts.filter((p) => {
+            if (!p.scheduled_at) return false
+            const d = new Date(p.scheduled_at)
+            return d.toDateString() === day.toDateString()
+          })
+          const isToday = day.toDateString() === today.toDateString()
+          return (
+            <div key={day.toISOString()} className="min-h-[120px]">
+              <div className={cn('mb-2 rounded-lg px-2 py-1 text-center text-xs font-semibold', isToday ? 'bg-primary text-primary-foreground' : 'text-muted-foreground')}>
+                <p>{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                <p>{day.getDate()}</p>
+              </div>
+              <div className="space-y-1.5">
+                {dayPosts.map((p) => (
+                  <div key={p.id} className="flex items-center gap-1.5 rounded-lg border border-border bg-card p-2">
+                    <SocialIcon platform={p.platform} size={12} />
+                    <p className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">
+                      {displayCaption(p.caption, 'Post').slice(0, 40)}
+                    </p>
+                  </div>
+                ))}
+                {dayPosts.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-border/40 p-2 text-center text-[10px] text-muted-foreground/40">
+                    Empty
+                  </div>
+                )}
               </div>
             </div>
-            <p className="text-sm text-foreground">{displayCaption(selectedPost.caption, 'No caption')}</p>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <StatusBadge tone={getPostStatusTone(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
-                <span title={getPostStatusHint(getEffectivePostStatus(selectedPost.status, selectedPost.approval_status))}>
-                  {getEffectivePostStatus(selectedPost.status, selectedPost.approval_status)}
-                </span>
-              </StatusBadge>
-              <Link href={`/outputs/${selectedPost.id}`} className={cn(buttonVariants({ variant: 'secondary', size: 'sm' }), 'h-8 shrink-0')}>
-                Edit content
-              </Link>
-            </div>
-            {selectedPost.scheduled_at ? (
-              <p className="text-xs text-muted-foreground">
-                Scheduled:{' '}
-                <span className="font-medium text-foreground">
-                  {new Date(selectedPost.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
-                </span>
-              </p>
-            ) : null}
-            <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Internal note</label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Internal note for this schedule…"
-                className="min-h-20 w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-primary"
-              />
-            </div>
-            <Button className="w-full" onClick={onSchedule} disabled={scheduling || published}>
-              {scheduling ? 'Scheduling...' : 'Schedule Post'}
-            </Button>
-            <Button variant="secondary" className="w-full" onClick={onReschedule} disabled={scheduling || published}>
-              Change date &amp; time
-            </Button>
-            <Button variant="secondary" className="w-full" onClick={onUnschedule} disabled={scheduling || published}>
-              Remove from slot
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={onDraft}
-              disabled={scheduling || published}
-            >
-              Move to draft
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Select a post to inspect details.</p>
-        )}
-      </SectionCard>
-    </div>
-  )
-}
-
-type Slot = {
-  /** Local calendar day key yyyy-MM-dd (Mon–Sun current week) */
-  id: string
-  label: string
-  postId?: string
-}
-
-function slotIdForLocalDate(d: Date): string {
-  return format(d, 'yyyy-MM-dd')
-}
-
-function buildWeekSlots(anchor = new Date()): Slot[] {
-  const monday = startOfWeek(anchor, { weekStartsOn: 1 })
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = addDays(monday, i)
-    return {
-      id: slotIdForLocalDate(d),
-      label: `${format(d, 'EEE d MMM')} · 10:00 AM`,
-      postId: undefined,
-    }
-  })
-}
-
-/** Map a scheduled ISO time to a grid day key (local date). */
-function getSlotIdFromScheduledAt(scheduledAt?: string): string | null {
-  if (!scheduledAt) return null
-  const d = new Date(scheduledAt)
-  if (Number.isNaN(d.getTime())) return null
-  return slotIdForLocalDate(d)
-}
-
-/** Next occurrence of this calendar day at default publish hour (local wall clock → ISO UTC). */
-function scheduledIsoForDayKey(dayKey: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dayKey).trim())
-  if (!m) return new Date().toISOString()
-  const y = Number(m[1])
-  const mo = Number(m[2])
-  const d = Number(m[3])
-  if (!y || !mo || !d) return new Date().toISOString()
-  const next = new Date(y, mo - 1, d, DEFAULT_SLOT_HOUR, 0, 0, 0)
-  const now = new Date()
-  if (next <= now) {
-    next.setDate(next.getDate() + 7)
-  }
-  return next.toISOString()
-}
-
-function DraggablePost({ post, selected, onSelect }: { post: PostItem; selected: boolean; onSelect: () => void }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: post.id })
-  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined
-  const cap = displayCaption(post.caption, 'Untitled post')
-  return (
-    <button
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      onClick={onSelect}
-      type="button"
-      className={`flex w-full gap-2 rounded-xl border px-2 py-2 text-left shadow-sm transition-colors ${selected ? 'border-primary bg-primary/5 ring-1 ring-primary/15' : 'border-border/80 bg-card hover:border-primary/30'}`}
-    >
-      {post.image_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={post.image_url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-      ) : (
-        <div className="h-10 w-10 shrink-0 rounded-lg bg-muted" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-1 text-sm text-foreground">{cap}</p>
-        <p className="mt-0.5 text-xs capitalize text-muted-foreground">{post.platform}</p>
+          )
+        })}
       </div>
-    </button>
+    </div>
   )
 }
 
-function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
-  const { isOver, setNodeRef } = useDroppable({ id: slot.id })
-  const cap = post ? displayCaption(post.caption, 'Post') : ''
+// ─── Scheduler main ───────────────────────────────────────────────────────────
+
+function SchedulerInner() {
+  const { mutate: mutateKeys } = useSWRConfig()
+  const [activeTab, setActiveTab] = useState<SchedulerTab>('schedule')
+  const [sortBy, setSortBy] = useState('soonest')
+  const [selected, setSelected] = useState<PostItem | null>(null)
+  const [bulkBusy, setBulkBusy] = useState(false)
+
+  const { data, isLoading, mutate } = useSWR(
+    '/api/posts?limit=100',
+    (url: string) => apiCall<{ posts?: PostItem[] }>(url),
+    { revalidateOnFocus: false },
+  )
+  const posts = useMemo(() => data?.posts ?? [], [data?.posts])
+
+  const invalidate = useCallback(
+    () => mutateKeys((key) => typeof key === 'string' && key.startsWith('/api/posts')),
+    [mutateKeys],
+  )
+
+  const toSchedule = useMemo(() => {
+    const base = posts.filter((p) => {
+      const eff = getEffectivePostStatus(p.status, p.approval_status)
+      return eff === 'approved' || eff === 'scheduled'
+    })
+    if (sortBy === 'soonest') return base.sort((a, b) => (a.scheduled_at ?? '').localeCompare(b.scheduled_at ?? ''))
+    if (sortBy === 'latest') return base.sort((a, b) => (b.scheduled_at ?? '').localeCompare(a.scheduled_at ?? ''))
+    return base.sort((a, b) => a.platform.localeCompare(b.platform))
+  }, [posts, sortBy])
+
+  const queued = useMemo(() => posts.filter((p) => getEffectivePostStatus(p.status, p.approval_status) === 'scheduled'), [posts])
+  const published = useMemo(() => posts.filter((p) => getEffectivePostStatus(p.status, p.approval_status) === 'published'), [posts])
+
+  const scheduleAll = async () => {
+    if (!toSchedule.length) return
+    setBulkBusy(true)
+    try {
+      await Promise.all(
+        toSchedule
+          .filter((p) => getEffectivePostStatus(p.status, p.approval_status) === 'approved')
+          .map((p) =>
+            apiCall(`/api/posts/${p.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ status: 'scheduled', scheduled_at: p.scheduled_at || new Date(Date.now() + 3600_000).toISOString() }),
+            }),
+          ),
+      )
+      await mutate(); await invalidate()
+      toast.success(`${toSchedule.length} posts scheduled`)
+    } catch { toast.error('Failed to schedule all') } finally { setBulkBusy(false) }
+  }
+
+  const currentList = activeTab === 'queue' ? queued : activeTab === 'posted' ? published : toSchedule
+
   return (
-    <div
-      ref={setNodeRef}
-      className={`min-h-[92px] rounded-xl border p-2 shadow-[var(--shadow-card)] backdrop-blur-sm transition-colors ${isOver ? 'animate-pulse border-2 border-dashed border-primary bg-muted/80' : 'border-border/80 bg-card'}`}
-    >
-      <p className="mb-2 text-xs text-muted-foreground">{slot.label}</p>
-      {post?.image_url ? (
-        <div className="space-y-1">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={post.image_url} alt="" className="aspect-square w-full rounded-lg object-cover" />
-          <p className="line-clamp-2 text-xs text-foreground">{cap}</p>
+    <PageContainer className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Scheduler</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Schedule and publish your content across platforms.</p>
         </div>
-      ) : post ? (
-        <p className="line-clamp-2 text-sm text-foreground">{cap}</p>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" className="gap-1.5 h-9">
+            <Calendar size={14} /> Bulk Schedule
+          </Button>
+          <Button size="sm" className="gap-1.5 h-9" onClick={scheduleAll} disabled={bulkBusy || !toSchedule.length}>
+            {bulkBusy ? 'Scheduling…' : `Schedule All (${toSchedule.filter((p) => getEffectivePostStatus(p.status, p.approval_status) === 'approved').length})`}
+          </Button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-0 border-b border-border overflow-x-auto scrollbar-hide">
+        {TABS.map(({ id, label, icon }) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setActiveTab(id)}
+            className={cn(
+              'flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors whitespace-nowrap',
+              activeTab === id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {icon} {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Calendar View */}
+      {activeTab === 'calendar' ? (
+        <CalendarView posts={posts} />
       ) : (
-        <div className="flex flex-col items-center justify-center gap-1 py-2 text-muted-foreground/80">
-          <span className="text-lg leading-none">+</span>
-          <p className="text-xs">Drop post here</p>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_300px] xl:items-start">
+          {/* ── Left: list ── */}
+          <div className="space-y-4">
+            {/* List header */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-base font-semibold text-foreground">
+                  {activeTab === 'schedule' ? 'Content to Schedule' : activeTab === 'queue' ? 'Publishing Queue' : 'Posted Content'}
+                  {' '}
+                  <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                    {currentList.length}
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {activeTab === 'schedule' ? 'Review, customize and schedule your content.' : activeTab === 'queue' ? 'Posts queued for publishing.' : 'Successfully published posts.'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-xs font-medium text-muted-foreground hover:bg-muted transition-colors">
+                  <Filter size={12} /> Filter
+                </button>
+                <div className="flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs">
+                  <span className="text-muted-foreground">Sort by:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="bg-transparent text-sm font-medium text-foreground outline-none"
+                  >
+                    {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Items */}
+            {isLoading ? (
+              <div className="space-y-3">
+                <SkeletonCard lines={3} />
+                <SkeletonCard lines={3} />
+                <SkeletonCard lines={3} />
+              </div>
+            ) : currentList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/10 py-16 text-center">
+                <p className="text-sm font-semibold text-foreground">
+                  {activeTab === 'schedule' ? 'No content ready to schedule' : activeTab === 'queue' ? 'Queue is empty' : 'Nothing published yet'}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {activeTab === 'schedule' ? 'Approve content in the Calendar to start scheduling.' : 'Schedule content to see it here.'}
+                </p>
+                {activeTab === 'schedule' && (
+                  <Link href="/calendar" className="mt-4">
+                    <Button size="sm" variant="secondary">Review Calendar</Button>
+                  </Link>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {currentList.map((post) => (
+                  <PostRow
+                    key={post.id}
+                    post={post}
+                    selected={selected?.id === post.id}
+                    onSelect={() => setSelected((p) => p?.id === post.id ? null : post)}
+                  />
+                ))}
+                <p className="pt-1 text-center text-xs text-muted-foreground">
+                  Showing 1 to {currentList.length} of {currentList.length} results
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ── Right: Preview panel ── */}
+          <div className="xl:sticky xl:top-6">
+            {selected ? (
+              <PreviewPanel post={selected} onClose={() => setSelected(null)} />
+            ) : (
+              <div className="app-card-elevated flex flex-col items-center justify-center gap-3 p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                  <Layers size={22} />
+                </div>
+                <p className="text-sm font-semibold text-foreground">Content Preview</p>
+                <p className="text-xs text-muted-foreground">Select a post from the list to preview it here.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }
 
 export default function SchedulerPage() {
-  const searchParams = useSearchParams()
-  const { mutate: mutateGlobal } = useSWRConfig()
-  const invalidateAllPostLists = useCallback(
-    () => mutateGlobal((key) => typeof key === 'string' && key.startsWith('/api/posts')),
-    [mutateGlobal],
-  )
-
-  const { data, mutate, error, isLoading } = useSWR(
-    '/api/posts?limit=30',
-    (url: string) => apiCall<{ posts: PostItem[] }>(url),
-    { revalidateOnFocus: false },
-  )
-  const posts = useMemo(() => data?.posts ?? [], [data?.posts])
-  const sensors = useSensors(useSensor(PointerSensor))
-
-  const [slots, setSlots] = useState<Slot[]>(() => buildWeekSlots())
-  const [mainTab, setMainTab] = useState<SchedulerMainTab>('schedule')
-  const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
-  const [scheduling, setScheduling] = useState(false)
-  const [comment, setComment] = useState('')
-  const [rescheduleOpen, setRescheduleOpen] = useState(false)
-  const [rescheduleValue, setRescheduleValue] = useState('')
-
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-  const offsetStr = useMemo(() => {
-    try {
-      const parts = new Intl.DateTimeFormat('en-US', { timeZone: timezone, timeZoneName: 'shortOffset' }).formatToParts(new Date())
-      const tz = parts.find((p) => p.type === 'timeZoneName')?.value
-      return tz ? ` (${tz})` : ''
-    } catch {
-      return ''
-    }
-  }, [timezone])
-
-  const selectedFromOutputs = useMemo(
-    () => (searchParams.get('postIds') || '').split(',').map((id) => id.trim()).filter(Boolean),
-    [searchParams],
-  )
-
-  const postMap = useMemo(() => new Map(posts.map((post) => [post.id, post])), [posts])
-  const selectedPost = selectedPostId ? postMap.get(selectedPostId) : undefined
-  const hasSlotForSelected = Boolean(selectedPost && slots.some((slot) => slot.postId === selectedPost.id))
-
-  const filteredByTab = useMemo(() => {
-    return posts.filter((p) => {
-      const eff = getEffectivePostStatus(p.status, p.approval_status)
-      if (mainTab === 'schedule') return eff === 'draft' || eff === 'approved'
-      if (mainTab === 'queue') return eff === 'scheduled'
-      if (mainTab === 'posted') return eff === 'published'
-      return true
-    })
-  }, [posts, mainTab])
-
-  const listForTab = mainTab === 'calendar' ? posts : filteredByTab
-
-  const scheduleFingerprint = useMemo(
-    () =>
-      posts
-        .filter((p) => p.status === 'scheduled' || p.status === 'published')
-        .map((p) => `${p.id}:${p.scheduled_at ?? ''}`)
-        .sort()
-        .join('|'),
-    [posts],
-  )
-
-  useEffect(() => {
-    const base = buildWeekSlots()
-    const scheduled = posts.filter((p) => p.status === 'scheduled' || p.status === 'published')
-    setSlots(
-      base.map((slot) => {
-        const matched = scheduled.find((p) => getSlotIdFromScheduledAt(p.scheduled_at) === slot.id)
-        return matched ? { ...slot, postId: matched.id } : { ...slot, postId: undefined }
-      }),
-    )
-  }, [scheduleFingerprint, posts])
-
-  useEffect(() => {
-    if (listForTab.length === 0) {
-      if (selectedPostId !== null) setSelectedPostId(null)
-      return
-    }
-    if (selectedPostId && listForTab.some((p) => p.id === selectedPostId)) return
-    const firstFromOutputs = selectedFromOutputs.find((id) => listForTab.some((p) => p.id === id))
-    setSelectedPostId(firstFromOutputs ?? listForTab[0].id)
-  }, [listForTab, selectedPostId, selectedFromOutputs])
-
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over) return
-    const overId = String(over.id)
-    setSlots((prev) =>
-      prev
-        .map((slot) => (slot.postId === active.id ? { ...slot, postId: undefined } : slot))
-        .map((slot) => (slot.id === overId ? { ...slot, postId: String(active.id) } : slot)),
-    )
-  }
-
-  const openReschedule = () => {
-    if (!selectedPost) return
-    const base = selectedPost.scheduled_at
-      ? new Date(selectedPost.scheduled_at)
-      : (() => {
-          const slot = slots.find((s) => s.postId === selectedPost.id)
-          if (!slot?.id) return new Date()
-          const parts = slot.id.split('-').map(Number)
-          const [y, m, d] = parts
-          return y && m && d ? new Date(y, m - 1, d, DEFAULT_SLOT_HOUR, 0, 0, 0) : new Date()
-        })()
-    const pad = (n: number) => String(n).padStart(2, '0')
-    const local = `${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`
-    setRescheduleValue(local)
-    setRescheduleOpen(true)
-  }
-
-  const applyReschedule = async () => {
-    if (!selectedPost || !rescheduleValue) return
-    const d = new Date(rescheduleValue)
-    if (Number.isNaN(d.getTime())) {
-      toast.error('Invalid date')
-      return
-    }
-    setScheduling(true)
-    try {
-      await apiCall(`/api/posts/${selectedPost.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'scheduled',
-          scheduled_at: d.toISOString(),
-          scheduler_note: comment.trim() || null,
-        }),
-      })
-      await mutate()
-      await invalidateAllPostLists()
-      setRescheduleOpen(false)
-      toast.success('Schedule updated')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Failed to update')
-    } finally {
-      setScheduling(false)
-    }
-  }
-
-  const scheduleSelected = useCallback(async () => {
-    if (!selectedPost) return
-    let target = slots.find((slot) => slot.postId === selectedPost.id)
-    if (!target) {
-      const empty = slots.find((slot) => !slot.postId)
-      if (!empty) {
-        toast.error('No free slot this week. Open Calendar view to pick a slot or use Change date & time.')
-        return
-      }
-      setSlots((prev) => prev.map((slot) => (slot.id === empty.id ? { ...slot, postId: selectedPost.id } : slot)))
-      target = { ...empty, postId: selectedPost.id }
-    }
-    setScheduling(true)
-    try {
-      await apiCall(`/api/posts/${selectedPost.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'scheduled',
-          scheduled_at: scheduledIsoForDayKey(target.id),
-          scheduler_note: comment.trim() || null,
-        }),
-      })
-      await mutate()
-      await invalidateAllPostLists()
-      logUxEvent('scheduler_post_scheduled', { postId: selectedPost.id, slotId: target.id })
-      toast.success('Post scheduled')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to schedule post')
-    } finally {
-      setScheduling(false)
-    }
-  }, [selectedPost, slots, comment, mutate, invalidateAllPostLists])
-
-  const unscheduleSelected = useCallback(async () => {
-    if (!selectedPost) return
-    setScheduling(true)
-    try {
-      await apiCall(`/api/posts/${selectedPost.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: selectedPost.status === 'published' ? 'published' : 'draft',
-          scheduled_at: null,
-          scheduler_note: null,
-        }),
-      })
-      setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
-      await mutate()
-      await invalidateAllPostLists()
-      toast.success('Removed from schedule')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to remove from slot')
-    } finally {
-      setScheduling(false)
-    }
-  }, [selectedPost, mutate, invalidateAllPostLists])
-
-  const deleteSelected = useCallback(async () => {
-    if (!selectedPost) return
-    setScheduling(true)
-    try {
-      await apiCall(`/api/posts/${selectedPost.id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          status: 'draft',
-          scheduled_at: null,
-          scheduler_note: null,
-        }),
-      })
-      setSlots((prev) => prev.map((slot) => (slot.postId === selectedPost.id ? { ...slot, postId: undefined } : slot)))
-      setSelectedPostId(null)
-      await mutate()
-      await invalidateAllPostLists()
-      toast.success('Post moved to draft')
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to update post')
-    } finally {
-      setScheduling(false)
-    }
-  }, [selectedPost, mutate, invalidateAllPostLists])
-
   return (
-    <PageContainer className="space-y-6">
-      <PageIntroModal
-        pageKey="scheduler"
-        title="Plan and automate your posting"
-        description="Drag content into calendar slots and use AI timing suggestions for better performance."
-      />
-      <PageHeader
-        variant="compact"
-        title={
-          <>
-            Content <span className="text-pull text-primary">scheduler</span>
-          </>
-        }
-        description="Drag and drop posts into calendar slots and publish confidently."
-      />
-      {error ? (
-        <div className="rounded-lg border border-amber-300/60 bg-card/75 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm dark:border-amber-700/50 dark:bg-card/60 dark:text-amber-200">
-          Could not refresh scheduler posts right now. Please retry in a moment.
-        </div>
-      ) : null}
-      <div className="flex flex-col gap-3 rounded-xl border border-border/65 bg-card/78 px-4 py-3 text-xs text-muted-foreground shadow-[var(--shadow-card)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
-        <span>
-          Timezone: <span className="font-medium text-foreground">{timezone}</span>
-          {offsetStr}
-        </span>
-        <span className="text-[11px] leading-relaxed sm:text-right">Use actions in the selected-post panel to manage scheduling.</span>
-      </div>
-      <NextStepCard
-        dense
-        title={hasSlotForSelected ? 'Schedule selected post now' : 'Assign a time slot'}
-        reason={
-          hasSlotForSelected
-            ? 'Selected post has a slot on this week’s grid and is ready to schedule.'
-            : 'Pick a post, then schedule—we’ll use the first open day slot if you have not dragged one yet, or open Calendar view to arrange manually.'
-        }
-        primaryCta={hasSlotForSelected ? { label: 'Schedule This Post', href: '/scheduler' } : { label: 'Go to Outputs', href: '/outputs' }}
-        secondaryCta={{ label: 'Review Calendar', href: '/calendar' }}
-      />
-
-      <Tabs value={mainTab} onValueChange={(v) => setMainTab(v as SchedulerMainTab)} className="space-y-4">
-        <TabsList variant="line" className="flex h-auto w-full max-w-full flex-wrap justify-start gap-1 rounded-xl border border-border/80 bg-muted/30 p-1">
-          <TabsTrigger value="schedule" className="text-xs sm:text-sm">
-            Schedule content
-          </TabsTrigger>
-          <TabsTrigger value="queue" className="text-xs sm:text-sm">
-            Publish queue
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="text-xs sm:text-sm">
-            Calendar view
-          </TabsTrigger>
-          <TabsTrigger value="posted" className="text-xs sm:text-sm">
-            Posted
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      <Dialog open={rescheduleOpen} onOpenChange={setRescheduleOpen}>
-        <DialogContent className="max-w-md border-border bg-card p-6" showCloseButton>
-          <DialogTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <CalendarClock className="h-4 w-4" />
-            Change date &amp; time
-          </DialogTitle>
-          <p className="text-sm text-muted-foreground">Sets when this post is scheduled to publish (local time).</p>
-          <input
-            type="datetime-local"
-            value={rescheduleValue}
-            onChange={(e) => setRescheduleValue(e.target.value)}
-            className="mt-3 h-10 w-full rounded-lg border border-border px-3 text-sm text-foreground outline-none focus:border-primary"
-          />
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="secondary" size="sm" onClick={() => setRescheduleOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="button" size="sm" onClick={() => void applyReschedule()} disabled={scheduling}>
-              {scheduling ? 'Saving…' : 'Save'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {mainTab === 'calendar' ? (
-        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[280px_1fr_340px]">
-            <SectionCard className="app-card-elevated" title="Posts" subtitle="Drag into the week grid">
-              <div className="space-y-2">
-                {isLoading ? (
-                  <div className="space-y-2">
-                    <SkeletonCard lines={2} />
-                    <SkeletonCard lines={2} />
-                  </div>
-                ) : null}
-                {posts.map((post) => (
-                  <DraggablePost key={post.id} post={post} selected={selectedPostId === post.id} onSelect={() => setSelectedPostId(post.id)} />
-                ))}
-                {!isLoading && posts.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border p-4 text-center">
-                    <p className="text-sm text-foreground">No posts available for scheduling</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Approve items in Calendar or generate new outputs first.</p>
-                  </div>
-                ) : null}
-              </div>
-            </SectionCard>
-
-            <SectionCard className="app-card-elevated" title="Calendar grid" subtitle="This week (Mon–Sun). Default slot time 10:00 when you press Schedule.">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {slots.map((slot) => (
-                  <DroppableSlot key={slot.id} slot={slot} post={slot.postId ? postMap.get(slot.postId) : undefined} />
-                ))}
-              </div>
-            </SectionCard>
-
-            <SchedulerPreviewRail
-              selectedPost={selectedPost}
-              comment={comment}
-              setComment={setComment}
-              scheduling={scheduling}
-              onSchedule={() => void scheduleSelected()}
-              onReschedule={() => openReschedule()}
-              onUnschedule={() => void unscheduleSelected()}
-              onDraft={() => void deleteSelected()}
-            />
-          </div>
-        </DndContext>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-          <SectionCard
-            className="app-card-elevated"
-            title={
-              mainTab === 'schedule'
-                ? 'Ready to schedule'
-                : mainTab === 'queue'
-                  ? 'Publish queue'
-                  : 'Posted'
-            }
-            subtitle={
-              mainTab === 'schedule'
-                ? 'Drafts and approved posts. Scheduling uses the first open day slot or your Calendar view placement.'
-                : mainTab === 'queue'
-                  ? 'Items with a scheduled publish time.'
-                  : 'Recently published items.'
-            }
-          >
-            <div className="space-y-2">
-              {isLoading ? (
-                <div className="space-y-2">
-                  <SkeletonCard lines={2} />
-                  <SkeletonCard lines={2} />
-                </div>
-              ) : null}
-              {listForTab.map((post) => (
-                <SchedulerListCard
-                  key={post.id}
-                  post={post}
-                  selected={selectedPostId === post.id}
-                  onSelect={() => setSelectedPostId(post.id)}
-                />
-              ))}
-              {!isLoading && listForTab.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border bg-muted/10 p-6 text-center">
-                  <p className="text-sm font-medium text-foreground">
-                    {mainTab === 'schedule'
-                      ? 'No posts ready to schedule'
-                      : mainTab === 'queue'
-                        ? 'Nothing in the publish queue'
-                        : 'No published posts yet'}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {mainTab === 'schedule'
-                      ? 'Generate and approve content first, then come back to schedule.'
-                      : mainTab === 'queue'
-                        ? 'Schedule a post from the "Schedule content" tab to see it here.'
-                        : 'Published posts will appear here after they go live.'}
-                  </p>
-                  {mainTab === 'schedule' ? (
-                    <div className="mt-4 flex flex-wrap justify-center gap-2">
-                      <Link href="/calendar/generate" className={cn(buttonVariants({ size: 'sm', variant: 'default' }))}>
-                        Generate plan
-                      </Link>
-                      <Link href="/outputs" className={cn(buttonVariants({ size: 'sm', variant: 'secondary' }))}>
-                        View outputs
-                      </Link>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          </SectionCard>
-          <SchedulerPreviewRail
-            selectedPost={selectedPost}
-            comment={comment}
-            setComment={setComment}
-            scheduling={scheduling}
-            onSchedule={() => void scheduleSelected()}
-            onReschedule={() => openReschedule()}
-            onUnschedule={() => void unscheduleSelected()}
-            onDraft={() => void deleteSelected()}
-          />
-        </div>
-      )}
-    </PageContainer>
+    <Suspense>
+      <SchedulerInner />
+    </Suspense>
   )
 }

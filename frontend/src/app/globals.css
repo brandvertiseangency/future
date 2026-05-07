@@ -100,31 +100,31 @@
 }
 
 .dark {
-  /* Inverted: canvas is the lighter dark, sidebar/cards/popovers are the deeper dark. */
-  --brand-canvas: #1c1c1c;
+  /* Pure black canvas — deep, premium dark mode */
+  --brand-canvas: #000000;
   --brand-ink: #f4f4f5;
-  --brand-blue: #003bff;
-  --brand-blue-mid: #2d6bff;
-  --brand-blue-deep: #001faa;
-  --background: #1c1c1c;
+  --brand-blue: #4a7dff;
+  --brand-blue-mid: #5b8aff;
+  --brand-blue-deep: #3366ee;
+  --background: #000000;
   --foreground: #f4f4f5;
   --card: #0d0d0d;
   --card-foreground: #f4f4f5;
-  --popover: #0d0d0d;
+  --popover: #111111;
   --popover-foreground: #f4f4f5;
-  --primary: #003bff;
+  --primary: #4a7dff;
   --primary-foreground: #ffffff;
-  --secondary: #262626;
+  --secondary: #1a1a1a;
   --secondary-foreground: #f4f4f5;
-  --muted: #262626;
+  --muted: #1a1a1a;
   --muted-foreground: #a1a1aa;
-  --accent: #1f2a4d;
+  --accent: #1a2540;
   --accent-foreground: #f4f4f5;
   --destructive: #f87171;
-  --border: #2e2e2e;
-  --input: #2e2e2e;
-  --ring: #2d6bff;
-  --gradient-cta: linear-gradient(to right, #003bff 0%, #2d6bff 50%, #001faa 100%);
+  --border: #222222;
+  --input: #222222;
+  --ring: #4a7dff;
+  --gradient-cta: linear-gradient(to right, #4a7dff 0%, #5b8aff 50%, #3366ee 100%);
   --text-1: var(--foreground);
   --text-2: var(--card-foreground);
   --text-3: var(--muted-foreground);
@@ -136,8 +136,8 @@
   --surface-page: color-mix(in oklch, var(--background) 100%, var(--primary) 2%);
   --surface-hero: color-mix(in oklch, var(--card) 88%, var(--primary) 12%);
   --surface-elevated: var(--card);
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.2), 0 4px 20px rgba(0, 0, 0, 0.35);
-  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.25), 0 10px 32px rgba(1, 136, 253, 0.12);
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 20px rgba(0, 0, 0, 0.6);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.5), 0 10px 32px rgba(74, 125, 255, 0.15);
   --radius-card: 16px;
   --radius-card-lg: 20px;
 }
@@ -298,6 +298,31 @@ a:focus-visible {
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/** Typography scale — consistent across all app pages */
+.bv-label-caps {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+}
+.bv-section-title {
+  font-size: 0.9375rem; /* 15px */
+  font-weight: 600;
+  color: var(--foreground);
+  line-height: 1.3;
+}
+.bv-body {
+  font-size: 0.875rem; /* 14px */
+  color: var(--foreground);
+  line-height: 1.55;
+}
+.bv-meta {
+  font-size: 0.75rem; /* 12px */
+  color: var(--muted-foreground);
+  line-height: 1.45;
 }
 
 /** Subtle grid for dashboard / chat hero (Square-style, theme-aware) */

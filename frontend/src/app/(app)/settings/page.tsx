@@ -3,46 +3,49 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { CreditCard, User } from 'lucide-react'
+import {
+  User,
+  BriefcaseBusiness,
+  CreditCard,
+  Bell,
+  ShieldCheck,
+  Check,
+  CheckCircle2,
+  Sparkles,
+  AlertTriangle,
+  ChevronRight,
+  Moon,
+  Sun,
+  Laptop,
+  ExternalLink,
+} from 'lucide-react'
 import useSWR from 'swr'
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from 'firebase/auth'
 import { useAuth } from '@/lib/auth-context'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
-import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
-import { SectionCard } from '@/components/ui/saas-primitives'
+import { PageContainer } from '@/components/ui/page-primitives'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { PageIntroModal } from '@/components/app/page-intro-modal'
-import { logUxEvent } from '@/lib/ux-events'
-import { BrandIdentityEditor } from '@/components/brand/brand-identity-editor'
 import { Switch } from '@/components/ui/switch'
-import { Label } from '@/components/ui/label'
+import { BrandIdentityEditor } from '@/components/brand/brand-identity-editor'
+import { cn } from '@/lib/utils'
+import { useTheme } from 'next-themes'
 
 type SettingsTab = 'profile' | 'brand' | 'billing' | 'notifications' | 'security'
 
 function tabFromHash(hash: string): SettingsTab {
   const h = hash.replace(/^#/, '').toLowerCase()
-  if (h === 'brand') return 'brand'
-  if (h === 'billing') return 'billing'
-  if (h === 'notifications') return 'notifications'
-  if (h === 'security') return 'security'
-  if (h === 'profile') return 'profile'
+  if (['brand', 'billing', 'notifications', 'security', 'profile'].includes(h)) return h as SettingsTab
   return 'profile'
 }
 
 function parseApiError(error: unknown): string {
-  const raw = error instanceof Error ? error.message : 'Failed to update profile'
+  const raw = error instanceof Error ? error.message : 'Failed'
   try {
-    const parsed = JSON.parse(raw)
-    if (typeof parsed?.details === 'string' && parsed.details.trim()) return parsed.details
-    if (typeof parsed?.message === 'string' && parsed.message.trim()) return parsed.message
-    if (typeof parsed?.error === 'string' && parsed.error.trim()) return parsed.error
-  } catch {
-    // ignore parse errors
-  }
-  return raw
+    const p = JSON.parse(raw)
+    return p?.details ?? p?.message ?? p?.error ?? raw
+  } catch { return raw }
 }
 
 type UserPreferences = {
@@ -54,16 +57,31 @@ type UserPreferences = {
   inapp_credit_warning?: boolean | null
 }
 
+const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+  { id: 'profile', label: 'Profile', icon: <User size={16} /> },
+  { id: 'brand', label: 'Brand', icon: <BriefcaseBusiness size={16} /> },
+  { id: 'billing', label: 'Billing', icon: <CreditCard size={16} /> },
+  { id: 'notifications', label: 'Notifications', icon: <Bell size={16} /> },
+  { id: 'security', label: 'Security', icon: <ShieldCheck size={16} /> },
+]
+
+const PLAN_FEATURES: Record<string, string[]> = {
+  trial: ['500 credits', '12 posts/month', 'Basic generation', 'Calendar planning'],
+  pro: ['5,000 credits/mo', '30 posts/month', 'High-res generation', 'Priority AI', 'Advanced analytics', 'All Marketing Studio'],
+  agency: ['15,000 credits/mo', '60 posts/month', 'Team seats', 'White-label', 'API access', 'Dedicated support'],
+}
+
 export default function SettingsPage() {
   const pathname = usePathname()
   const { user } = useAuth()
+  const { theme, setTheme } = useTheme()
   const [activeTab, setActiveTab] = useState<SettingsTab>('profile')
-  const [name, setName] = useState(user?.displayName ?? '')
-  const [email, setEmail] = useState(user?.email ?? '')
-  const [savingProfile, setSavingProfile] = useState(false)
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
+  // Profile state
+  const [name, setName] = useState(user?.displayName ?? '')
+  const [savingProfile, setSavingProfile] = useState(false)
+
+  // Security state
   const [currentPw, setCurrentPw] = useState('')
   const [nextPw, setNextPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
@@ -71,20 +89,17 @@ export default function SettingsPage() {
 
   const { data: meData, mutate: mutateMe } = useSWR('/api/users/me', (url: string) => apiCall<{ user?: { display_name?: string; email?: string } }>(url), { revalidateOnFocus: false })
   const { data: billingData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number; plan: string; trial_days_left?: number | null }>(url), { revalidateOnFocus: false })
-  const { data: prefData, mutate: mutatePrefs } = useSWR(
-    '/api/users/me/preferences',
-    (url: string) => apiCall<{ preferences: UserPreferences | null }>(url),
-    { revalidateOnFocus: false }
-  )
+  const { data: prefData, mutate: mutatePrefs } = useSWR('/api/users/me/preferences', (url: string) => apiCall<{ preferences: UserPreferences | null }>(url), { revalidateOnFocus: false })
 
   const credits = billingData?.balance ?? 0
   const plan = billingData?.plan ?? 'trial'
   const trialDays = billingData?.trial_days_left
-  const baselineName = meData?.user?.display_name ?? user?.displayName ?? ''
-  const nameTooShort = name.trim().length > 0 && name.trim().length < 2
-  const canSave = name.trim().length >= 2 && name.trim() !== baselineName.trim() && !savingProfile
-
+  const maxCredits = plan === 'pro' ? 5000 : plan === 'agency' ? 15000 : 500
+  const creditPct = Math.min((credits / maxCredits) * 100, 100)
   const prefs = prefData?.preferences ?? {}
+
+  const baselineName = meData?.user?.display_name ?? user?.displayName ?? ''
+  const canSave = name.trim().length >= 2 && name.trim() !== baselineName.trim() && !savingProfile
 
   const syncTabFromHash = useCallback(() => {
     if (typeof window === 'undefined') return
@@ -97,289 +112,371 @@ export default function SettingsPage() {
     return () => window.removeEventListener('hashchange', syncTabFromHash)
   }, [pathname, syncTabFromHash])
 
-  const onTabChange = (value: string) => {
-    const v = value as SettingsTab
-    setActiveTab(v)
-    if (typeof window !== 'undefined') {
-      window.history.replaceState(null, '', `${pathname}#${v}`)
-    }
+  useEffect(() => {
+    if (meData?.user?.display_name) setName(meData.user.display_name)
+    else if (user?.displayName) setName(user.displayName)
+  }, [meData?.user?.display_name, user?.displayName])
+
+  const onTabChange = (tab: SettingsTab) => {
+    setActiveTab(tab)
+    if (typeof window !== 'undefined') window.history.replaceState(null, '', `${pathname}#${tab}`)
   }
 
-  useEffect(() => {
-    const dbName = meData?.user?.display_name
-    const dbEmail = meData?.user?.email
-    if (dbName) {
-      setName(dbName)
-    } else if (user?.displayName) {
-      setName(user.displayName)
-    }
-    if (dbEmail) {
-      setEmail(dbEmail)
-    } else if (user?.email) {
-      setEmail(user.email)
-    }
-  }, [meData?.user?.display_name, meData?.user?.email, user?.displayName, user?.email])
-
   const saveProfile = async () => {
-    if (!canSave) {
-      logUxEvent('settings_profile_validation_blocked', {
-        nameLength: name.trim().length,
-        unchanged: name.trim() === baselineName.trim(),
-      })
-      return
-    }
+    if (!canSave) return
     setSavingProfile(true)
-    setSaveState('saving')
     try {
       await apiCall('/api/users/me', { method: 'PATCH', body: JSON.stringify({ display_name: name.trim() }) })
       await mutateMe()
-      setLastSavedAt(new Date().toLocaleTimeString())
-      setSaveState('saved')
       toast.success('Profile updated')
-    } catch (error) {
-      setSaveState('error')
-      toast.error(parseApiError(error))
-    } finally {
-      setSavingProfile(false)
-    }
+    } catch (e) { toast.error(parseApiError(e)) } finally { setSavingProfile(false) }
   }
 
   const patchPreferences = async (patch: Partial<UserPreferences>) => {
     const merged = { ...prefs, ...patch }
     try {
-      await apiCall('/api/users/me/preferences', {
-        method: 'PUT',
-        body: JSON.stringify({
-          emailPostReminder: Boolean(merged.email_post_reminder),
-          emailCreditWarning: Boolean(merged.email_credit_warning),
-          emailWeeklyDigest: Boolean(merged.email_weekly_digest),
-          emailProductUpdates: Boolean(merged.email_product_updates),
-          inappPostReminder: Boolean(merged.inapp_post_reminder),
-          inappCreditWarning: Boolean(merged.inapp_credit_warning),
-        }),
-      })
+      await apiCall('/api/users/me/preferences', { method: 'PUT', body: JSON.stringify({ emailPostReminder: Boolean(merged.email_post_reminder), emailCreditWarning: Boolean(merged.email_credit_warning), emailWeeklyDigest: Boolean(merged.email_weekly_digest), emailProductUpdates: Boolean(merged.email_product_updates), inappPostReminder: Boolean(merged.inapp_post_reminder), inappCreditWarning: Boolean(merged.inapp_credit_warning) }) })
       await mutatePrefs()
-    } catch (e) {
-      toast.error(parseApiError(e))
-    }
+    } catch (e) { toast.error(parseApiError(e)) }
   }
 
   const isPasswordProvider = Boolean(user?.providerData?.some((p) => p.providerId === 'password'))
 
   const changePassword = async () => {
-    if (!user?.email || !isPasswordProvider) {
-      toast.error('Password change is only available for email & password accounts.')
-      return
-    }
-    if (nextPw.length < 8) {
-      toast.error('New password must be at least 8 characters.')
-      return
-    }
-    if (nextPw !== confirmPw) {
-      toast.error('New password and confirmation do not match.')
-      return
-    }
+    if (!user?.email || !isPasswordProvider) { toast.error('Password change is only available for email/password accounts.'); return }
+    if (nextPw.length < 8) { toast.error('New password must be at least 8 characters.'); return }
+    if (nextPw !== confirmPw) { toast.error('Passwords do not match.'); return }
     const auth = getFirebaseAuth()
-    if (!auth?.currentUser) {
-      toast.error('You are not signed in.')
-      return
-    }
+    if (!auth?.currentUser) { toast.error('You are not signed in.'); return }
     setPwBusy(true)
     try {
       const cred = EmailAuthProvider.credential(user.email, currentPw)
       await reauthenticateWithCredential(auth.currentUser, cred)
       await updatePassword(auth.currentUser, nextPw)
-      setCurrentPw('')
-      setNextPw('')
-      setConfirmPw('')
+      setCurrentPw(''); setNextPw(''); setConfirmPw('')
       toast.success('Password updated')
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Could not update password')
-    } finally {
-      setPwBusy(false)
-    }
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Could not update password') } finally { setPwBusy(false) }
   }
 
+  const initials = (user?.displayName ?? user?.email ?? 'U').charAt(0).toUpperCase()
+  const userEmail = user?.email ?? meData?.user?.email ?? ''
+
   return (
-    <PageContainer className="space-y-6">
-      <PageIntroModal
-        pageKey="settings"
-        title="Configure your workspace settings"
-        description="Profile, brand identity, billing, notifications, and security live in one place."
-      />
-      <PageHeader
-        variant="compact"
-        title={<>Workspace <span className="text-pull text-primary">settings</span></>}
-        description="Manage profile, brand identity, billing, notifications, and security."
-      />
+    <PageContainer className="max-w-5xl space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your account, brand, billing, and preferences.</p>
+      </div>
 
-      <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
-        <TabsList className="grid h-auto w-full max-w-3xl grid-cols-2 gap-1 rounded-xl border border-border/65 bg-card/70 p-1 backdrop-blur-sm sm:grid-cols-5">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="brand">Brand</TabsTrigger>
-          <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-        </TabsList>
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[200px_1fr] md:items-start">
+        {/* ── Sidebar tabs ── */}
+        <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
+          {TABS.map(({ id, label, icon }) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onTabChange(id)}
+              className={cn(
+                'flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors md:w-full',
+                activeTab === id
+                  ? 'bg-primary/10 text-foreground'
+                  : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+              )}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </nav>
 
-        <TabsContent value="profile" className="space-y-4">
-          <div id="profile" className="scroll-mt-20">
-            <SectionCard title="Compliance" subtitle="Policies and reporting.">
-              <div className="flex flex-col gap-2 text-sm">
-                <Link href="/legal/acceptable-use" className="font-medium text-foreground underline underline-offset-2" target="_blank" rel="noopener noreferrer">
-                  Acceptable Use Policy
-                </Link>
-                <Link href="/legal/report-content" className="font-medium text-foreground underline underline-offset-2" target="_blank" rel="noopener noreferrer">
-                  Report content
-                </Link>
-              </div>
-            </SectionCard>
+        {/* ── Content ── */}
+        <div className="min-w-0 space-y-5">
 
-            <SectionCard title="Profile" subtitle="Update your account information.">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Name</label>
-                  <div className="relative">
-                    <User className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <input value={name} onChange={(e) => setName(e.target.value)} className={`h-10 w-full rounded-lg border pl-9 pr-3 text-sm outline-none ${nameTooShort ? 'border-red-300 focus:border-red-500' : 'border-border focus:border-primary'}`} />
+          {/* PROFILE */}
+          {activeTab === 'profile' && (
+            <>
+              {/* Avatar + info */}
+              <div className="app-card-elevated p-5 space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Profile</h2>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">
+                    {initials}
                   </div>
-                  {nameTooShort ? <p className="mt-1 text-xs text-red-600">Name must be at least 2 characters.</p> : null}
+                  <div>
+                    <p className="text-base font-semibold text-foreground">{name || 'Your Name'}</p>
+                    <p className="text-sm text-muted-foreground">{userEmail}</p>
+                    <p className="mt-0.5 text-xs capitalize text-muted-foreground">{plan} plan</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs text-muted-foreground">Email</label>
-                  <input value={email} readOnly className="h-10 w-full rounded-lg border border-border/65 bg-card/70 px-3 text-sm text-muted-foreground" />
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Display Name</label>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className={cn('h-10 w-full rounded-lg border bg-background px-3 text-sm text-foreground outline-none', name.trim().length > 0 && name.trim().length < 2 ? 'border-destructive focus:border-destructive' : 'border-border focus:border-primary')}
+                    />
+                    {name.trim().length > 0 && name.trim().length < 2 && (
+                      <p className="mt-1 text-xs text-destructive">Name must be at least 2 characters.</p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Email Address</label>
+                    <input value={userEmail} readOnly className="h-10 w-full rounded-lg border border-border/60 bg-muted/30 px-3 text-sm text-muted-foreground" />
+                  </div>
                 </div>
-              </div>
-              <Button className="mt-4" onClick={saveProfile} disabled={!canSave}>
-                {savingProfile ? 'Saving...' : canSave ? 'Save Profile' : 'Saved'}
-              </Button>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {saveState === 'saving' ? 'Saving changes...' : saveState === 'saved' ? `Saved at ${lastSavedAt}` : saveState === 'error' ? 'Save failed. Please retry.' : 'No unsaved changes.'}
-              </p>
-            </SectionCard>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="brand" className="space-y-4">
-          <div id="brand" className="scroll-mt-20 space-y-3">
-            <SectionCard title="Brand identity" subtitle="Same editor as before — lives here so your overview page stays read-only.">
-              <p className="mb-3 text-sm text-muted-foreground">
-                Public summary: <Link href="/brand" className="font-medium text-foreground underline underline-offset-2">Brand overview</Link>
-              </p>
-            </SectionCard>
-            <BrandIdentityEditor embedded />
-          </div>
-        </TabsContent>
-
-        <TabsContent value="billing" className="space-y-4">
-          <div id="billing" className="scroll-mt-20 space-y-4">
-            <SectionCard title="Current plan" subtitle="Your active subscription and remaining credits.">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Plan</p>
-                  <p className="mt-2 text-xl font-bold capitalize text-foreground">{plan}</p>
-                  {plan === 'trial' && trialDays != null ? (
-                    <p className="mt-1 text-xs text-muted-foreground">{trialDays} trial days remaining</p>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground capitalize">{plan} features active</p>
-                  )}
-                </div>
-                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Credits</p>
-                  <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{credits.toLocaleString()}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Available to generate content</p>
-                </div>
-                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Value</p>
-                  <p className="mt-2 text-xl font-bold text-foreground">₹{Math.round(credits * 12).toLocaleString('en-IN')}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Indicative equivalent</p>
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Upgrade" subtitle="Unlock higher credit limits, more agents, and priority generation.">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-foreground">Move to a paid plan for full access to the Brandvertise platform.</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Pro: 5,000 credits/mo &nbsp;·&nbsp; Agency: 15,000 credits/mo + team seats</p>
-                </div>
-                <Button onClick={() => window.location.assign('/pricing')} className="shrink-0">
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  View pricing
+                <Button onClick={saveProfile} disabled={!canSave} className="gap-2">
+                  {savingProfile ? 'Saving…' : canSave ? <><Check size={15} /> Save Changes</> : 'Saved'}
                 </Button>
               </div>
-            </SectionCard>
 
-            <SectionCard title="Payment" subtitle="Secure checkout via Razorpay (India). Payments coming soon.">
-              <div className="flex flex-wrap items-start gap-4">
-                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center flex-1 min-w-[200px]">
-                  <p className="text-sm font-medium text-foreground">Razorpay checkout</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Direct payment integration launching soon. Use the pricing page to express interest.</p>
+              {/* Appearance */}
+              <div className="app-card-elevated p-5 space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Appearance</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'light', label: 'Light', icon: <Sun size={16} /> },
+                    { value: 'dark', label: 'Dark', icon: <Moon size={16} /> },
+                    { value: 'system', label: 'System', icon: <Laptop size={16} /> },
+                  ].map((t) => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setTheme(t.value)}
+                      className={cn(
+                        'flex flex-col items-center gap-2 rounded-xl border py-4 text-sm font-medium transition-colors',
+                        theme === t.value ? 'border-primary bg-primary/10 text-foreground' : 'border-border text-muted-foreground hover:bg-muted',
+                      )}
+                    >
+                      {t.icon}
+                      {t.label}
+                    </button>
+                  ))}
                 </div>
               </div>
-            </SectionCard>
-          </div>
-        </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-4">
-          <div id="notifications" className="scroll-mt-20">
-            <SectionCard title="Notifications" subtitle="Email and in-app preferences. Changes save immediately.">
-              <div className="space-y-4">
+              {/* Compliance */}
+              <div className="app-card-elevated p-5 space-y-3">
+                <h2 className="text-base font-semibold text-foreground">Compliance</h2>
+                <div className="flex flex-col gap-2">
+                  <Link href="/legal/acceptable-use" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                    Acceptable Use Policy <ExternalLink size={12} />
+                  </Link>
+                  <Link href="/legal/report-content" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+                    Report content <ExternalLink size={12} />
+                  </Link>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* BRAND */}
+          {activeTab === 'brand' && (
+            <div className="space-y-4">
+              <div className="app-card-elevated p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">Brand Identity</h2>
+                    <p className="mt-0.5 text-sm text-muted-foreground">This is the same editor as Brand Setup — changes apply everywhere.</p>
+                  </div>
+                  <Link href="/brand" className="flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+                    View overview <ChevronRight size={12} />
+                  </Link>
+                </div>
+              </div>
+              <BrandIdentityEditor embedded />
+            </div>
+          )}
+
+          {/* BILLING */}
+          {activeTab === 'billing' && (
+            <div className="space-y-5">
+              {/* Current plan */}
+              <div className="app-card-elevated p-5 space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Current Plan</h2>
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/20 p-4">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    <Sparkles size={18} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-base font-bold capitalize text-foreground">{plan} Plan</p>
+                    <p className="text-xs text-muted-foreground">
+                      {plan === 'trial' && trialDays != null ? `${trialDays} trial days remaining` : `${plan} features active`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xl font-bold tabular-nums text-foreground">{credits.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">credits remaining</p>
+                  </div>
+                </div>
+
+                {/* Credit bar */}
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{credits.toLocaleString()} / {maxCredits.toLocaleString()} credits used</span>
+                    <span className="font-semibold text-foreground">{Math.round(creditPct)}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div className={cn('h-full rounded-full transition-all', creditPct < 15 ? 'bg-amber-500' : 'bg-primary')} style={{ width: `${creditPct}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan comparison */}
+              <div className="app-card-elevated p-5 space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Choose a Plan</h2>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {(['trial', 'pro', 'agency'] as const).map((p) => {
+                    const isCurrent = plan === p
+                    const prices: Record<string, string> = { trial: 'Free', pro: '₹2,499/mo', agency: '₹7,499/mo' }
+                    return (
+                      <div
+                        key={p}
+                        className={cn(
+                          'relative rounded-xl border p-4 transition-colors',
+                          isCurrent ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'border-border bg-card',
+                        )}
+                      >
+                        {isCurrent && (
+                          <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                            <CheckCircle2 size={10} /> Current
+                          </span>
+                        )}
+                        <p className="text-sm font-bold capitalize text-foreground">{p}</p>
+                        <p className="mt-1 text-lg font-bold text-foreground">{prices[p]}</p>
+                        <ul className="mt-3 space-y-1.5">
+                          {(PLAN_FEATURES[p] ?? []).map((f) => (
+                            <li key={f} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <Check size={11} className="shrink-0 text-primary" /> {f}
+                            </li>
+                          ))}
+                        </ul>
+                        {!isCurrent && (
+                          <Button size="sm" className="mt-4 w-full" onClick={() => window.location.assign('/pricing')}>
+                            Upgrade
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Payment */}
+              <div className="app-card-elevated p-5 space-y-3">
+                <h2 className="text-base font-semibold text-foreground">Payment</h2>
+                <p className="text-sm text-muted-foreground">Secure payments via Razorpay. Integration launching soon.</p>
+                <div className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 p-4">
+                  <CreditCard size={20} className="shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Razorpay checkout</p>
+                    <p className="text-xs text-muted-foreground">Direct UPI, card, and net banking payments — coming soon.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* NOTIFICATIONS */}
+          {activeTab === 'notifications' && (
+            <div className="app-card-elevated p-5 space-y-5">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Notification Preferences</h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">Changes save immediately.</p>
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Email</p>
                 {[
-                  { key: 'email_post_reminder' as const, label: 'Email: post reminders' },
-                  { key: 'email_credit_warning' as const, label: 'Email: credit warnings' },
-                  { key: 'email_weekly_digest' as const, label: 'Email: weekly digest' },
-                  { key: 'email_product_updates' as const, label: 'Email: product updates' },
-                  { key: 'inapp_post_reminder' as const, label: 'In-app: post reminders' },
-                  { key: 'inapp_credit_warning' as const, label: 'In-app: credit warnings' },
-                ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-                    <Label htmlFor={key} className="text-sm text-foreground">
-                      {label}
-                    </Label>
-                    <Switch
-                      id={key}
-                      checked={Boolean(prefs[key])}
-                      onCheckedChange={(checked) => void patchPreferences({ [key]: checked })}
-                    />
+                  { key: 'email_post_reminder' as const, label: 'Post reminders', description: 'Remind me when scheduled posts are due' },
+                  { key: 'email_credit_warning' as const, label: 'Credit warnings', description: 'Alert when credits are running low' },
+                  { key: 'email_weekly_digest' as const, label: 'Weekly digest', description: 'Summary of your weekly content activity' },
+                  { key: 'email_product_updates' as const, label: 'Product updates', description: 'New features and improvements' },
+                ].map(({ key, label, description }) => (
+                  <div key={key} className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card/60 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground">{description}</p>
+                    </div>
+                    <Switch id={key} checked={Boolean(prefs[key])} onCheckedChange={(checked) => void patchPreferences({ [key]: checked })} />
                   </div>
                 ))}
               </div>
-            </SectionCard>
-          </div>
-        </TabsContent>
 
-        <TabsContent value="security" className="space-y-4">
-          <div id="security" className="scroll-mt-20 space-y-4">
-            <SectionCard title="Password" subtitle="For accounts that use email and password with Firebase.">
-              {!isPasswordProvider ? (
-                <p className="text-sm text-muted-foreground">You signed in with a social provider. Manage the password from that provider&apos;s security settings.</p>
-              ) : (
-                <div className="grid max-w-md grid-cols-1 gap-3">
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Current password</label>
-                    <input type="password" value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} className="h-10 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-primary" autoComplete="current-password" />
+              {/* In-app */}
+              <div className="space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">In-App</p>
+                {[
+                  { key: 'inapp_post_reminder' as const, label: 'Post reminders', description: 'In-app alerts for scheduled posts' },
+                  { key: 'inapp_credit_warning' as const, label: 'Credit warnings', description: 'In-app alerts when credits are low' },
+                ].map(({ key, label, description }) => (
+                  <div key={key} className="flex items-center justify-between gap-4 rounded-xl border border-border bg-card/60 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground">{description}</p>
+                    </div>
+                    <Switch id={key} checked={Boolean(prefs[key])} onCheckedChange={(checked) => void patchPreferences({ [key]: checked })} />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">New password</label>
-                    <input type="password" value={nextPw} onChange={(e) => setNextPw(e.target.value)} className="h-10 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-primary" autoComplete="new-password" />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SECURITY */}
+          {activeTab === 'security' && (
+            <div className="space-y-5">
+              {/* Password */}
+              <div className="app-card-elevated p-5 space-y-4">
+                <h2 className="text-base font-semibold text-foreground">Password</h2>
+                {!isPasswordProvider ? (
+                  <div className="rounded-xl border border-border bg-muted/20 p-4">
+                    <p className="text-sm text-muted-foreground">You signed in with a social provider. Manage your password from that provider&apos;s security settings.</p>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Confirm new password</label>
-                    <input type="password" value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)} className="h-10 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-primary" autoComplete="new-password" />
+                ) : (
+                  <div className="grid max-w-sm grid-cols-1 gap-3">
+                    {[
+                      { label: 'Current password', value: currentPw, onChange: setCurrentPw, auto: 'current-password' },
+                      { label: 'New password', value: nextPw, onChange: setNextPw, auto: 'new-password' },
+                      { label: 'Confirm new password', value: confirmPw, onChange: setConfirmPw, auto: 'new-password' },
+                    ].map(({ label, value, onChange, auto }) => (
+                      <div key={label}>
+                        <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
+                        <input type="password" value={value} onChange={(e) => onChange(e.target.value)} autoComplete={auto} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary" />
+                      </div>
+                    ))}
+                    <Button disabled={pwBusy} onClick={() => void changePassword()}>
+                      {pwBusy ? 'Updating…' : 'Update Password'}
+                    </Button>
                   </div>
-                  <Button type="button" disabled={pwBusy} onClick={() => void changePassword()}>
-                    {pwBusy ? 'Updating…' : 'Update password'}
-                  </Button>
+                )}
+              </div>
+
+              {/* Active sessions */}
+              <div className="app-card-elevated p-5 space-y-3">
+                <h2 className="text-base font-semibold text-foreground">Active Sessions</h2>
+                <div className="rounded-xl border border-border bg-muted/20 p-4">
+                  <p className="text-sm font-medium text-foreground">Current session</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">Signed in as {userEmail}</p>
                 </div>
-              )}
-            </SectionCard>
-            <SectionCard title="Active sessions" subtitle="Server-side session listing.">
-              <p className="text-sm text-muted-foreground">Coming soon: revoke other devices when user_sessions is available.</p>
-            </SectionCard>
-          </div>
-        </TabsContent>
-      </Tabs>
+                <p className="text-xs text-muted-foreground">Multi-session management coming soon.</p>
+              </div>
+
+              {/* Danger zone */}
+              <div className="app-card-elevated border-destructive/30 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={16} className="text-destructive" />
+                  <h2 className="text-base font-semibold text-destructive">Danger Zone</h2>
+                </div>
+                <p className="text-sm text-muted-foreground">Permanently delete your account and all associated data. This action cannot be undone.</p>
+                <Button variant="destructive" size="sm" onClick={() => toast.error('Contact support@brandvertise.ai to delete your account.')}>
+                  Delete Account
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </PageContainer>
   )
 }
