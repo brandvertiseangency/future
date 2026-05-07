@@ -6,9 +6,7 @@ import { X, Plus, Loader2, ImageIcon, Tag, ChevronRight, Pencil, Trash2, CheckCi
 import { useOnboardingStore, type ProductItem } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { AIButton } from '@/components/ui/ai-button'
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 function genId() {
   return Math.random().toString(36).slice(2, 10)
@@ -28,8 +26,6 @@ const USE_IN_OPTIONS: { key: ProductItem['useIn'][number]; label: string }[] = [
   { key: 'image_generation', label: 'Image generation' },
   { key: 'social_ads', label: 'Social ads' },
 ]
-
-// ─── Product Edit Modal ───────────────────────────────────────────────────────
 
 interface EditModalProps {
   product: ProductItem
@@ -66,7 +62,7 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
         {
           method: 'POST',
           body: JSON.stringify({ image: draft.images[0], productName: draft.name }),
-        }
+        },
       )
       setDraft((d) => ({ ...d, visualDescription: result.visualDescription }))
     } catch {
@@ -91,70 +87,75 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
     }))
   }
 
+  const inputClass = 'w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-foreground/40 focus:outline-none'
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-[640px] max-h-[90vh] overflow-y-auto rounded-2xl border border-white/[0.10] bg-[#0d0d0d]"
+        className="max-h-[90vh] w-full max-w-[640px] overflow-y-auto rounded-2xl border border-border bg-card shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-5 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
-            <p className="text-white font-semibold text-base">Product details</p>
-            <p className="text-white/40 text-xs mt-0.5">Used by the AI in prompts and content calendar</p>
+            <p className="text-base font-semibold text-foreground">Product details</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">Used by the AI in prompts and content calendar</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/[0.05] text-white/40 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={16} />
           </button>
         </div>
 
-        <div className="p-5 grid grid-cols-2 gap-6">
-          {/* Left — form fields */}
-          <div className="flex flex-col gap-4">
+        <div className="grid grid-cols-1 gap-5 p-5 md:grid-cols-2">
+          <div className="flex flex-col gap-3.5">
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Product name *</label>
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Product name *</label>
               <input
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20"
+                className={inputClass}
                 placeholder="e.g. Signature Kurta Set"
                 value={draft.name}
                 onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Short description (AI context)</label>
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Short description</label>
               <textarea
                 rows={2}
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20 resize-none"
-                placeholder="e.g. Handwoven cotton kurta with thread embroidery, available in 6 colours"
+                className={cn(inputClass, 'resize-none')}
+                placeholder="e.g. Handwoven cotton kurta with thread embroidery"
                 value={draft.description}
                 onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Price / offer</label>
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Price / offer</label>
               <input
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20"
+                className={inputClass}
                 placeholder="e.g. ₹2,499 · 20% off this week"
                 value={draft.price}
                 onChange={(e) => setDraft((d) => ({ ...d, price: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Category</label>
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Category</label>
               <input
-                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20"
+                className={inputClass}
                 placeholder="e.g. ethnic wear"
                 value={draft.category}
                 onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
               />
             </div>
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Tags</label>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Tags</label>
+              <div className="mb-2 flex flex-wrap gap-1.5">
                 {draft.tags.map((tag) => (
-                  <span key={tag} className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.08] text-white/60 text-[11px]">
+                  <span key={tag} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-foreground">
                     {tag}
-                    <button onClick={() => setDraft((d) => ({ ...d, tags: d.tags.filter((t) => t !== tag) }))} className="hover:text-white">
+                    <button type="button" onClick={() => setDraft((d) => ({ ...d, tags: d.tags.filter((t) => t !== tag) }))} className="hover:text-destructive">
                       <X size={10} />
                     </button>
                   </span>
@@ -162,34 +163,42 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
               </div>
               <div className="flex gap-2">
                 <input
-                  className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-1.5 text-white text-xs focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20"
+                  className={cn(inputClass, 'h-9 flex-1 py-1.5 text-xs')}
                   placeholder="Add tag..."
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 />
-                <button onClick={addTag} className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.08] text-white/60 text-xs hover:text-white hover:border-white/20 transition-colors">
+                <button
+                  type="button"
+                  onClick={addTag}
+                  className="inline-flex h-9 items-center rounded-lg border border-border bg-muted/40 px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted/60"
+                >
                   Add
                 </button>
               </div>
             </div>
             <div>
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-2">Use this product in</label>
-              <div className="flex flex-col gap-2">
+              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Use this product in</label>
+              <div className="flex flex-col gap-1.5">
                 {USE_IN_OPTIONS.map(({ key, label }) => (
                   <button
                     key={key}
+                    type="button"
                     onClick={() => toggleUseIn(key)}
                     className={cn(
-                      'flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all text-left',
+                      'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-left text-xs font-medium transition-colors',
                       draft.useIn.includes(key)
-                        ? 'border-white/20 bg-white/[0.06] text-white'
-                        : 'border-white/[0.06] text-white/40 hover:border-white/12'
+                        ? 'border-foreground bg-muted/60 text-foreground'
+                        : 'border-border bg-background text-muted-foreground hover:border-border/70',
                     )}
                   >
-                    <div className={cn('w-3.5 h-3.5 rounded-sm border flex items-center justify-center flex-shrink-0', draft.useIn.includes(key) ? 'bg-white border-white' : 'border-white/20')}>
-                      {draft.useIn.includes(key) && <CheckCircle2 size={10} className="text-black" />}
-                    </div>
+                    <span className={cn(
+                      'flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border',
+                      draft.useIn.includes(key) ? 'border-foreground bg-foreground' : 'border-border',
+                    )}>
+                      {draft.useIn.includes(key) && <CheckCircle2 size={9} className="text-background" />}
+                    </span>
                     {label}
                   </button>
                 ))}
@@ -197,25 +206,25 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
             </div>
           </div>
 
-          {/* Right — image upload */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium">Product images</label>
-              <span className="text-white/25 text-[10px]">{draft.images.length}/4</span>
+            <div className="mb-2 flex items-center justify-between">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Product images</label>
+              <span className="text-[10px] text-muted-foreground">{draft.images.length}/4</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="mb-3 grid grid-cols-2 gap-2">
               {draft.images.map((src, i) => (
-                <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.08]">
+                <div key={i} className="relative aspect-square overflow-hidden rounded-lg border border-border bg-muted/30">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt="" className="w-full h-full object-cover" />
+                  <img src={src} alt="" className="h-full w-full object-cover" />
                   <button
+                    type="button"
                     onClick={() => setDraft((d) => ({ ...d, images: d.images.filter((_, idx) => idx !== i) }))}
-                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/60 flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+                    className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-foreground/70 text-background transition-colors hover:bg-foreground"
                   >
                     <X size={10} />
                   </button>
                   {i === 0 && (
-                    <div className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-white/80 text-[9px] text-black font-medium">Primary</div>
+                    <div className="absolute bottom-1 left-1 rounded bg-foreground px-1.5 py-0.5 text-[9px] font-medium text-background">Primary</div>
                   )}
                 </div>
               ))}
@@ -223,60 +232,60 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
                 <div
                   {...getRootProps()}
                   className={cn(
-                    'aspect-square rounded-lg border-2 border-dashed flex items-center justify-center cursor-pointer transition-colors',
-                    isDragActive ? 'border-white/40 bg-white/[0.06]' : 'border-white/[0.10] hover:border-white/20'
+                    'flex aspect-square cursor-pointer items-center justify-center rounded-lg border-2 border-dashed transition-colors',
+                    isDragActive ? 'border-foreground/60 bg-muted/40' : 'border-border hover:border-border/70 hover:bg-muted/30',
                   )}
                 >
                   <input {...getInputProps()} />
-                  <Plus size={16} className="text-white/30" />
+                  <Plus size={16} className="text-muted-foreground" />
                 </div>
               )}
             </div>
-            {/* Vision AI analyse */}
             {draft.images.length > 0 && (
               <button
+                type="button"
                 onClick={analyseWithVision}
                 disabled={analysing}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-white/[0.10] text-white/50 text-xs hover:border-white/20 hover:text-white/70 transition-all disabled:opacity-50"
+                className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-muted/30 text-xs font-medium text-muted-foreground transition-colors hover:border-border/70 hover:text-foreground disabled:opacity-50"
               >
                 {analysing ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
                 {analysing ? 'Analysing with Vision AI...' : 'Auto-detect visual description'}
               </button>
             )}
             {draft.visualDescription && (
-              <div className="mt-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06]">
-                <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">AI visual description</p>
-                <p className="text-white/60 text-xs leading-relaxed">{draft.visualDescription}</p>
+              <div className="mt-3 rounded-lg border border-border bg-muted/30 p-3">
+                <p className="mb-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">AI visual description</p>
+                <p className="text-xs leading-relaxed text-foreground">{draft.visualDescription}</p>
               </div>
             )}
             {!draft.visualDescription && (
               <div className="mt-3">
-                <label className="text-white/40 text-[10px] uppercase tracking-wider font-medium block mb-1.5">Visual description (manual)</label>
+                <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Visual description (manual)</label>
                 <textarea
                   rows={3}
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-white/25 transition-colors placeholder:text-white/20 resize-none"
-                  placeholder="e.g. Teal cotton kurta with white thread embroidery, ethnic silhouette, festive occasion"
+                  className={cn(inputClass, 'resize-none text-xs')}
+                  placeholder="e.g. Teal cotton kurta with white thread embroidery, festive occasion"
                   value={draft.visualDescription}
                   onChange={(e) => setDraft((d) => ({ ...d, visualDescription: e.target.value }))}
                 />
               </div>
             )}
-            <p className="text-white/25 text-[10px] mt-2">Images used as AI reference · stored securely</p>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center gap-3 p-5 border-t border-white/[0.06]">
+        <div className="flex items-center gap-3 border-t border-border px-5 py-4">
           <button
+            type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-white/[0.08] text-white/50 text-sm hover:text-white hover:border-white/20 transition-colors"
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-lg border border-border bg-background text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={() => onSave(draft)}
             disabled={!draft.name.trim()}
-            className="flex-1 py-2.5 rounded-xl bg-white text-black text-sm font-medium hover:bg-white/90 transition-colors disabled:opacity-40"
+            className="inline-flex h-10 flex-1 items-center justify-center rounded-lg bg-foreground text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             Save product
           </button>
@@ -285,8 +294,6 @@ function EditModal({ product, onSave, onClose }: EditModalProps) {
     </div>
   )
 }
-
-// ─── Product Card ─────────────────────────────────────────────────────────────
 
 function ProductCard({
   product,
@@ -301,53 +308,54 @@ function ProductCard({
 }) {
   return (
     <div className={cn(
-      'rounded-xl border overflow-hidden transition-all',
-      product.isPrimary ? 'border-white/20' : 'border-white/[0.08] hover:border-white/12'
+      'overflow-hidden rounded-xl border transition-colors',
+      product.isPrimary ? 'border-foreground' : 'border-border hover:border-border/70',
     )}>
-      {/* Thumbnail */}
-      <div className="relative aspect-square bg-white/[0.04] flex items-center justify-center">
+      <div className="relative flex aspect-square items-center justify-center bg-muted/40">
         {product.images[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
+          <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
         ) : (
-          <ImageIcon size={24} className="text-white/20" />
+          <ImageIcon size={22} className="text-muted-foreground" />
         )}
         {product.isPrimary && (
-          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-white/80 text-[9px] text-black font-semibold">Primary</div>
+          <div className="absolute left-2 top-2 rounded bg-foreground px-1.5 py-0.5 text-[9px] font-semibold text-background">Primary</div>
         )}
         {product.visualDescription && (
-          <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
-            <CheckCircle2 size={10} className="text-emerald-400" />
+          <div className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/20">
+            <CheckCircle2 size={10} className="text-emerald-600 dark:text-emerald-400" />
           </div>
         )}
       </div>
-      {/* Info */}
       <div className="p-2.5">
-        <p className="text-white text-xs font-medium truncate">{product.name}</p>
-        <p className="text-white/40 text-[10px] truncate">{product.category}</p>
+        <p className="truncate text-xs font-medium text-foreground">{product.name}</p>
+        <p className="truncate text-[10px] text-muted-foreground">{product.category}</p>
       </div>
-      {/* Actions */}
       <div className="flex gap-1.5 px-2.5 pb-2.5">
         <button
+          type="button"
           onClick={onEdit}
-          className="flex-1 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.06] text-white/50 text-[10px] hover:text-white hover:border-white/12 transition-colors flex items-center justify-center gap-1"
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-muted/30 py-1.5 text-[10px] text-muted-foreground transition-colors hover:border-border/70 hover:text-foreground"
         >
           <Pencil size={9} /> Edit
         </button>
         <button
+          type="button"
           onClick={onTogglePrimary}
           className={cn(
-            'flex-1 py-1.5 rounded-lg border text-[10px] transition-colors flex items-center justify-center gap-1',
+            'inline-flex flex-1 items-center justify-center rounded-md border py-1.5 text-[10px] transition-colors',
             product.isPrimary
-              ? 'bg-white/[0.08] border-white/20 text-white'
-              : 'bg-white text-black border-white text-[10px]'
+              ? 'border-foreground bg-muted/60 text-foreground'
+              : 'border-border bg-foreground text-background',
           )}
         >
           {product.isPrimary ? 'Primary' : 'Set primary'}
         </button>
         <button
+          type="button"
           onClick={onRemove}
-          className="w-7 h-7 rounded-lg bg-white/[0.04] border border-white/[0.06] text-white/30 hover:text-red-400 hover:border-red-500/20 transition-colors flex items-center justify-center"
+          className="flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/30 text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
+          aria-label="Remove"
         >
           <Trash2 size={10} />
         </button>
@@ -355,8 +363,6 @@ function ProductCard({
     </div>
   )
 }
-
-// ─── Step Product Library ─────────────────────────────────────────────────────
 
 export function StepProductLibrary() {
   const { data, addProduct, updateProduct, removeProduct, setStep } = useOnboardingStore()
@@ -399,97 +405,87 @@ export function StepProductLibrary() {
   })
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Product library</h2>
-        <p className="text-white/40 text-sm mt-2">
-          Upload your real product images and name them clearly. The AI will reference these when generating posts and images.
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <StepHeader
+        eyebrow="Step 10"
+        title="Product library"
+        description="Upload your real product images and name them clearly. The AI will reference these when generating posts and images."
+      />
 
-      {/* How it works flow */}
-      <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-        {[
-          'Product uploaded',
-          'Vision AI analyses',
-          'Description stored',
-          'Prompt engine uses it',
-          'Output references real product',
-        ].map((label, i, arr) => (
-          <span key={label} className="flex items-center gap-2">
-            <span className="px-2.5 py-1 rounded-full bg-white/[0.05] border border-white/[0.08] text-white/50 text-[10px]">
-              {label}
+      <div className="mt-6 space-y-5">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-muted/30 p-3">
+          {[
+            'Product uploaded',
+            'Vision AI analyses',
+            'Description stored',
+            'Prompt engine uses it',
+            'Output references real product',
+          ].map((label, i, arr) => (
+            <span key={label} className="inline-flex items-center gap-2">
+              <span className="rounded-full border border-border bg-background px-2.5 py-1 text-[10px] text-muted-foreground">
+                {label}
+              </span>
+              {i < arr.length - 1 && <ChevronRight size={11} className="shrink-0 text-muted-foreground/60" />}
             </span>
-            {i < arr.length - 1 && <ChevronRight size={11} className="text-white/20 flex-shrink-0" />}
-          </span>
-        ))}
-      </div>
-
-      {/* Grid */}
-      {products.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          {products.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onEdit={() => setEditingProduct(product)}
-              onRemove={() => removeProduct(product.id)}
-              onTogglePrimary={() => handleTogglePrimary(product.id)}
-            />
           ))}
-          {products.length < 20 && (
-            <button
-              onClick={() => { setShowAddModal(true) }}
-              className="rounded-xl border-2 border-dashed border-white/[0.08] flex flex-col items-center justify-center aspect-square hover:border-white/20 hover:bg-white/[0.02] transition-all cursor-pointer"
-            >
-              <Plus size={18} className="text-white/25 mb-1" />
-              <span className="text-white/30 text-[10px]">Add product</span>
-            </button>
-          )}
         </div>
-      )}
 
-      {/* Empty state */}
-      {products.length === 0 && (
-        <div
-          onClick={() => setShowAddModal(true)}
-          className="border-2 border-dashed border-white/[0.08] rounded-2xl p-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-white/20 hover:bg-white/[0.01] transition-all"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-white/[0.05] border border-white/[0.08] flex items-center justify-center">
-            <ImageIcon size={22} className="text-white/30" />
+        {products.length > 0 && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onEdit={() => setEditingProduct(product)}
+                onRemove={() => removeProduct(product.id)}
+                onTogglePrimary={() => handleTogglePrimary(product.id)}
+              />
+            ))}
+            {products.length < 20 && (
+              <button
+                type="button"
+                onClick={() => { setShowAddModal(true) }}
+                className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-border transition-colors hover:border-border/70 hover:bg-muted/30"
+              >
+                <Plus size={18} className="mb-1 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground">Add product</span>
+              </button>
+            )}
           </div>
-          <div className="text-center">
-            <p className="text-white/60 text-sm font-medium">Add your first product</p>
-            <p className="text-white/30 text-xs mt-1">Upload real product images · max 20 products · up to 10MB each</p>
+        )}
+
+        {products.length === 0 && (
+          <div
+            onClick={() => setShowAddModal(true)}
+            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border p-10 transition-colors hover:border-border/70 hover:bg-muted/20"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-muted/40">
+              <ImageIcon size={20} className="text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-foreground">Add your first product</p>
+              <p className="mt-1 text-xs text-muted-foreground">Real product images · max 20 products · 10MB each</p>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground">
+              <Plus size={12} /> Add product
+            </span>
           </div>
-          <span className="flex items-center gap-1.5 px-4 py-2 rounded-full border border-white/[0.10] text-white/50 text-xs hover:text-white hover:border-white/20 transition-colors">
-            <Plus size={12} /> Add product
-          </span>
+        )}
+
+        <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/20 p-3">
+          <Tag size={13} className="mt-0.5 shrink-0 text-muted-foreground" />
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            This step is optional — you can also add products later from the Generate page or your Brand Settings.
+          </p>
         </div>
-      )}
-
-      {/* Optional notice */}
-      <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
-        <Tag size={13} className="text-white/30 mt-0.5 flex-shrink-0" />
-        <p className="text-white/35 text-xs leading-relaxed">
-          This step is optional — you can also add products later from the Generate page or your Brand Settings. Products you add here will be available when building your content calendar.
-        </p>
       </div>
 
-      {/* Navigation */}
-      <div className="flex gap-3">
-        <button
-          onClick={() => setStep(9)}
-          className="px-5 py-2.5 rounded-xl border border-white/[0.08] text-white/50 text-sm hover:text-white hover:border-white/20 transition-colors"
-        >
-          Back
-        </button>
-        <AIButton onClick={() => setStep(11)} className="flex-1">
-          {products.length === 0 ? 'Skip for now' : `Continue with ${products.length} product${products.length > 1 ? 's' : ''}`}
-        </AIButton>
-      </div>
+      <StepFooter
+        onBack={() => setStep(9)}
+        onContinue={() => setStep(11)}
+        continueLabel={products.length === 0 ? 'Skip for now' : `Continue with ${products.length} product${products.length > 1 ? 's' : ''}`}
+      />
 
-      {/* Modals */}
       {showAddModal && (
         <EditModal
           product={newBlankProduct()}

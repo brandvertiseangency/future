@@ -160,21 +160,6 @@ export default function OutputsPage() {
     })
   }, [data?.posts, mediaTab, search])
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === '/') {
-        event.preventDefault()
-        searchRef.current?.focus()
-      }
-      if (event.key.toLowerCase() === 's' && selectedIds.length > 0) {
-        event.preventDefault()
-        goScheduleSelected()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [goScheduleSelected, selectedIds.length])
-
   const filterRail = (
     <SectionCard className="app-card-elevated" title="Filters" subtitle="Platform, status, and reset.">
       <div className="space-y-4">
@@ -258,7 +243,7 @@ export default function OutputsPage() {
         description={`${posts.length} creatives match your filters`}
       />
       {error ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
+        <div className="rounded-lg border border-amber-300/60 bg-card/75 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm dark:border-amber-700/50 dark:bg-card/60 dark:text-amber-200">
           Could not refresh outputs right now. Showing last available results.
         </div>
       ) : null}
@@ -300,7 +285,7 @@ export default function OutputsPage() {
       <SectionCard
         className="app-card-elevated"
         title="Library toolbar"
-        subtitle="Search, media type, layout. Shortcuts: / focus search, S schedule selected."
+        subtitle="Search, media type, and layout controls."
       >
         <div className="flex flex-col gap-3">
           <div className="relative min-w-[200px] w-full">

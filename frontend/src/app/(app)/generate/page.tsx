@@ -255,9 +255,9 @@ function GeneratePageInner() {
         variant="hero"
         title={
           <span className="inline-flex items-center gap-2">
-            <Wand2 className="h-7 w-7 text-primary md:h-8 md:w-8" />
+            <Wand2 className="h-7 w-7 text-white/90 md:h-8 md:w-8" />
             <span>
-              Generate <span className="text-pull text-primary">studio</span>
+              Generate <span className="text-pull text-white/90">studio</span>
             </span>
           </span>
         }

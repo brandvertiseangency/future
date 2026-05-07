@@ -1,18 +1,33 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Upload, Globe, Phone, MapPin, Tag, X, Link2, Loader2 } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
-import { AIButton } from '@/components/ui/ai-button'
 import { apiCall } from '@/lib/api'
 import { toast } from 'sonner'
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 const inputClass =
-  'w-full bg-white border border-[#E5E7EB] rounded-xl px-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#111111]/40 transition-all duration-200'
+  'w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-foreground/40 focus:outline-none'
 
 const inputWithIcon =
-  'w-full bg-white border border-[#E5E7EB] rounded-xl pl-10 pr-4 py-3 text-[#111111] placeholder:text-[#9CA3AF] text-sm focus:outline-none focus:border-[#111111]/40 transition-all duration-200'
+  'w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-foreground/40 focus:outline-none'
+
+type SitePreviewExtracted = {
+  tagline?: string
+  telephone?: string
+  address?: string
+  sameAs?: string[]
+  products?: { name: string; image?: string | null; description?: string }[]
+  organization?: {
+    name?: string
+    url?: string
+    logo?: string | null
+    description?: string
+    slogan?: string
+  } | null
+}
 
 type SitePreview = {
   sourceUrl: string
@@ -20,6 +35,9 @@ type SitePreview = {
   description: string
   suggestedLogoUrl: string | null
   suggestedProductImageUrls: string[]
+  extracted?: SitePreviewExtracted
+  crawlPagesVisited?: string[]
+  fetchedAt?: string
 }
 
 export function StepBrandIdentity() {
@@ -28,6 +46,16 @@ export function StepBrandIdentity() {
   const [importUrl, setImportUrl] = useState('')
   const [importLoading, setImportLoading] = useState(false)
   const [sitePreview, setSitePreview] = useState<SitePreview | null>(null)
+  const [selectedProductImages, setSelectedProductImages] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    if (!sitePreview) {
+      setSelectedProductImages(new Set())
+      return
+    }
+    const urls = sitePreview.suggestedProductImageUrls ?? []
+    setSelectedProductImages(new Set(urls))
+  }, [sitePreview?.fetchedAt, sitePreview?.sourceUrl])
 
   const initials = data.brandName
     ? data.brandName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
@@ -56,18 +84,32 @@ export function StepBrandIdentity() {
     }
   }
 
+  const toggleProductImage = (url: string) => {
+    setSelectedProductImages((prev) => {
+      const next = new Set(prev)
+      if (next.has(url)) next.delete(url)
+      else next.add(url)
+      return next
+    })
+  }
+
   const applySitePreview = () => {
     if (!sitePreview) return
+    const ext = sitePreview.extracted
+    const suggested = sitePreview.suggestedProductImageUrls ?? []
+    const chosen = suggested.filter((u) => selectedProductImages.has(u))
     updateData({
       brandName: sitePreview.title || data.brandName,
       description: sitePreview.description || data.description,
       website: sitePreview.sourceUrl || data.website,
       logoUrl: sitePreview.suggestedLogoUrl || data.logoUrl,
-      productImageUrls: sitePreview.suggestedProductImageUrls?.length
-        ? sitePreview.suggestedProductImageUrls
-        : data.productImageUrls,
+      productImageUrls: suggested.length === 0 ? data.productImageUrls : chosen,
+      tagline: ext?.tagline || data.tagline,
+      phone: ext?.telephone || data.phone,
+      address: ext?.address || data.address,
     })
     toast.success('Applied to your brief — tweak anything below')
+    setSitePreview(null)
   }
 
   const briefSnippets = [
@@ -85,15 +127,15 @@ export function StepBrandIdentity() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-foreground font-semibold text-2xl tracking-tight">Brand identity and brief</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Import signals from your site <span className="text-pull text-primary">or</span> fill manually — you always confirm before we use anything.
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <StepHeader
+        eyebrow="Step 2"
+        title="Brand identity and brief"
+        description="Import signals from your site or fill manually — you always confirm before we use anything."
+      />
 
-      <div className="rounded-2xl border border-border bg-card p-4 md:p-5">
+      <div className="mt-6 space-y-5">
+      <div className="rounded-xl border border-border bg-muted/30 p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-end">
           <div className="flex-1">
             <label className="mb-1.5 flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -111,26 +153,98 @@ export function StepBrandIdentity() {
             type="button"
             onClick={fetchSitePreview}
             disabled={importLoading}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-border bg-muted px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-50"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted/60 disabled:opacity-50"
           >
             {importLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             Fetch brand signals
           </button>
         </div>
         {sitePreview ? (
-          <div className="mt-4 space-y-3 rounded-xl border border-border bg-background/80 p-4 text-sm">
-            <p className="font-medium text-foreground">{sitePreview.title}</p>
-            <p className="line-clamp-3 text-muted-foreground">{sitePreview.description}</p>
+          <div className="mt-4 space-y-4 rounded-xl border border-border bg-background/80 p-4 text-sm">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Review extracted brand DNA</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Toggle product reference shots, then apply. You can still edit every field below afterward.
+              </p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-border/80 bg-card/60 px-3 py-2">
+                <p className="text-[10px] font-medium uppercase text-muted-foreground">Name</p>
+                <p className="font-medium text-foreground">{sitePreview.title || '—'}</p>
+              </div>
+              <div className="rounded-lg border border-border/80 bg-card/60 px-3 py-2">
+                <p className="text-[10px] font-medium uppercase text-muted-foreground">Tagline</p>
+                <p className="text-foreground">{sitePreview.extracted?.tagline || '—'}</p>
+              </div>
+              <div className="sm:col-span-2 rounded-lg border border-border/80 bg-card/60 px-3 py-2">
+                <p className="text-[10px] font-medium uppercase text-muted-foreground">Description</p>
+                <p className="line-clamp-4 text-muted-foreground">{sitePreview.description || '—'}</p>
+              </div>
+              {(sitePreview.extracted?.telephone || sitePreview.extracted?.address) && (
+                <div className="sm:col-span-2 grid gap-2 sm:grid-cols-2">
+                  {sitePreview.extracted?.telephone ? (
+                    <div className="rounded-lg border border-border/80 bg-card/60 px-3 py-2">
+                      <p className="text-[10px] font-medium uppercase text-muted-foreground">Phone</p>
+                      <p className="text-foreground">{sitePreview.extracted.telephone}</p>
+                    </div>
+                  ) : null}
+                  {sitePreview.extracted?.address ? (
+                    <div className="rounded-lg border border-border/80 bg-card/60 px-3 py-2">
+                      <p className="text-[10px] font-medium uppercase text-muted-foreground">Address</p>
+                      <p className="text-foreground">{sitePreview.extracted.address}</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+            {sitePreview.suggestedProductImageUrls?.length ? (
+              <div>
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Reference images
+                </p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {sitePreview.suggestedProductImageUrls.map((url) => {
+                    const on = selectedProductImages.has(url)
+                    return (
+                      <button
+                        key={url}
+                        type="button"
+                        onClick={() => toggleProductImage(url)}
+                        className={cn(
+                          'relative overflow-hidden rounded-lg border-2 text-left transition-colors',
+                          on ? 'border-primary ring-2 ring-primary/25' : 'border-transparent opacity-80 hover:opacity-100',
+                        )}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" className="aspect-square w-full object-cover" loading="lazy" />
+                        <span className="absolute bottom-1 right-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
+                          {on ? 'On' : 'Off'}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : null}
+            {sitePreview.crawlPagesVisited && sitePreview.crawlPagesVisited.length > 1 ? (
+              <p className="text-[10px] text-muted-foreground">
+                Enriched from {sitePreview.crawlPagesVisited.length} pages (same site, capped crawl).
+              </p>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
                 onClick={applySitePreview}
                 className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground"
               >
-                Apply to form below
+                Apply to brief
               </button>
-              <button type="button" onClick={() => setSitePreview(null)} className="text-xs text-muted-foreground underline">
-                Dismiss preview
+              <button
+                type="button"
+                onClick={() => setSitePreview(null)}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground"
+              >
+                Dismiss
               </button>
             </div>
           </div>
@@ -152,44 +266,44 @@ export function StepBrandIdentity() {
         </div>
       </div>
 
-      {/* Logo upload + brand name row */}
-      <div className="flex items-start gap-4">
-        {/* Logo uploader */}
-        <div className="flex-shrink-0">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0">
           <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} />
           <button
+            type="button"
             onClick={() => logoInputRef.current?.click()}
             className={cn(
-              'w-16 h-16 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center transition-all group overflow-hidden',
-              data.logoUrl
-                ? 'border-white/20'
-                : 'border-[#D1D5DB] hover:border-[#9CA3AF] hover:bg-[#F7F7F8]'
+              'group flex h-14 w-14 flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors',
+              data.logoUrl ? 'border-border' : 'border-border hover:border-foreground/40 hover:bg-muted/40',
             )}
           >
             {data.logoUrl ? (
-              <div className="relative w-full h-full">
+              <div className="relative h-full w-full">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={data.logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                  <X size={14} className="text-white" />
+                <img src={data.logoUrl} alt="Logo" className="h-full w-full object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-foreground/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <X size={14} className="text-background" />
                 </div>
               </div>
             ) : (
               <>
-                <Upload size={16} className="text-[#6B7280] group-hover:text-[#111111] transition-colors" />
-                <span className="text-[9px] text-[#9CA3AF] mt-1">Logo</span>
+                <Upload size={15} className="text-muted-foreground transition-colors group-hover:text-foreground" />
+                <span className="mt-0.5 text-[9px] text-muted-foreground">Logo</span>
               </>
             )}
           </button>
           {data.logoUrl && (
-            <button onClick={() => updateData({ logoUrl: '' })} className="text-[10px] text-[#9CA3AF] hover:text-red-500 mt-1 w-full text-center transition-colors">
+            <button
+              type="button"
+              onClick={() => updateData({ logoUrl: '' })}
+              className="mt-1 w-full text-center text-[10px] text-muted-foreground transition-colors hover:text-destructive"
+            >
               Remove
             </button>
           )}
         </div>
 
-        {/* Brand name + tagline */}
-        <div className="flex-1 space-y-3">
+        <div className="flex-1 space-y-2.5">
           <div className="relative">
             <input
               className={inputClass}
@@ -198,10 +312,10 @@ export function StepBrandIdentity() {
               value={data.brandName}
               onChange={(e) => updateData({ brandName: e.target.value })}
             />
-            <span className="absolute right-3 top-3 text-xs text-[#9CA3AF]">{data.brandName.length}/50</span>
+            <span className="absolute right-3 top-2.5 text-[11px] text-muted-foreground">{data.brandName.length}/50</span>
           </div>
           <div className="relative">
-            <Tag size={14} className="absolute left-3.5 top-3.5 text-[#9CA3AF] pointer-events-none" />
+            <Tag size={14} className="pointer-events-none absolute left-3 top-3 text-muted-foreground" />
             <input
               className={inputWithIcon}
               placeholder="Tagline (optional) — e.g. Wear your story"
@@ -213,7 +327,6 @@ export function StepBrandIdentity() {
         </div>
       </div>
 
-      {/* Description */}
       <div className="relative">
         <input
           className={inputClass}
@@ -222,13 +335,12 @@ export function StepBrandIdentity() {
           value={data.description}
           onChange={(e) => updateData({ description: e.target.value })}
         />
-        <span className="absolute right-3 top-3 text-xs text-[#9CA3AF]">{data.description.length}/120</span>
+        <span className="absolute right-3 top-2.5 text-[11px] text-muted-foreground">{data.description.length}/120</span>
       </div>
 
-      {/* Contact & location row */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         <div className="relative">
-          <Globe size={14} className="absolute left-3.5 top-3.5 text-[#9CA3AF] pointer-events-none" />
+          <Globe size={14} className="pointer-events-none absolute left-3 top-3 text-muted-foreground" />
           <input
             className={inputWithIcon}
             placeholder="Website (optional)"
@@ -237,62 +349,52 @@ export function StepBrandIdentity() {
           />
         </div>
         <div className="relative">
-          <Phone size={14} className="absolute left-3.5 top-3.5 text-[#9CA3AF] pointer-events-none" />
+          <Phone size={14} className="pointer-events-none absolute left-3 top-3 text-muted-foreground" />
           <input
             className={inputWithIcon}
             placeholder="Phone (optional)"
-            value={(data as unknown as { phone: string }).phone ?? ''}
-            onChange={(e) => updateData({ phone: e.target.value } as never)}
+            value={data.phone}
+            onChange={(e) => updateData({ phone: e.target.value })}
           />
         </div>
-        <div className="relative col-span-2">
-          <MapPin size={14} className="absolute left-3.5 top-3.5 text-[#9CA3AF] pointer-events-none" />
+        <div className="relative sm:col-span-2">
+          <MapPin size={14} className="pointer-events-none absolute left-3 top-3 text-muted-foreground" />
           <input
             className={inputWithIcon}
             placeholder="Address / City (optional) — e.g. 123 Main St, Mumbai"
-            value={(data as unknown as { address: string }).address ?? data.city ?? ''}
-            onChange={(e) => updateData({ address: e.target.value, city: e.target.value } as never)}
+            value={data.address || data.city}
+            onChange={(e) => updateData({ address: e.target.value, city: e.target.value })}
           />
         </div>
       </div>
 
-      {/* Live preview */}
       {data.brandName && (
-        <div className="flex items-center gap-4 p-4 rounded-xl bg-[#F7F7F8] border border-[#E5E7EB]">
-          <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center bg-[#111111]">
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 p-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-foreground">
             {data.logoUrl
-              ? <img src={data.logoUrl} alt="" className="w-full h-full object-cover" />
-              : <span className="text-white font-bold text-lg">{initials}</span>
+              ? // eslint-disable-next-line @next/next/no-img-element
+                <img src={data.logoUrl} alt="" className="h-full w-full object-cover" />
+              : <span className="text-base font-bold text-background">{initials}</span>
             }
           </div>
-          <div>
-            <p className="text-[#111111] font-semibold text-sm">{data.brandName}</p>
-            {data.tagline && <p className="text-[#111111] text-xs mt-0.5 italic">{data.tagline}</p>}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-foreground">{data.brandName}</p>
+            {data.tagline && <p className="mt-0.5 truncate text-xs italic text-foreground/85">{data.tagline}</p>}
             {data.description && (
-              <p className="text-[#6B7280] text-xs mt-0.5 line-clamp-1">{data.description}</p>
+              <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{data.description}</p>
             )}
-            {data.website && <p className="text-[#9CA3AF] text-[10px] mt-0.5">{data.website}</p>}
+            {data.website && <p className="mt-0.5 truncate text-[10px] text-muted-foreground/70">{data.website}</p>}
           </div>
         </div>
       )}
-
-      <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(1)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">
-          ← Back
-        </button>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setStep(3)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">
-            Skip for now →
-          </button>
-          <AIButton
-            onClick={() => setStep(3)}
-            disabled={!canContinue}
-            className="px-6 py-2.5 rounded-xl text-sm font-semibold"
-          >
-            Continue →
-          </AIButton>
-        </div>
       </div>
+
+      <StepFooter
+        onBack={() => setStep(1)}
+        onSkip={() => setStep(3)}
+        onContinue={() => setStep(3)}
+        continueDisabled={!canContinue}
+      />
     </div>
   )
 }

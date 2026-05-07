@@ -11,6 +11,8 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   id: string
+  reasoning?: string
+  sources?: Array<{ title: string; url: string }>
 }
 
 type QuickAction = {
@@ -70,6 +72,8 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [model, setModel] = useState('brand-ai')
+  const [webSearch, setWebSearch] = useState(false)
   const router = useRouter()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -112,7 +116,7 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
       const res = await fetch(`${API_BASE}/api/chat/brand`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify({ messages: history, model, webSearch }),
       })
       const data = await res.json()
       setMessages((prev) => [
@@ -120,6 +124,8 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
         {
           role: 'assistant',
           content: data.response ?? "I couldn't connect right now. Please try again.",
+          reasoning: typeof data.reasoning === 'string' ? data.reasoning : undefined,
+          sources: Array.isArray(data.sources) ? data.sources : undefined,
           id: Date.now().toString(),
         },
       ])
@@ -189,16 +195,38 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
                 or the content calendar.
               </p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5 self-center sm:self-start"
-              onClick={() => router.push('/calendar/generate')}
-            >
-              <CalendarDays className="h-3.5 w-3.5" />
-              Calendar
-              <ArrowUpRight className="h-3 w-3 opacity-60" />
-            </Button>
+            <div className="flex flex-col gap-2 self-center sm:self-start">
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Model</span>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="h-8 rounded-md border border-border bg-card px-2 text-xs text-foreground"
+                >
+                  <option value="brand-ai">Brand AI</option>
+                  <option value="strategy">Strategy</option>
+                  <option value="creative">Creative</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={webSearch}
+                  onChange={(e) => setWebSearch(e.target.checked)}
+                />
+                Web search
+              </label>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={() => router.push('/calendar/generate')}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+                Calendar
+                <ArrowUpRight className="h-3 w-3 opacity-60" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -216,6 +244,27 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
                     )}
                   >
                     {msg.content}
+                    {msg.reasoning ? (
+                      <div className="mt-2 rounded-md border border-border/60 bg-card/70 p-2 text-[11px] text-muted-foreground">
+                        <p className="mb-1 font-medium text-foreground">Reasoning</p>
+                        {msg.reasoning}
+                      </div>
+                    ) : null}
+                    {msg.sources?.length ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {msg.sources.map((source, idx) => (
+                          <a
+                            key={`${msg.id}-source-${idx}`}
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded-full border border-border px-2 py-1 text-[10px] text-primary hover:bg-primary/10"
+                          >
+                            {source.title || `Source ${idx + 1}`}
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -265,9 +314,7 @@ export function BrandChat({ brand }: { brand: BrandChatBrand }) {
         </div>
 
         <div className="relative flex items-center justify-between gap-3 px-4 pb-4 md:px-6">
-          <p className="text-[10.5px] text-muted-foreground">
-            Enter to send · Shift+Enter newline · Brand AI can make mistakes; verify important details.
-          </p>
+          <p className="text-[10.5px] text-muted-foreground">Brand AI can make mistakes; verify important details.</p>
           <button
             type="button"
             onClick={() => void sendMessage()}

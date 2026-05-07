@@ -1,10 +1,10 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
-import { CheckCircle2, Circle } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { OnboardingSection } from '@/lib/onboarding-flow'
 import { MOTION_TRANSITIONS } from '@/lib/motion'
+import { AIButton } from '@/components/ui/ai-button'
 
 export function MotionSection({
   children,
@@ -21,7 +21,7 @@ export function MotionSection({
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -8 }}
         transition={MOTION_TRANSITIONS.section}
-        className="h-full"
+        className="flex h-full flex-col"
       >
         {children}
       </motion.div>
@@ -29,85 +29,86 @@ export function MotionSection({
   )
 }
 
-export function ProgressScore({ value }: { value: number }) {
+export function StepHeader({
+  eyebrow,
+  title,
+  description,
+}: {
+  eyebrow?: string
+  title: string
+  description?: string
+}) {
   return (
-    <div className="rounded-2xl border border-[#E5E7EB] bg-white p-4">
-      <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280]">Profile quality</p>
-      <div className="mt-2 flex items-end justify-between">
-        <p className="font-semibold text-2xl text-[#111111] tabular-nums">{Math.round(value)}%</p>
-        <p className="text-xs text-[#6B7280]">{value >= 75 ? 'Ready to generate' : 'Needs more context'}</p>
-      </div>
-      <div className="mt-3 h-2 w-full rounded-full bg-[#EFEFF1]">
-        <motion.div
-          className="h-full rounded-full bg-[#111111]"
-          animate={{ width: `${Math.max(0, Math.min(100, value))}%` }}
-          transition={MOTION_TRANSITIONS.micro}
-        />
-      </div>
-      <p className="mt-2 text-[11px] text-[#6B7280]">Tip: complete Brand, Audience, Goals, and Publishing for best first-plan quality.</p>
+    <div className="space-y-1.5">
+      {eyebrow ? (
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{eyebrow}</p>
+      ) : null}
+      <h2 className="font-display text-2xl font-semibold tracking-tight text-foreground md:text-[26px]">
+        {title}
+      </h2>
+      {description ? <p className="text-sm leading-relaxed text-muted-foreground">{description}</p> : null}
     </div>
   )
 }
 
-export function SectionRail({
-  sections,
-  activeStep,
-  completedSteps,
-  onGoStep,
+export function StepFooter({
+  onBack,
+  onSkip,
+  onContinue,
+  continueLabel = 'Continue',
+  continueDisabled,
+  showAi = true,
+  className,
 }: {
-  sections: OnboardingSection[]
-  activeStep: number
-  completedSteps: Set<number>
-  onGoStep: (step: number) => void
+  onBack?: () => void
+  onSkip?: () => void
+  onContinue?: () => void
+  continueLabel?: string
+  continueDisabled?: boolean
+  showAi?: boolean
+  className?: string
 }) {
   return (
-    <nav className="space-y-1">
-      {sections.map((section, idx) => {
-        const step = idx + 1
-        const active = activeStep === step
-        const done = completedSteps.has(step)
-        return (
-          <button
-            key={section.id}
-            onClick={() => onGoStep(step)}
-            className={cn(
-              'w-full rounded-xl border px-3 py-2 text-left transition-all',
-              active
-                ? 'border-[#111111] bg-[#111111] text-white'
-                : done
-                ? 'border-[#D1D5DB] bg-white hover:border-[#9CA3AF]'
-                : 'border-transparent bg-transparent hover:border-[#E5E7EB] hover:bg-white'
-            )}
-          >
-            <div className="flex items-start gap-2.5">
-              {done ? (
-                <CheckCircle2 size={14} className={active ? 'text-white' : 'text-[#111111] mt-0.5'} />
-              ) : (
-                <Circle size={14} className={active ? 'text-white mt-0.5' : 'text-[#9CA3AF] mt-0.5'} />
-              )}
-              <div>
-                <p className={cn('text-sm font-medium', active ? 'text-white' : 'text-[#111111]')}>{section.title}</p>
-                <p className={cn('text-[11px]', active ? 'text-white/75' : 'text-[#6B7280]')}>{section.subtitle}</p>
-              </div>
-            </div>
-          </button>
-        )
-      })}
-    </nav>
-  )
-}
+    <div className={cn('mt-6 flex items-center justify-between gap-3 border-t border-border/70 pt-4', className)}>
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+        >
+          <span aria-hidden>←</span> Back
+        </button>
+      ) : <span />}
 
-export function StickyPreviewPanel({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <aside className="sticky top-6 rounded-2xl border border-[#E5E7EB] bg-white p-4">
-      <p className="text-[11px] uppercase tracking-[0.12em] text-[#6B7280]">{title}</p>
-      <div className="mt-3 space-y-3">{children}</div>
-    </aside>
+      <div className="flex items-center gap-2">
+        {onSkip ? (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          >
+            Skip
+          </button>
+        ) : null}
+        {onContinue ? (
+          showAi ? (
+            <AIButton onClick={onContinue} disabled={continueDisabled} className="h-10 rounded-lg px-5 text-sm font-semibold">
+              {continueLabel}
+              <ArrowRight size={14} className="ml-1.5" />
+            </AIButton>
+          ) : (
+            <button
+              type="button"
+              onClick={onContinue}
+              disabled={continueDisabled}
+              className="inline-flex h-10 items-center rounded-lg bg-foreground px-5 text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+            >
+              {continueLabel}
+              <ArrowRight size={14} className="ml-1.5" />
+            </button>
+          )
+        ) : null}
+      </div>
+    </div>
   )
 }

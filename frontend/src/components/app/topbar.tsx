@@ -64,7 +64,7 @@ export function Topbar() {
   const progress = getWorkflowProgress(pathname)
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border/80 bg-card/95 px-4 backdrop-blur-md md:left-[260px] md:px-6">
+    <header className="fixed left-0 right-0 top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-border/65 bg-card/55 px-4 backdrop-blur-xl md:left-[260px] md:px-6">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-foreground">{meta.title}</p>
         <p className="truncate text-xs text-muted-foreground">

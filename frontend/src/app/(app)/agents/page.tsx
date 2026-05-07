@@ -52,13 +52,13 @@ export default function AgentsPage() {
         variant="hero"
         title={
           <>
-            AI <span className="text-pull text-primary">agents</span>
+            AI <span className="text-pull text-white/90">agents</span>
           </>
         }
         description="Website, branding, and presentation workflows. Pro and Agency unlock generation on every agent below."
       />
       {!planUnlocked ? (
-        <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/80 bg-muted/30 p-4 text-sm text-muted-foreground shadow-[var(--shadow-card)]">
+        <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/65 bg-card/78 p-4 text-sm text-muted-foreground shadow-[var(--shadow-card)] backdrop-blur-sm">
           <p className="font-medium text-foreground">Unlock on Pro</p>
           <p className="mt-1">Upgrade to run AI generations from this workspace. You can open each agent from the sidebar to see the interface.</p>
         </div>

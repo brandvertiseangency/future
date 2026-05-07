@@ -210,7 +210,7 @@ export default function SettingsPage() {
       <PageHeader variant="compact" title="Settings" description="Manage profile, brand identity, billing, notifications, and security." />
 
       <Tabs value={activeTab} onValueChange={onTabChange} className="space-y-4">
-        <TabsList className="grid h-auto w-full max-w-3xl grid-cols-2 gap-1 rounded-xl border border-border/80 bg-muted/30 p-1 sm:grid-cols-5">
+        <TabsList className="grid h-auto w-full max-w-3xl grid-cols-2 gap-1 rounded-xl border border-border/65 bg-card/70 p-1 backdrop-blur-sm sm:grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="brand">Brand</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -243,7 +243,7 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs text-muted-foreground">Email</label>
-                  <input value={email} readOnly className="h-10 w-full rounded-lg border border-border bg-muted/40 px-3 text-sm text-muted-foreground" />
+                  <input value={email} readOnly className="h-10 w-full rounded-lg border border-border/65 bg-card/70 px-3 text-sm text-muted-foreground" />
                 </div>
               </div>
               <Button className="mt-4" onClick={saveProfile} disabled={!canSave}>
@@ -271,14 +271,14 @@ export default function SettingsPage() {
           <div id="billing" className="scroll-mt-20">
             <SectionCard title="Billing" subtitle="Plans and credits (₹ pricing shown as reference — gateway integration pending).">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border p-3">
+                <div className="rounded-lg border border-border/65 bg-card/72 p-3 backdrop-blur-sm">
                   <p className="text-xs text-muted-foreground">Current Plan</p>
                   <p className="mt-1 text-lg font-semibold text-foreground capitalize">{plan}</p>
                   {plan === 'trial' && trialDays != null ? (
                     <p className="mt-1 text-xs text-muted-foreground">Trial days remaining: {trialDays}</p>
                   ) : null}
                 </div>
-                <div className="rounded-lg border border-border p-3">
+                <div className="rounded-lg border border-border/65 bg-card/72 p-3 backdrop-blur-sm">
                   <p className="text-xs text-muted-foreground">Credits</p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{credits}</p>
                   <p className="mt-1 text-xs text-muted-foreground">Approx. value: ₹{Math.round(credits * 12).toLocaleString('en-IN')} equivalent (indicative)</p>

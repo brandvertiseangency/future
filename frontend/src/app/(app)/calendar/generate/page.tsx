@@ -161,7 +161,7 @@ function CalendarGenerateInner() {
       <div className="flex flex-col gap-4">
         <Link
           href="/calendar"
-          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex w-fit items-center gap-1 text-sm font-medium text-white/80 hover:text-white"
         >
           <ChevronLeft className="h-4 w-4" /> Back to calendar
         </Link>
@@ -191,9 +191,9 @@ function CalendarGenerateInner() {
         variant="hero"
         title={
           <span className="inline-flex items-center gap-2">
-            <Sparkles className="h-7 w-7 text-primary md:h-8 md:w-8" />
+            <Sparkles className="h-7 w-7 text-white/90 md:h-8 md:w-8" />
             <span>
-              Generate <span className="text-pull text-primary">content plan</span>
+              Generate <span className="text-pull text-white/90">content plan</span>
             </span>
           </span>
         }

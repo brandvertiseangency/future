@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -21,10 +21,22 @@ export function ContentPolicyModal() {
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [localAccepted, setLocalAccepted] = useState(false)
   const user = data?.user
+  const localKey = useMemo(() => `bv.content_policy.accepted.${CONTENT_POLICY_VERSION}`, [])
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(localKey)
+      setLocalAccepted(stored === '1')
+    } catch {
+      setLocalAccepted(false)
+    }
+  }, [localKey])
 
   const needsAccept =
     !!user &&
+    !localAccepted &&
     (!user.content_policy_accepted_at || user.content_policy_version !== CONTENT_POLICY_VERSION)
 
   const accept = async () => {
@@ -38,8 +50,23 @@ export function ContentPolicyModal() {
           content_policy_version: CONTENT_POLICY_VERSION,
         }),
       })
+      try {
+        window.localStorage.setItem(localKey, '1')
+      } catch {}
+      setLocalAccepted(true)
       await mutate()
     } catch (e) {
+      const fallbackHost =
+        typeof window !== 'undefined' &&
+        ['localhost', '127.0.0.1'].includes(window.location.hostname)
+      if (fallbackHost) {
+        try {
+          window.localStorage.setItem(localKey, '1')
+        } catch {}
+        setLocalAccepted(true)
+        setError('Could not sync acceptance to API, but continued locally for development.')
+        return
+      }
       setError(e instanceof Error ? e.message : 'Could not save acceptance. Please try again.')
     } finally {
       setSubmitting(false)

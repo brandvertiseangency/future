@@ -227,26 +227,6 @@ export default function CalendarPage() {
     }
   }, [filteredRows, mutate, invalidatePostCaches])
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement)?.tagName === 'INPUT' || (event.target as HTMLElement)?.tagName === 'TEXTAREA') return
-      if (event.key.toLowerCase() === 'a' && selected) {
-        event.preventDefault()
-        void approve()
-      }
-      if (event.shiftKey && event.key.toLowerCase() === 'a') {
-        event.preventDefault()
-        void approveAll()
-      }
-      if (event.key.toLowerCase() === 'g') {
-        event.preventDefault()
-        window.location.assign('/calendar/generate')
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selected, approve, approveAll])
-
   return (
     <PageContainer className="space-y-6">
       <PageIntroModal
@@ -360,7 +340,7 @@ export default function CalendarPage() {
             }
           >
             {!hasApprovedOrScheduled && rows.length > 0 ? (
-              <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
+              <div className="mb-3 rounded-lg border border-amber-300/60 bg-card/75 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm dark:border-amber-700/50 dark:bg-card/60 dark:text-amber-200 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
                 No approved content yet. Approve one or more posts to unlock scheduling.
               </div>
             ) : null}
@@ -451,8 +431,6 @@ export default function CalendarPage() {
             )}
           </SectionCard>
 
-          <p className="text-xs text-muted-foreground">Shortcuts: A approve selected · Shift+A approve filtered page · G generate plan.</p>
-
           <div className="flex flex-wrap items-center justify-end gap-2">
             <Link href="/calendar/generate">
               <Button variant="secondary">Regenerate plan</Button>
@@ -464,7 +442,7 @@ export default function CalendarPage() {
         </div>
 
         <div className="flex flex-col gap-4 xl:sticky xl:top-24">
-          <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/80 p-4 shadow-[var(--shadow-card)]">
+          <div className="app-card-elevated rounded-[var(--radius-card-lg)] border border-border/65 bg-card/82 p-4 shadow-[var(--shadow-card)] backdrop-blur-sm">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Summary</p>
             <div className="mt-3 flex items-center gap-4">
               <div

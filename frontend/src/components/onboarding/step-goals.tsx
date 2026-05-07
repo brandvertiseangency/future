@@ -2,8 +2,8 @@
 
 import { Rocket, DollarSign, MessageSquare, Megaphone } from 'lucide-react'
 import { useOnboardingStore } from '@/stores/onboarding'
-import { AIButton } from '@/components/ui/ai-button'
 import { GoalPriorityPicker } from '@/components/onboarding/controls/goal-priority-picker'
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 const GOALS = [
 	{ id: 'growth', Icon: Rocket, label: 'Growth', desc: 'Grow your follower count and reach new audiences' },
@@ -25,48 +25,34 @@ export function StepGoals() {
 	}
 
 	return (
-		<div className="space-y-8">
-			<div>
-				<h2 className="text-[#111111] font-semibold text-2xl tracking-tight">Business goals</h2>
-				<p className="text-[#6B7280] text-sm mt-1">Prioritize outcomes so AI can optimize content strategy decisions.</p>
-			</div>
-
-			<GoalPriorityPicker
-				options={GOALS.map((g) => ({ id: g.id, label: g.label, description: g.desc }))}
-				selected={data.goals || []}
-				onToggle={toggle}
+		<div className="flex h-full flex-col">
+			<StepHeader
+				eyebrow="Step 7"
+				title="Business goals"
+				description="Prioritize outcomes so AI can optimize content strategy decisions."
 			/>
-			<div className="grid grid-cols-4 gap-3">
-				{GOALS.map((g) => (
-					<div key={g.id} className="rounded-xl border border-[#E5E7EB] bg-[#F7F7F8] p-3">
-						<g.Icon size={16} className="text-[#111111]" />
-						<p className="mt-1 text-xs font-medium text-[#111111]">{g.label}</p>
-					</div>
-				))}
-			</div>
 
-			<div className="flex items-center justify-between pt-2">
-				<button
-					onClick={() => setStep(6)}
-					className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors"
-				>
-					← Back
-				</button>
-				<div className="flex items-center gap-4">
-					<button
-						onClick={() => setStep(8)}
-						className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors"
-					>
-						Skip for now →
-					</button>
-					<AIButton
-						onClick={() => setStep(8)}
-						className="px-6 py-2.5 rounded-xl text-sm font-semibold"
-					>
-						Continue →
-					</AIButton>
+			<div className="mt-6 space-y-5">
+				<GoalPriorityPicker
+					options={GOALS.map((g) => ({ id: g.id, label: g.label, description: g.desc }))}
+					selected={data.goals || []}
+					onToggle={toggle}
+				/>
+				<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+					{GOALS.map((g) => (
+						<div key={g.id} className="rounded-lg border border-border bg-muted/30 p-3">
+							<g.Icon size={16} className="text-foreground" />
+							<p className="mt-1 text-xs font-medium text-foreground">{g.label}</p>
+						</div>
+					))}
 				</div>
 			</div>
+
+			<StepFooter
+				onBack={() => setStep(6)}
+				onSkip={() => setStep(8)}
+				onContinue={() => setStep(8)}
+			/>
 		</div>
 	)
 }

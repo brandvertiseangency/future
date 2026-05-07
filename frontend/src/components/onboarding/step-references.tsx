@@ -2,11 +2,11 @@
 
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
-import { Upload, X, CheckCircle2, Loader2, ImageIcon, Sparkles } from 'lucide-react'
-import { useOnboardingStore, type ReferenceImage } from '@/stores/onboarding'
+import { Upload, X, CheckCircle2, Loader2, Sparkles } from 'lucide-react'
+import { useOnboardingStore } from '@/stores/onboarding'
 import { apiCall } from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { AIButton } from '@/components/ui/ai-button'
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -57,7 +57,7 @@ export function StepReferences() {
         body: JSON.stringify({ images }),
       })
       setExtractedStyleProfile(styleProfile)
-    } catch (err) {
+    } catch {
       setAnalysisError('Analysis failed. You can continue without it.')
     } finally {
       setAnalysing(false)
@@ -67,139 +67,136 @@ export function StepReferences() {
   const profile = data.extractedStyleProfile
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Upload reference images</h2>
-        <p className="text-white/40 text-sm mt-2">
-          Drop competitor posts, mood boards, or inspiration. Our Vision AI will extract your visual style.
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <StepHeader
+        eyebrow="Step 9"
+        title="Upload reference images"
+        description="Drop competitor posts, mood boards, or inspiration. Vision AI will extract your visual style."
+      />
 
-      {/* Drop zone */}
-      <div
-        {...getRootProps()}
-        className={cn(
-          'rounded-2xl border-2 border-dashed p-8 text-center cursor-pointer transition-all',
-          isDragActive
-            ? 'border-[var(--ai-color)] bg-[var(--ai-color)]/[0.06]'
-            : 'border-white/[0.12] bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.04]'
-        )}
-      >
-        <input {...getInputProps()} />
-        <Upload size={32} className="mx-auto mb-3 text-white/30" />
-        <p className="text-white/60 text-sm font-medium">
-          {isDragActive ? 'Drop your images here' : 'Drop images or click to browse'}
-        </p>
-        <p className="text-white/30 text-xs mt-1">JPG, PNG, WebP · Max 5MB per image · Up to 10 images</p>
-      </div>
-
-      {/* Image grid */}
-      {(data.referenceImages || []).length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
-          {(data.referenceImages || []).map((img, i) => (
-            <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-white/10 group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={img.url} alt={img.fileName} className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <button
-                  onClick={() => removeReferenceImage(i)}
-                  className="w-8 h-8 rounded-full bg-red-500/80 flex items-center justify-center text-white"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-              {img.analysed && (
-                <div className="absolute bottom-1 right-1">
-                  <CheckCircle2 size={16} className="text-[var(--ai-color)]" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Analyse button */}
-      {(data.referenceImages || []).length > 0 && !data.referenceAnalysisComplete && (
-        <button
-          onClick={analyseAll}
-          disabled={analysing}
-          className="w-full py-3.5 rounded-xl border border-[var(--ai-border)]/50 bg-[var(--ai-color)]/[0.08] text-[var(--ai-color)] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[var(--ai-color)]/[0.14] transition-all disabled:opacity-50"
+      <div className="mt-6 space-y-5">
+        <div
+          {...getRootProps()}
+          className={cn(
+            'cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-colors',
+            isDragActive
+              ? 'border-primary bg-primary/[0.06]'
+              : 'border-border bg-muted/30 hover:border-border/70 hover:bg-muted/50',
+          )}
         >
-          {analysing ? (
-            <><Loader2 size={16} className="animate-spin" /> Analysing with Vision AI...</>
-          ) : (
-            <><Sparkles size={16} /> Analyse visual style</>
-          )}
-        </button>
-      )}
+          <input {...getInputProps()} />
+          <Upload size={28} className="mx-auto mb-3 text-muted-foreground" />
+          <p className="text-sm font-medium text-foreground">
+            {isDragActive ? 'Drop your images here' : 'Drop images or click to browse'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">JPG, PNG, WebP · Max 5MB · Up to 10 images</p>
+        </div>
 
-      {analysisError && (
-        <p className="text-red-400 text-sm">{analysisError}</p>
-      )}
-
-      {/* Style profile result */}
-      {profile && (
-        <div className="rounded-2xl border border-[var(--ai-border)]/40 bg-[var(--ai-color)]/[0.05] p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className="text-[var(--ai-color)]" />
-            <p className="text-[var(--ai-color)] text-sm font-semibold">Visual style extracted</p>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">Aesthetic</p>
-              <p className="text-white text-sm font-medium">{profile.dominantAesthetic}</p>
-            </div>
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">Photography</p>
-              <p className="text-white text-sm font-medium">{profile.photographyStyle?.replace(/_/g, ' ')}</p>
-            </div>
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">Typography</p>
-              <p className="text-white text-sm font-medium">{profile.fontMoodDetected?.replace(/_/g, ' ')}</p>
-            </div>
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-1">Layout</p>
-              <p className="text-white text-sm font-medium">{profile.layoutStyle?.replace(/_/g, ' ')}</p>
-            </div>
-          </div>
-
-          {(profile.extractedColors || []).length > 0 && (
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-2">Extracted colours</p>
-              <div className="flex gap-2">
-                {profile.extractedColors.map((hex, i) => (
-                  <div key={i} className="flex flex-col items-center gap-1">
-                    <div className="w-8 h-8 rounded-lg border border-white/20" style={{ background: hex }} />
-                    <p className="text-[9px] text-white/30 font-mono">{hex}</p>
+        {(data.referenceImages || []).length > 0 && (
+          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+            {(data.referenceImages || []).map((img, i) => (
+              <div key={i} className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-muted/30">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img.url} alt={img.fileName} className="h-full w-full object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center bg-foreground/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => removeReferenceImage(i)}
+                    className="flex h-7 w-7 items-center justify-center rounded-full bg-destructive text-destructive-foreground"
+                    aria-label="Remove image"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+                {img.analysed && (
+                  <div className="absolute bottom-1 right-1">
+                    <CheckCircle2 size={14} className="text-emerald-500" />
                   </div>
-                ))}
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {(data.referenceImages || []).length > 0 && !data.referenceAnalysisComplete && (
+          <button
+            type="button"
+            onClick={analyseAll}
+            disabled={analysing}
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/[0.08] text-sm font-semibold text-primary transition-colors hover:bg-primary/[0.14] disabled:opacity-50"
+          >
+            {analysing ? (
+              <><Loader2 size={14} className="animate-spin" /> Analysing with Vision AI...</>
+            ) : (
+              <><Sparkles size={14} /> Analyse visual style</>
+            )}
+          </button>
+        )}
+
+        {analysisError && (
+          <p className="text-xs text-destructive">{analysisError}</p>
+        )}
+
+        {profile && (
+          <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/[0.05] p-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-primary" />
+              <p className="text-sm font-semibold text-primary">Visual style extracted</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Aesthetic</p>
+                <p className="text-sm font-medium text-foreground">{profile.dominantAesthetic}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Photography</p>
+                <p className="text-sm font-medium text-foreground">{profile.photographyStyle?.replace(/_/g, ' ')}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Typography</p>
+                <p className="text-sm font-medium text-foreground">{profile.fontMoodDetected?.replace(/_/g, ' ')}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Layout</p>
+                <p className="text-sm font-medium text-foreground">{profile.layoutStyle?.replace(/_/g, ' ')}</p>
               </div>
             </div>
-          )}
 
-          {(profile.moodKeywords || []).length > 0 && (
-            <div>
-              <p className="text-white/40 text-[10px] uppercase tracking-wider mb-2">Mood keywords</p>
-              <div className="flex flex-wrap gap-2">
-                {profile.moodKeywords.map((kw, i) => (
-                  <span key={i} className="px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/10 text-white/60 text-xs">{kw}</span>
-                ))}
+            {(profile.extractedColors || []).length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Extracted colours</p>
+                <div className="flex gap-2">
+                  {profile.extractedColors.map((hex, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1">
+                      <div className="h-7 w-7 rounded-md border border-border" style={{ background: hex }} />
+                      <p className="font-mono text-[9px] text-muted-foreground">{hex}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
 
-      <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(8)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setStep(10)} className="text-white/30 hover:text-white/60 text-sm transition-colors">Skip →</button>
-          <AIButton onClick={() => setStep(10)} className="px-6 py-2.5 rounded-xl text-sm font-semibold">
-            Continue →
-          </AIButton>
-        </div>
+            {(profile.moodKeywords || []).length > 0 && (
+              <div>
+                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Mood keywords</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {profile.moodKeywords.map((kw, i) => (
+                    <span key={i} className="rounded-full border border-border bg-muted/50 px-2.5 py-0.5 text-xs text-muted-foreground">
+                      {kw}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      <StepFooter
+        onBack={() => setStep(8)}
+        onSkip={() => setStep(10)}
+        onContinue={() => setStep(10)}
+      />
     </div>
   )
 }

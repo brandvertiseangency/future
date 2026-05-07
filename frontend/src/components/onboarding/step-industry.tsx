@@ -6,7 +6,7 @@ import { IconCheck } from '@tabler/icons-react'
 import { useOnboardingStore, type Industry } from '@/stores/onboarding'
 import { INDUSTRY_LABELS } from '@/lib/industry-questions'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 const INDUSTRIES: { id: Industry; label: string; icon: React.ComponentType<{ size?: number; className?: string }>; desc: string }[] = [
   { id: 'real_estate', label: 'Real Estate', icon: Home, desc: 'Properties, projects, developers' },
@@ -30,15 +30,14 @@ export function StepIndustry() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-[#111111] font-bold text-3xl tracking-tight">What industry are you in?</h2>
-        <p className="text-[#6B7280] text-sm mt-2">
-          This unlocks industry-specific questions and content strategies.
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <StepHeader
+        eyebrow="Step 3"
+        title="What industry are you in?"
+        description="This unlocks industry-specific questions and content strategies."
+      />
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {INDUSTRIES.map((ind) => {
           const selected = data.industry === ind.id
           const Icon = ind.icon
@@ -48,37 +47,33 @@ export function StepIndustry() {
               whileTap={{ scale: 0.96 }}
               onClick={() => select(ind.id)}
               className={cn(
-                'relative flex flex-col items-start gap-2 p-4 rounded-2xl border text-left transition-all',
+                'relative flex flex-col items-start gap-2 rounded-xl border p-3.5 text-left transition-all',
                 selected
-                  ? 'border-[#111111] bg-[#F3F4F6]'
-                  : 'border-[#E5E7EB] bg-white hover:border-[#D1D5DB] hover:bg-[#F7F7F8]'
+                  ? 'border-foreground bg-muted/60'
+                  : 'border-border bg-background hover:border-border/80 hover:bg-muted/30',
               )}
             >
               {selected && (
-                <span className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#111111] flex items-center justify-center">
-                  <IconCheck size={11} className="text-white" />
+                <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-foreground">
+                  <IconCheck size={11} className="text-background" />
                 </span>
               )}
-              <Icon size={22} className={selected ? 'text-[#111111]' : 'text-[#6B7280]'} />
+              <Icon size={20} className={selected ? 'text-foreground' : 'text-muted-foreground'} />
               <div>
-                <p className={cn('font-semibold text-sm', selected ? 'text-[#111111]' : 'text-[#111111]')}>{ind.label}</p>
-                <p className="text-[#6B7280] text-[11px] mt-0.5 leading-tight">{ind.desc}</p>
+                <p className="text-sm font-semibold text-foreground">{ind.label}</p>
+                <p className="mt-0.5 text-[11px] leading-tight text-muted-foreground">{ind.desc}</p>
               </div>
             </motion.button>
           )
         })}
       </div>
 
-      <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(2)} className="text-[#6B7280] hover:text-[#111111] text-sm transition-colors">← Back</button>
-        <Button
-          onClick={() => setStep(4)}
-          disabled={!data.industry}
-          className="px-6 py-2.5 text-sm font-semibold"
-        >
-          Continue →
-        </Button>
-      </div>
+      <StepFooter
+        onBack={() => setStep(2)}
+        onContinue={() => setStep(4)}
+        continueDisabled={!data.industry}
+        showAi={false}
+      />
     </div>
   )
 }

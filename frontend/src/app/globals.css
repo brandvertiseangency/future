@@ -200,6 +200,30 @@
   background: var(--surface-page);
 }
 
+/* Let the shader show through the main app canvas (excluding sidebar). */
+.bv-grainient-canvas .bv-page-canvas {
+  background: transparent;
+}
+
+.bv-grainient-canvas .app-card,
+.bv-grainient-canvas .app-card-elevated {
+  background: color-mix(in oklch, var(--card) 84%, white 16%);
+  border-color: color-mix(in oklch, var(--border) 68%, white 32%);
+  backdrop-filter: blur(10px);
+}
+
+.bv-grainient-canvas .bg-card {
+  background-color: color-mix(in oklch, var(--card) 84%, white 16%);
+}
+
+.bv-grainient-canvas .border-border {
+  border-color: color-mix(in oklch, var(--border) 68%, white 32%);
+}
+
+.bv-grainient-canvas .bv-data-table thead th {
+  background: color-mix(in oklch, var(--card) 85%, white 15%);
+}
+
 /** Dense data tables (calendar, admin lists) */
 .bv-data-table thead th {
   position: sticky;

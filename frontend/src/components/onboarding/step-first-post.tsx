@@ -11,6 +11,7 @@ import { AIButton } from '@/components/ui/ai-button'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { logUxEvent } from '@/lib/ux-events'
+import { StepHeader } from '@/components/onboarding/primitives/onboarding-shell'
 
 const GENERATION_STEPS = [
   { label: 'Analysing your Brand DNA…',        duration: 2200 },
@@ -63,49 +64,46 @@ function GeneratingOverlay({
   )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md">
-      <div className="w-full max-w-md mx-4 rounded-2xl border border-white/[0.08] bg-[#0d0d0d] p-8 space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
-            <Sparkles size={24} className="text-white/70 animate-pulse" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-md">
+      <div className="w-full max-w-md space-y-6 rounded-2xl border border-border bg-card p-6 shadow-xl md:p-8">
+        <div className="space-y-2 text-center">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted/40">
+            <Sparkles size={22} className="animate-pulse text-foreground/70" />
           </div>
-          <h3 className="text-white font-bold text-xl tracking-tight">Building your plan{dots}</h3>
-          <p className="text-white/35 text-sm">Creating {postCount} AI-powered posts for your brand</p>
+          <h3 className="font-display text-xl font-semibold tracking-tight text-foreground">Building your plan{dots}</h3>
+          <p className="text-sm text-muted-foreground">Creating {postCount} AI-powered posts for your brand</p>
         </div>
 
-        {/* Progress bar */}
         <div className="space-y-2">
-          <div className="h-1 w-full rounded-full bg-white/[0.06] overflow-hidden">
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-white/60 transition-all duration-700 ease-out"
+              className="h-full rounded-full bg-foreground/70 transition-all duration-700 ease-out"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="text-right text-[11px] text-white/25 font-mono tabular-nums">{progress}%</p>
+          <p className="text-right font-mono text-[11px] tabular-nums text-muted-foreground">{progress}%</p>
         </div>
 
-        {/* Steps */}
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {GENERATION_STEPS.map((step, i) => {
             const isDone = completedSteps.includes(i)
             const isActive = activeStep === i && !isDone
             return (
               <div key={i} className={cn(
-                'flex items-center gap-3 transition-all duration-300',
-                isDone ? 'opacity-100' : isActive ? 'opacity-100' : 'opacity-25'
+                'flex items-center gap-3 transition-opacity duration-300',
+                isDone || isActive ? 'opacity-100' : 'opacity-40',
               )}>
-                <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center">
                   {isDone
-                    ? <CheckCircle2 size={16} className="text-emerald-400" />
+                    ? <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" />
                     : isActive
-                    ? <Loader2 size={16} className="text-white/60 animate-spin" />
-                    : <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                    ? <Loader2 size={15} className="animate-spin text-foreground/60" />
+                    : <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
                   }
                 </div>
                 <span className={cn(
                   'text-sm',
-                  isDone ? 'text-white/50 line-through' : isActive ? 'text-white/90' : 'text-white/30'
+                  isDone ? 'text-muted-foreground line-through' : isActive ? 'text-foreground' : 'text-muted-foreground',
                 )}>
                   {step.label}
                 </span>
@@ -114,24 +112,25 @@ function GeneratingOverlay({
           })}
         </div>
 
-        <p className="text-center text-[11px] text-white/20">
+        <p className="text-center text-[11px] text-muted-foreground">
           This can take up to a couple of minutes when the AI is busy
         </p>
 
-        {/* Error state */}
         {error && (
-          <div className="rounded-xl border border-rose-500/25 bg-rose-500/[0.06] px-4 py-3 space-y-3">
-            <p className="text-rose-400 text-sm">{error}</p>
+          <div className="space-y-3 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3">
+            <p className="text-sm text-destructive">{error}</p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={onRetry}
-                className="flex-1 py-2 rounded-lg bg-white/[0.06] hover:bg-white/10 text-white/70 hover:text-white text-sm font-medium transition-all"
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-lg border border-border bg-background text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
               >
                 Try again
               </button>
               <button
+                type="button"
                 onClick={onSkip}
-                className="flex-1 py-2 rounded-lg text-white/30 hover:text-white/60 text-sm transition-all"
+                className="inline-flex h-9 flex-1 items-center justify-center rounded-lg text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
               >
                 Skip → Dashboard
               </button>
@@ -410,110 +409,106 @@ export function StepFirstPost() {
           onSkip={handleSkip}
         />
       )}
-      <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <div className="flex items-center gap-2.5 mb-3">
-          <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.08] flex items-center justify-center">
-            <Calendar size={15} className="text-white/60" />
+      <div className="flex h-full flex-col">
+        <div className="mb-3 flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-muted/40">
+            <Calendar size={15} className="text-muted-foreground" />
           </div>
-          <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-white/35">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Content Calendar
           </span>
         </div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Plan your content</h2>
-        <p className="text-white/40 text-sm mt-2 leading-relaxed">
-          AI will create a full month of post ideas using your Brand DNA.
-          Review and approve each one before anything is generated.
-        </p>
-      </div>
+        <StepHeader
+          title="Plan your content"
+          description="AI will create a full month of post ideas using your Brand DNA. Review and approve each one before anything is generated."
+        />
 
-      {/* Config card */}
-      <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-6">
+        <div className="mt-6 space-y-5">
+          <div className="space-y-5 rounded-2xl border border-border bg-muted/30 p-5">
+            <div>
+              <label className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Month</label>
+              <input
+                type="month"
+                value={month}
+                onChange={(e) => setMonth(e.target.value)}
+                className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground transition-colors focus:border-foreground/40 focus:outline-none"
+              />
+            </div>
 
-        {/* Month */}
-        <div>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35 block mb-2">Month</label>
-          <input
-            type="month" value={month}
-            onChange={(e) => setMonth(e.target.value)}
-            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white/80 text-sm focus:outline-none focus:border-white/25 transition-colors"
-          />
-        </div>
-
-        {/* Post count */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">How many posts?</label>
-            <span className="text-white font-semibold text-sm tabular-nums">{postCount}</span>
-          </div>
-          <input
-            type="range" min={4} max={maxPosts} step={1} value={postCount}
-            onChange={(e) => setPostCount(Number(e.target.value))}
-            className="w-full accent-white/70"
-          />
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-white/25">4 min</span>
-            <span className="text-[10px] text-white/25">{maxPosts} max ({plan})</span>
-          </div>
-        </div>
-
-        {/* Content mix */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/35">Content mix</label>
-            <span className={cn('text-[11px] font-mono', mixTotal === 100 ? 'text-emerald-400' : 'text-rose-400')}>
-              {mixTotal}% {mixTotal === 100 ? '✓' : '(must = 100%)'}
-            </span>
-          </div>
-          <div className="space-y-3">
-            {MIX_KEYS.map((key) => (
-              <div key={key} className="flex items-center gap-3">
-                <span className="text-white/55 text-xs w-36 flex-shrink-0">{MIX_LABELS[key]}</span>
-                <div className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                  <div className="h-full rounded-full bg-white/40 transition-all" style={{ width: `${mix[key]}%` }} />
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button onClick={() => adjustMix(key, -5)} className="w-5 h-5 rounded bg-white/[0.06] text-white/50 hover:bg-white/10 text-xs transition-all">−</button>
-                  <span className="text-white text-xs font-mono w-6 text-center">{mix[key]}</span>
-                  <button onClick={() => adjustMix(key, 5)} className="w-5 h-5 rounded bg-white/[0.06] text-white/50 hover:bg-white/10 text-xs transition-all">+</button>
-                </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">How many posts?</label>
+                <span className="text-sm font-semibold tabular-nums text-foreground">{postCount}</span>
               </div>
-            ))}
+              <input
+                type="range"
+                min={4}
+                max={maxPosts}
+                step={1}
+                value={postCount}
+                onChange={(e) => setPostCount(Number(e.target.value))}
+                className="w-full accent-primary"
+              />
+              <div className="mt-1 flex justify-between">
+                <span className="text-[10px] text-muted-foreground">4 min</span>
+                <span className="text-[10px] text-muted-foreground">{maxPosts} max ({plan})</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between">
+                <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Content mix</label>
+                <span className={cn('font-mono text-[11px]', mixTotal === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive')}>
+                  {mixTotal}% {mixTotal === 100 ? '✓' : '(must = 100%)'}
+                </span>
+              </div>
+              <div className="space-y-2.5">
+                {MIX_KEYS.map((key) => (
+                  <div key={key} className="flex items-center gap-3">
+                    <span className="w-32 shrink-0 text-xs text-foreground">{MIX_LABELS[key]}</span>
+                    <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-foreground/60 transition-all" style={{ width: `${mix[key]}%` }} />
+                    </div>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button type="button" onClick={() => adjustMix(key, -5)} className="h-5 w-5 rounded bg-muted text-xs text-muted-foreground hover:bg-muted/70">−</button>
+                      <span className="w-6 text-center font-mono text-xs text-foreground">{mix[key]}</span>
+                      <button type="button" onClick={() => adjustMix(key, 5)} className="h-5 w-5 rounded bg-muted text-xs text-muted-foreground hover:bg-muted/70">+</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className={cn(
+            'rounded-xl border px-4 py-3 text-sm',
+            hasCredits ? 'border-border bg-muted/30 text-muted-foreground' : 'border-destructive/30 bg-destructive/10 text-destructive',
+          )}>
+            {hasCredits
+              ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after`
+              : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
+          </div>
+
+          {error && <p className="text-xs text-destructive">{error}</p>}
+
+          <div className="space-y-3 pt-2">
+            <AIButton
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className="h-11 w-full justify-center text-sm font-semibold"
+            >
+              {generating
+                ? <><Loader2 size={15} className="animate-spin" /> Building your content plan...</>
+                : <><Sparkles size={15} /> Generate Content Plan</>
+              }
+            </AIButton>
+            <p className="text-center text-[11px] text-muted-foreground">Credits charged only after you approve &amp; confirm</p>
+            <button type="button" onClick={handleSkip} className="block w-full py-2 text-center text-sm text-muted-foreground transition-colors hover:text-foreground">
+              Skip for now — go to dashboard →
+            </button>
           </div>
         </div>
       </div>
-
-      {/* Credits */}
-      <div className={cn(
-        'px-4 py-3 rounded-xl border text-sm',
-        hasCredits ? 'bg-white/[0.02] border-white/[0.06] text-white/50' : 'bg-rose-500/[0.06] border-rose-500/25 text-rose-400'
-      )}>
-        {hasCredits
-          ? `Will use ${creditsNeeded} credits — ${credits - creditsNeeded} remaining after`
-          : `Not enough credits. Need ${creditsNeeded}, have ${credits}.`}
-      </div>
-
-      {error && <p className="text-rose-400 text-xs">{error}</p>}
-
-      {/* CTA */}
-      <div className="space-y-3">
-        <AIButton
-          onClick={handleGenerate}
-          disabled={!canGenerate}
-          className="w-full justify-center py-3 text-sm font-semibold"
-        >
-          {generating
-            ? <><Loader2 size={15} className="animate-spin" /> Building your content plan...</>
-            : <><Sparkles size={15} /> Generate Content Plan</>
-          }
-        </AIButton>
-        <p className="text-center text-[11px] text-white/20">Credits charged only after you approve &amp; confirm</p>
-        <button onClick={handleSkip} className="w-full text-center text-white/25 hover:text-white/50 text-sm transition-colors py-2">
-          Skip for now — go to dashboard →
-        </button>
-      </div>
-    </div>
     </>
   )
 }

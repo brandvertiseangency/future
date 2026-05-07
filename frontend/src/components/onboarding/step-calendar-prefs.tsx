@@ -1,23 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { Globe, Briefcase, Hash, Smartphone, Play } from 'lucide-react'
-import { IconCheck } from '@tabler/icons-react'
+import { Globe, Briefcase, Hash, Smartphone, Play, Check } from 'lucide-react'
 import { useOnboardingStore, type ContentMix } from '@/stores/onboarding'
 import { cn } from '@/lib/utils'
-import { AIButton } from '@/components/ui/ai-button'
+import { StepHeader, StepFooter } from '@/components/onboarding/primitives/onboarding-shell'
 
 const PLATFORMS = [
-  { id: 'instagram', label: 'Instagram', icon: Globe, color: '#f43f5e' },
-  { id: 'linkedin', label: 'LinkedIn', icon: Briefcase, color: '#3b82f6' },
-  { id: 'twitter', label: 'Twitter/X', icon: Hash, color: '#94a3b8' },
-  { id: 'facebook', label: 'Facebook', icon: Smartphone, color: '#2563eb' },
-  { id: 'youtube', label: 'YouTube', icon: Play, color: '#ef4444' },
+  { id: 'instagram', label: 'Instagram', icon: Globe, color: '#E4405F' },
+  { id: 'linkedin', label: 'LinkedIn', icon: Briefcase, color: '#0A66C2' },
+  { id: 'twitter', label: 'Twitter/X', icon: Hash, color: '#0F1419' },
+  { id: 'facebook', label: 'Facebook', icon: Smartphone, color: '#1877F2' },
+  { id: 'youtube', label: 'YouTube', icon: Play, color: '#FF0000' },
 ]
 
 const CONTENT_TYPES: { key: keyof ContentMix; label: string; desc: string; color: string }[] = [
   { key: 'promotional', label: 'Promotional', desc: 'Sales, offers, product launches', color: '#f43f5e' },
-  { key: 'educational', label: 'Educational', desc: 'Tips, guides, expert insights', color: '#00d4ff' },
+  { key: 'educational', label: 'Educational', desc: 'Tips, guides, expert insights', color: '#0ea5e9' },
   { key: 'testimonial', label: 'Testimonial', desc: 'Customer stories, reviews', color: '#10b981' },
   { key: 'bts', label: 'Behind the Scenes', desc: 'Process, team, day-in-the-life', color: '#f59e0b' },
   { key: 'festive', label: 'Festive', desc: 'Festival greetings, seasonal', color: '#a78bfa' },
@@ -27,7 +26,7 @@ const POST_COUNTS = [3, 4, 5, 7, 10, 14]
 
 export function StepCalendarPrefs() {
   const { data, updateData, setStep } = useOnboardingStore()
-  const [submitting, setSubmitting] = useState(false)
+  const [submitting] = useState(false)
 
   const togglePlatform = (id: string) => {
     const current = data.activePlatforms || []
@@ -49,129 +48,133 @@ export function StepCalendarPrefs() {
   const canFinish = hasPlatform && mixTotal === 100 && !submitting
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-white font-bold text-3xl tracking-tight">Content plan</h2>
-        <p className="text-white/40 text-sm mt-2">
-          Set your posting frequency and content mix. AI will generate posts accordingly.
-        </p>
-      </div>
+    <div className="flex h-full flex-col">
+      <StepHeader
+        eyebrow="Step 11"
+        title="Content plan"
+        description="Set your posting frequency and content mix. AI will generate posts accordingly."
+      />
 
-      {/* Platforms */}
-      <div>
-        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-3">Active platforms</p>
-        <div className="flex flex-wrap gap-3">
-          {PLATFORMS.map(({ id, label, icon: Icon, color }) => {
-            const selected = (data.activePlatforms || []).includes(id)
-            return (
+      <div className="mt-6 space-y-6">
+        <div>
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Active platforms
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {PLATFORMS.map(({ id, label, icon: Icon, color }) => {
+              const selected = (data.activePlatforms || []).includes(id)
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => togglePlatform(id)}
+                  className={cn(
+                    'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition-colors',
+                    selected
+                      ? 'border-foreground bg-muted/60 text-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:border-border/70 hover:text-foreground',
+                  )}
+                >
+                  <Icon size={14} style={{ color: selected ? color : undefined }} />
+                  {label}
+                  {selected && <Check size={12} className="text-foreground" />}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Posts per week
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {POST_COUNTS.map((n) => (
               <button
-                key={id}
-                onClick={() => togglePlatform(id)}
+                key={n}
+                type="button"
+                onClick={() => updateData({ weeklyPostCount: n })}
                 className={cn(
-                  'flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-all',
-                  selected
-                    ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.1] text-white'
-                    : 'border-white/[0.08] text-white/50 hover:border-white/20'
+                  'h-11 w-11 rounded-lg border text-sm font-semibold transition-colors',
+                  data.weeklyPostCount === n
+                    ? 'border-foreground bg-muted/60 text-foreground'
+                    : 'border-border bg-background text-muted-foreground hover:border-border/70 hover:text-foreground',
                 )}
               >
-                <Icon size={14} style={{ color: selected ? color : undefined }} />
-                {label}
-                {selected && <IconCheck size={12} className="text-[var(--ai-color)]" />}
+                {n}
               </button>
-            )
-          })}
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Weekly post count */}
-      <div>
-        <p className="text-white/50 text-xs uppercase tracking-wider font-medium mb-3">Posts per week</p>
-        <div className="flex gap-2 flex-wrap">
-          {POST_COUNTS.map((n) => (
-            <button
-              key={n}
-              onClick={() => updateData({ weeklyPostCount: n })}
-              className={cn(
-                'w-12 h-12 rounded-xl border text-sm font-semibold transition-all',
-                data.weeklyPostCount === n
-                  ? 'border-[var(--ai-border)]/60 bg-[var(--ai-color)]/[0.1] text-[var(--ai-color)]'
-                  : 'border-white/[0.08] text-white/50 hover:border-white/20'
-              )}
-            >
-              {n}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content mix */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-white/50 text-xs uppercase tracking-wider font-medium">Content mix</p>
-          <span className={cn('text-xs font-mono', mixTotal !== 100 ? 'text-red-400' : 'text-[var(--ai-color)]')}>
-            {mixTotal}% {mixTotal !== 100 ? `(${mixTotal > 100 ? 'over' : 'under'} by ${Math.abs(mixTotal - 100)}%)` : '✓'}
-          </span>
-        </div>
-        <div className="space-y-3">
-          {CONTENT_TYPES.map(({ key, label, desc, color }) => {
-            const val = data.contentMix?.[key] ?? 0
-            return (
-              <div key={key} className="flex items-center gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-white/70 text-xs font-medium">{label}</p>
-                    <p className="text-white/40 text-xs">{desc}</p>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                    <div className="h-full rounded-full transition-all" style={{ width: `${val}%`, background: color }} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button onClick={() => adjustMix(key, -5)} className="w-6 h-6 rounded-md bg-white/[0.06] text-white/50 hover:bg-white/[0.12] text-xs transition-all">−</button>
-                  <span className="text-white text-xs font-mono w-6 text-center">{val}</span>
-                  <button onClick={() => adjustMix(key, 5)} className="w-6 h-6 rounded-md bg-white/[0.06] text-white/50 hover:bg-white/[0.12] text-xs transition-all">+</button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Auto-schedule toggle */}
-      <div className="flex items-center justify-between p-4 rounded-xl border border-white/[0.08] bg-white/[0.02]">
         <div>
-          <p className="text-white/80 text-sm font-medium">Auto-schedule posts</p>
-          <p className="text-white/40 text-xs mt-0.5">AI will automatically queue posts at optimal times</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              Content mix
+            </p>
+            <span className={cn('font-mono text-xs', mixTotal !== 100 ? 'text-destructive' : 'text-emerald-600 dark:text-emerald-400')}>
+              {mixTotal}% {mixTotal !== 100 ? `(${mixTotal > 100 ? 'over' : 'under'} by ${Math.abs(mixTotal - 100)}%)` : '✓'}
+            </span>
+          </div>
+          <div className="space-y-3">
+            {CONTENT_TYPES.map(({ key, label, desc, color }) => {
+              const val = data.contentMix?.[key] ?? 0
+              return (
+                <div key={key} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="mb-1 flex items-center justify-between">
+                      <p className="text-xs font-medium text-foreground">{label}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${val}%`, background: color }} />
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button type="button" onClick={() => adjustMix(key, -5)} className="h-6 w-6 rounded-md bg-muted text-xs font-medium text-muted-foreground hover:bg-muted/70">−</button>
+                    <span className="w-6 text-center font-mono text-xs text-foreground">{val}</span>
+                    <button type="button" onClick={() => adjustMix(key, 5)} className="h-6 w-6 rounded-md bg-muted text-xs font-medium text-muted-foreground hover:bg-muted/70">+</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
-        <button
-          onClick={() => updateData({ autoSchedule: !data.autoSchedule })}
-          className={cn(
-            'relative w-12 h-6 rounded-full transition-all flex-shrink-0',
-            data.autoSchedule ? 'bg-[var(--ai-color)]' : 'bg-white/[0.12]'
-          )}
-        >
-          <span className={cn(
-            'absolute top-1 w-4 h-4 rounded-full bg-white transition-all',
-            data.autoSchedule ? 'left-7' : 'left-1'
-          )} />
-        </button>
+
+        <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Auto-schedule posts</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">AI will automatically queue posts at optimal times</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => updateData({ autoSchedule: !data.autoSchedule })}
+            className={cn(
+              'relative h-6 w-11 shrink-0 rounded-full transition-colors',
+              data.autoSchedule ? 'bg-primary' : 'bg-muted-foreground/30',
+            )}
+            aria-pressed={data.autoSchedule}
+          >
+            <span className={cn(
+              'absolute top-1 h-4 w-4 rounded-full bg-background shadow transition-all',
+              data.autoSchedule ? 'left-6' : 'left-1',
+            )} />
+          </button>
+        </div>
+
+        {!hasPlatform || mixTotal !== 100 ? (
+          <p className="text-xs text-destructive">
+            Select at least one platform and make content mix total 100% to continue.
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex items-center justify-between pt-2">
-        <button onClick={() => setStep(10)} className="text-white/30 hover:text-white/60 text-sm transition-colors">← Back</button>
-        <AIButton
-          onClick={() => setStep(12)}
-          disabled={!canFinish}
-          className="px-8 py-2.5 rounded-xl text-sm font-semibold"
-        >
-          Finish setup →
-        </AIButton>
-      </div>
-      {!hasPlatform || mixTotal !== 100 ? (
-        <p className="text-xs text-red-400">
-          Select at least one platform and make content mix total 100% to continue.
-        </p>
-      ) : null}
+      <StepFooter
+        onBack={() => setStep(10)}
+        onContinue={() => setStep(12)}
+        continueDisabled={!canFinish}
+        continueLabel="Finish setup"
+      />
     </div>
   )
 }

@@ -267,7 +267,7 @@ function DroppableSlot({ slot, post }: { slot: Slot; post?: PostItem }) {
   return (
     <div
       ref={setNodeRef}
-      className={`min-h-[92px] rounded-xl border p-2 shadow-[var(--shadow-card)] transition-colors ${isOver ? 'animate-pulse border-2 border-dashed border-primary bg-muted/80' : 'border-border/80 bg-card'}`}
+      className={`min-h-[92px] rounded-xl border p-2 shadow-[var(--shadow-card)] backdrop-blur-sm transition-colors ${isOver ? 'animate-pulse border-2 border-dashed border-primary bg-muted/80' : 'border-border/80 bg-card'}`}
     >
       <p className="mb-2 text-xs text-muted-foreground">{slot.label}</p>
       {post?.image_url ? (
@@ -510,26 +510,6 @@ export default function SchedulerPage() {
     }
   }, [selectedPost, mutate, invalidateAllPostLists])
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.target as HTMLElement)?.tagName === 'TEXTAREA' || (event.target as HTMLElement)?.tagName === 'INPUT') return
-      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-        event.preventDefault()
-        void scheduleSelected()
-      }
-      if (event.key.toLowerCase() === 'u') {
-        event.preventDefault()
-        void unscheduleSelected()
-      }
-      if (event.key === 'Backspace') {
-        event.preventDefault()
-        void deleteSelected()
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [scheduleSelected, unscheduleSelected, deleteSelected])
-
   return (
     <PageContainer className="space-y-6">
       <PageIntroModal
@@ -547,20 +527,16 @@ export default function SchedulerPage() {
         description="Drag and drop posts into calendar slots and publish confidently."
       />
       {error ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <div className="rounded-lg border border-amber-300/60 bg-card/75 px-3 py-2 text-xs text-amber-900 backdrop-blur-sm dark:border-amber-700/50 dark:bg-card/60 dark:text-amber-200">
           Could not refresh scheduler posts right now. Please retry in a moment.
         </div>
       ) : null}
-      <div className="flex flex-col gap-3 rounded-xl border border-border/80 bg-card px-4 py-3 text-xs text-muted-foreground shadow-[var(--shadow-card)] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border border-border/65 bg-card/78 px-4 py-3 text-xs text-muted-foreground shadow-[var(--shadow-card)] backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between">
         <span>
           Timezone: <span className="font-medium text-foreground">{timezone}</span>
           {offsetStr}
         </span>
-        <span className="text-[11px] leading-relaxed sm:text-right">
-          <kbd className="rounded border border-border bg-muted/50 px-1">⌘/Ctrl+Enter</kbd> schedule ·{' '}
-          <kbd className="rounded border border-border bg-muted/50 px-1">U</kbd> unslot ·{' '}
-          <kbd className="rounded border border-border bg-muted/50 px-1">⌫</kbd> draft
-        </span>
+        <span className="text-[11px] leading-relaxed sm:text-right">Use actions in the selected-post panel to manage scheduling.</span>
       </div>
       <NextStepCard
         dense
