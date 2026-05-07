@@ -160,13 +160,13 @@ export default function BrandingKitPage() {
                     className={cn(
                       'flex flex-col gap-2 p-4 rounded-2xl border text-left transition-all duration-200',
                       active
-                        ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300'
-                        : 'border-[var(--border-dim)] bg-white/2 text-[var(--text-3)] hover:bg-white/5 hover:border-white/10'
+                        ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+                        : 'border-[var(--border-dim)] bg-foreground/[0.02] text-[var(--text-3)] hover:bg-foreground/[0.05] hover:border-foreground/10'
                     )}
                   >
                     <div className={cn(
                       'w-9 h-9 rounded-xl flex items-center justify-center',
-                      active ? 'bg-cyan-500/20' : 'bg-white/5'
+                      active ? 'bg-cyan-500/20' : 'bg-foreground/[0.05]'
                     )}>
                       <fmt.icon size={17} />
                     </div>
@@ -233,8 +233,8 @@ export default function BrandingKitPage() {
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
-                        ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-300'
-                        : 'bg-white/3 border-white/8 text-[var(--text-3)] hover:bg-white/6'
+                        ? 'bg-cyan-600/20 border-cyan-500/40 text-cyan-700 dark:text-cyan-300'
+                        : 'bg-foreground/[0.03] border-foreground/[0.08] text-[var(--text-3)] hover:bg-foreground/[0.06]'
                     }`}
                   >
                     {tool.label}

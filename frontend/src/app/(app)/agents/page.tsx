@@ -52,7 +52,7 @@ export default function AgentsPage() {
         variant="hero"
         title={
           <>
-            AI <span className="text-pull text-white/90">agents</span>
+            AI <span className="text-pull text-primary">agents</span>
           </>
         }
         description="Website, branding, and presentation workflows. Pro and Agency unlock generation on every agent below."

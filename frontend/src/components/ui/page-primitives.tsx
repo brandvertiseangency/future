@@ -40,11 +40,11 @@ export function PageHeader({
     >
       <div className={cn('min-w-0', isHero ? 'max-w-3xl' : 'max-w-3xl')}>
         {eyebrow && (
-          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/80">{eyebrow}</div>
+          <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{eyebrow}</div>
         )}
         <h1
           className={cn(
-            'tracking-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.32)]',
+            'tracking-tight text-foreground',
             isHero && 'font-display text-3xl font-normal md:text-[2.25rem] md:leading-[1.15]',
             !isHero && !isCompact && 'text-[28px] font-semibold md:text-[36px] md:leading-[1.1]',
             isCompact && 'text-xl font-semibold md:text-2xl',
@@ -55,7 +55,7 @@ export function PageHeader({
         {description && (
           <p
             className={cn(
-              'leading-relaxed text-white/85',
+              'leading-relaxed text-muted-foreground',
               isHero ? 'mt-3 text-base md:text-[17px]' : isCompact ? 'mt-1.5 text-sm' : 'mt-3 text-base md:text-[17px]',
             )}
           >

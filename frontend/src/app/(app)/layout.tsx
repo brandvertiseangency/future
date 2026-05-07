@@ -20,6 +20,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isOnboardingRoute = pathname.startsWith('/onboarding')
+  const isDashboardRoute = pathname === '/dashboard'
   const { setBrand } = useBrandStore()
   const { data: brandData } = useSWR(
     '/api/brands/current',
@@ -48,7 +49,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <Sidebar />
         </div>
       ) : null}
-      {!isOnboardingRoute ? (
+      {isDashboardRoute ? (
         <div className="pointer-events-none fixed inset-y-0 left-0 right-0 z-0 md:left-[74px]">
           <Grainient
             color1="#003bff"
@@ -85,7 +86,9 @@ function AppShell({ children }: { children: ReactNode }) {
         className={
           isOnboardingRoute
             ? 'min-h-screen relative z-10'
-            : 'pt-4 pb-24 md:pb-6 md:pt-6 min-h-screen relative z-10 bv-grainient-canvas'
+            : isDashboardRoute
+              ? 'pt-4 pb-24 md:pb-6 md:pt-6 min-h-screen relative z-10 bv-grainient-canvas'
+              : 'pt-4 pb-24 md:pb-6 md:pt-6 min-h-screen relative z-10'
         }
       >
         {!isOnboardingRoute ? (

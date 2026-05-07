@@ -1,5 +1,7 @@
 'use client'
 
+import { cn } from '@/lib/utils'
+
 interface ConfirmDialogProps {
   open: boolean
   title: string
@@ -7,7 +9,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string
   cancelLabel?: string
   tone?: 'default' | 'danger'
-  /** Light card for app shell pages; default overlay matches dark modals */
+  /** Kept for backwards compatibility — design tokens now adapt automatically. */
   surface?: 'dark' | 'light'
   onConfirm: () => void
   onCancel: () => void
@@ -20,57 +22,42 @@ export function ConfirmDialog({
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
   tone = 'default',
-  surface = 'dark',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
   if (!open) return null
-  const light = surface === 'light'
   return (
     <div
-      className={`fixed inset-0 z-[120] flex items-center justify-center p-4 ${light ? 'bg-black/40' : 'bg-black/70'}`}
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
       onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
     >
       <div
-        className={
-          light
-            ? 'w-full max-w-sm rounded-2xl border border-[#E5E7EB] bg-white p-5 shadow-sm'
-            : 'w-full max-w-sm rounded-2xl border border-white/[0.12] bg-[#0a0a0a] p-5'
-        }
+        className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className={`text-sm font-semibold ${light ? 'text-[#111111]' : 'text-white'}`}>{title}</h3>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         {description && (
-          <p className={`mt-2 text-xs ${light ? 'text-[#6B7280]' : 'text-white/55'}`}>{description}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{description}</p>
         )}
         <div className="mt-4 flex items-center justify-end gap-2">
           <button
+            type="button"
             onClick={onCancel}
-            className={
-              light
-                ? 'rounded-lg border border-[#E5E7EB] bg-white px-3 py-1.5 text-xs font-medium text-[#6B7280] hover:bg-[#F3F4F6]'
-                : 'rounded-lg border border-white/[0.14] bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-white/70'
-            }
+            className="inline-flex h-8 items-center rounded-lg border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted/60"
           >
             {cancelLabel}
           </button>
           <button
+            type="button"
             onClick={onConfirm}
-            className={
-              light
-                ? `rounded-lg px-3 py-1.5 text-xs font-semibold text-white ${
-                    tone === 'danger' ? 'bg-red-600 hover:bg-red-700' : 'bg-[#111111] hover:bg-[#222222]'
-                  }`
-                : 'rounded-lg px-3 py-1.5 text-xs font-semibold'
-            }
-            style={
-              light
-                ? undefined
-                : {
-                    background: tone === 'danger' ? 'rgba(239,68,68,0.92)' : 'rgba(255,255,255,0.9)',
-                    color: tone === 'danger' ? '#fff' : '#000',
-                  }
-            }
+            className={cn(
+              'inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold transition-opacity hover:opacity-90',
+              tone === 'danger'
+                ? 'bg-destructive text-destructive-foreground'
+                : 'bg-foreground text-background',
+            )}
           >
             {confirmLabel}
           </button>

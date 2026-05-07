@@ -96,7 +96,7 @@ function AddProductModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/40 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <motion.div
@@ -104,12 +104,17 @@ function AddProductModal({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="w-full max-w-md rounded-2xl border border-white/[0.10] bg-[#0a0a0a] p-6 space-y-4"
+        className="w-full max-w-md space-y-4 rounded-2xl border border-border bg-card p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h3 className="text-white font-semibold text-base">Add Product / Service</h3>
-          <button onClick={onClose} className="w-7 h-7 rounded-lg bg-card/[0.05] border border-white/[0.08] flex items-center justify-center text-white/40 hover:text-white/70 transition-colors">
+          <h3 className="text-base font-semibold text-foreground">Add Product / Service</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="Close"
+          >
             <X size={13} />
           </button>
         </div>
@@ -121,19 +126,19 @@ function AddProductModal({
           { key: 'visual_description', label: 'Visual Description (for AI)', placeholder: 'e.g. sleek gold bottle on marble surface' },
         ].map(({ key, label, placeholder }) => (
           <div key={key}>
-            <label className="block text-[10px] text-white/30 uppercase tracking-[0.1em] mb-1">{label}</label>
+            <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</label>
             <input
               value={form[key as keyof typeof form]}
               onChange={(e) => setForm(f => ({ ...f, [key]: e.target.value }))}
               placeholder={placeholder}
-              className="w-full bg-card/[0.03] border border-white/[0.08] rounded-xl px-3 py-2 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-white/[0.22] transition-all"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 transition-colors focus:border-foreground/40 focus:outline-none"
             />
           </div>
         ))}
         <div>
-          <label className="block text-[10px] text-white/30 uppercase tracking-[0.1em] mb-1">Product Image</label>
+          <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Product Image</label>
           <div className="flex items-center gap-2">
-            <label className="px-3 py-2 rounded-xl border border-white/[0.10] bg-card/[0.03] text-white/60 text-xs cursor-pointer hover:border-white/[0.2] transition-colors">
+            <label className="cursor-pointer rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-border/70 hover:text-foreground">
               {uploadingImage ? 'Uploading…' : 'Attach Image'}
               <input
                 type="file"
@@ -144,18 +149,19 @@ function AddProductModal({
               />
             </label>
             {productImageUrl && (
-              <span className="text-[11px] text-emerald-400/80">Image attached</span>
+              <span className="text-[11px] text-emerald-600 dark:text-emerald-400">Image attached</span>
             )}
           </div>
           {productImageUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={productImageUrl} alt="Product preview" className="mt-2 w-16 h-16 rounded-lg object-cover border border-white/[0.1]" />
+            <img src={productImageUrl} alt="Product preview" className="mt-2 h-16 w-16 rounded-lg border border-border object-cover" />
           )}
         </div>
         <button
+          type="button"
           onClick={handleSave}
           disabled={saving || uploadingImage}
-          className="w-full h-10 rounded-xl bg-card text-black text-sm font-semibold flex items-center justify-center gap-2 hover:bg-card/90 transition-all disabled:opacity-60"
+          className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           {saving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
           {saving ? 'Saving…' : 'Add Product'}
@@ -165,94 +171,103 @@ function AddProductModal({
   )
 }
 
-// ─── Product Card ─────────────────────────────────────────────────────────────
 function ProductCard({ product, onDelete }: { product: Product; onDelete: () => void }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      className="group overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md"
     >
-      {/* Image */}
-      <div className="aspect-square bg-card/[0.03] relative overflow-hidden flex items-center justify-center">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted/30">
         {product.images?.[0] ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+          <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
         ) : (
-          <Package size={32} className="text-white/10" />
+          <Package size={32} className="text-muted-foreground/40" />
         )}
         {product.is_primary && (
-          <span className="absolute top-2 left-2 text-[9px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-400">Primary</span>
+          <span className="absolute left-2 top-2 rounded-md border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[9px] font-semibold text-amber-700 dark:text-amber-300">Primary</span>
         )}
-        {/* Overlay actions */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+        <div className="absolute inset-0 flex items-end justify-end p-2 opacity-0 transition-opacity group-hover:opacity-100">
           <button
+            type="button"
             onClick={onDelete}
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-red-900/60 transition-all"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background/95 text-destructive backdrop-blur-sm transition-colors hover:bg-destructive/10"
+            aria-label="Delete"
           >
-            <Trash2 size={13} className="text-red-400" />
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
-      {/* Info */}
-      <div className="p-3 border-t border-white/[0.05]">
-        <p className="text-white/80 font-medium text-[13px] truncate">{product.name}</p>
+      <div className="border-t border-border p-3">
+        <p className="truncate text-[13px] font-medium text-foreground">{product.name}</p>
         {product.price && (
-          <p className="text-white/35 text-[11px] flex items-center gap-1 mt-0.5">
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
             <DollarSign size={9} />{product.price}
           </p>
         )}
         {product.category && (
-          <p className="text-white/25 text-[10px] flex items-center gap-1 mt-1">
+          <p className="mt-1 flex items-center gap-1 text-[10px] text-muted-foreground">
             <Tag size={9} />{product.category}
           </p>
         )}
         {product.description && (
-          <p className="text-white/30 text-[10.5px] mt-1 line-clamp-2 leading-relaxed">{product.description}</p>
+          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted-foreground">{product.description}</p>
         )}
         {product.visual_description && (
-          <p className="text-white/20 text-[9.5px] italic mt-1 line-clamp-1">AI: {product.visual_description}</p>
+          <p className="mt-1 line-clamp-1 text-[10px] italic text-muted-foreground/70">AI: {product.visual_description}</p>
         )}
       </div>
     </motion.div>
   )
 }
 
-// ─── Asset Card ───────────────────────────────────────────────────────────────
 function AssetCard({ asset, onDelete }: { asset: Asset; onDelete: () => void }) {
   const platformColor = PLATFORM_COLORS[asset.platform?.toLowerCase() ?? '']
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group rounded-2xl border border-white/[0.08] bg-[#0a0a0a] overflow-hidden hover:border-white/[0.16] transition-all hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(0,0,0,0.4)]"
+      className="group overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-0.5 hover:border-border/60 hover:shadow-md"
     >
-      <div className="aspect-square bg-card/[0.03] relative overflow-hidden flex items-center justify-center">
+      <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-muted/30">
         {asset.url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={asset.url} alt={asset.label ?? ''} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+          <img src={asset.url} alt={asset.label ?? ''} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
         ) : (
-          <ImageIcon size={28} className="text-white/10" />
+          <ImageIcon size={28} className="text-muted-foreground/40" />
         )}
         {asset.platform && (
-          <span className="absolute top-2 left-2 text-[9px] font-semibold capitalize px-2 py-0.5 rounded-md" style={{ background: `${platformColor}20`, color: platformColor, border: `1px solid ${platformColor}35` }}>
+          <span
+            className="absolute left-2 top-2 rounded-md border px-2 py-0.5 text-[9px] font-semibold capitalize"
+            style={{ background: `${platformColor}20`, color: platformColor, borderColor: `${platformColor}35` }}
+          >
             {asset.platform}
           </span>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2 gap-1.5">
-          <a href={asset.url} download target="_blank" rel="noreferrer"
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-card/10 transition-all">
-            <Download size={13} className="text-white/60" />
+        <div className="absolute inset-0 flex items-end justify-end gap-1.5 p-2 opacity-0 transition-opacity group-hover:opacity-100">
+          <a
+            href={asset.url}
+            download
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background/95 text-muted-foreground backdrop-blur-sm transition-colors hover:bg-muted/70 hover:text-foreground"
+          >
+            <Download size={13} />
           </a>
-          <button onClick={onDelete}
-            className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-sm border border-white/[0.12] flex items-center justify-center hover:bg-red-900/60 transition-all">
-            <Trash2 size={13} className="text-red-400" />
+          <button
+            type="button"
+            onClick={onDelete}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background/95 text-destructive backdrop-blur-sm transition-colors hover:bg-destructive/10"
+            aria-label="Delete"
+          >
+            <Trash2 size={13} />
           </button>
         </div>
       </div>
-      <div className="px-3 py-2.5 border-t border-white/[0.05]">
-        <p className="text-white/40 text-[10px]">{asset.label ?? asset.type ?? 'Asset'}</p>
-        <p className="text-white/20 text-[9px] mt-0.5">{new Date(asset.created_at).toLocaleDateString()}</p>
+      <div className="border-t border-border px-3 py-2.5">
+        <p className="text-[10px] text-foreground">{asset.label ?? asset.type ?? 'Asset'}</p>
+        <p className="mt-0.5 text-[9px] text-muted-foreground">{new Date(asset.created_at).toLocaleDateString()}</p>
       </div>
     </motion.div>
   )
@@ -393,24 +408,31 @@ export default function AssetsPage() {
         </div>
       )}
 
-      {/* Assets Tab */}
       {!isLoading && tab === 'assets' && (
         assets.length === 0 ? (
-          <SurfaceCard className="relative overflow-hidden" >
-            <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
-            <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-card/[0.04] border border-white/[0.08] flex items-center justify-center">
-                <ImageIcon size={28} className="text-white/15" />
+          <SurfaceCard className="relative overflow-hidden">
+            <DotPattern className="absolute inset-0 text-foreground/[0.04] opacity-50" width={24} height={24} />
+            <div className="relative flex h-[400px] flex-col items-center justify-center gap-5">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-muted/40">
+                <ImageIcon size={28} className="text-muted-foreground/60" />
               </div>
               <div className="text-center">
-                <p className="text-[15px] font-semibold text-white/50">No assets yet</p>
-                <p className="text-[13px] text-white/25 mt-1">Generated content and uploaded files will appear here</p>
+                <p className="text-[15px] font-semibold text-foreground">No assets yet</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Generated content and uploaded files will appear here</p>
               </div>
               <div className="flex gap-3">
-                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-white/[0.10] text-white/50 text-sm hover:bg-card/[0.05] transition-all">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-border bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted/50"
+                >
                   <Upload size={13} />Upload
                 </button>
-                <Link href="/generate"><AIButton className="px-4 py-2 rounded-xl text-sm"><Sparkles size={13} className="mr-1.5" />Generate</AIButton></Link>
+                <Link href="/generate">
+                  <AIButton className="h-10 rounded-xl px-4 text-sm">
+                    <Sparkles size={13} className="mr-1.5" />Generate
+                  </AIButton>
+                </Link>
               </div>
             </div>
           </SurfaceCard>
@@ -423,20 +445,23 @@ export default function AssetsPage() {
         )
       )}
 
-      {/* Products Tab */}
       {!isLoading && tab === 'products' && (
         products.length === 0 ? (
           <SurfaceCard className="relative overflow-hidden">
-            <DotPattern className="absolute inset-0 text-white/[0.04] opacity-50" width={24} height={24} />
-            <div className="relative flex flex-col items-center justify-center h-[400px] gap-5">
-              <div className="w-16 h-16 rounded-2xl bg-card/[0.04] border border-white/[0.08] flex items-center justify-center">
-                <Package size={28} className="text-white/15" />
+            <DotPattern className="absolute inset-0 text-foreground/[0.04] opacity-50" width={24} height={24} />
+            <div className="relative flex h-[400px] flex-col items-center justify-center gap-5">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-border bg-muted/40">
+                <Package size={28} className="text-muted-foreground/60" />
               </div>
               <div className="text-center">
-                <p className="text-[15px] font-semibold text-white/50">No products yet</p>
-                <p className="text-[13px] text-white/25 mt-1">Add your products and services for AI to feature in content</p>
+                <p className="text-[15px] font-semibold text-foreground">No products yet</p>
+                <p className="mt-1 text-[13px] text-muted-foreground">Add your products and services for AI to feature in content</p>
               </div>
-              <button onClick={() => setShowAddProduct(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-card text-black text-sm font-semibold hover:bg-card/90 transition-all">
+              <button
+                type="button"
+                onClick={() => setShowAddProduct(true)}
+                className="inline-flex h-10 items-center gap-2 rounded-xl bg-foreground px-5 text-sm font-semibold text-background transition-opacity hover:opacity-90"
+              >
                 <Plus size={14} />Add Product
               </button>
             </div>
@@ -446,13 +471,13 @@ export default function AssetsPage() {
             {products.map((product) => (
               <ProductCard key={product.id} product={product} onDelete={() => setProductToDelete(product.id)} />
             ))}
-            {/* Add another */}
             <button
+              type="button"
               onClick={() => setShowAddProduct(true)}
-              className="rounded-2xl border-2 border-dashed border-white/[0.08] flex flex-col items-center justify-center gap-2 aspect-square hover:border-white/[0.18] hover:bg-card/[0.02] transition-all group"
+              className="group flex aspect-square flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border transition-colors hover:border-border/70 hover:bg-muted/30"
             >
-              <Plus size={20} className="text-white/20 group-hover:text-white/40 transition-colors" />
-              <p className="text-white/20 text-xs group-hover:text-white/40 transition-colors">Add Product</p>
+              <Plus size={20} className="text-muted-foreground/60 transition-colors group-hover:text-foreground" />
+              <p className="text-xs text-muted-foreground/70 transition-colors group-hover:text-foreground">Add Product</p>
             </button>
           </div>
         )

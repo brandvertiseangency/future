@@ -187,8 +187,8 @@ export default function WebsiteBuilderPage() {
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
-                        ? 'bg-violet-600/20 border-violet-500/40 text-violet-300'
-                        : 'bg-white/3 border-white/8 text-[var(--text-3)] hover:bg-white/6'
+                        ? 'bg-violet-600/20 border-violet-500/40 text-violet-700 dark:text-violet-300'
+                        : 'bg-foreground/[0.03] border-foreground/[0.08] text-[var(--text-3)] hover:bg-foreground/[0.06]'
                     }`}
                   >
                     {tool.label}

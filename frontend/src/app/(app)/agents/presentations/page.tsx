@@ -175,13 +175,13 @@ export default function PresentationsPage() {
                     className={cn(
                       'flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-200',
                       active
-                        ? 'border-amber-500/40 bg-amber-500/8'
-                        : 'border-[var(--border-dim)] bg-white/2 hover:bg-white/5 hover:border-white/10'
+                        ? 'border-amber-500/40 bg-amber-500/10'
+                        : 'border-[var(--border-dim)] bg-foreground/[0.02] hover:bg-foreground/[0.05] hover:border-foreground/10'
                     )}
                   >
                     <div className={cn(
                       'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-                      active ? 'bg-amber-500/20 text-amber-400' : 'bg-white/5 text-[var(--text-3)]'
+                      active ? 'bg-amber-500/20 text-amber-600 dark:text-amber-400' : 'bg-foreground/[0.05] text-[var(--text-3)]'
                     )}>
                       <deck.icon size={18} />
                     </div>
@@ -224,7 +224,7 @@ export default function PresentationsPage() {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.03 }}
-                    className="px-2.5 py-1 rounded-lg text-[11.5px] bg-white/5 text-[var(--text-3)] border border-white/5"
+                    className="px-2.5 py-1 rounded-lg text-[11.5px] bg-foreground/[0.05] text-[var(--text-3)] border border-foreground/[0.06]"
                   >
                     {i + 1}. {slide}
                   </motion.span>
@@ -257,8 +257,8 @@ export default function PresentationsPage() {
                     onClick={() => setSelectedTool(tool)}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-150 border ${
                       selectedTool.label === tool.label
-                        ? 'bg-amber-600/20 border-amber-500/40 text-amber-300'
-                        : 'bg-white/3 border-white/8 text-[var(--text-3)] hover:bg-white/6'
+                        ? 'bg-amber-600/20 border-amber-500/40 text-amber-700 dark:text-amber-300'
+                        : 'bg-foreground/[0.03] border-foreground/[0.08] text-[var(--text-3)] hover:bg-foreground/[0.06]'
                     }`}
                   >
                     {tool.label}
