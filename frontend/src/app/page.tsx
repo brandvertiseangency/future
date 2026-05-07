@@ -18,7 +18,7 @@ export default function Home() {
   return (
     <>
       <Navbar />
-      <main style={{ display: "flex", flexDirection: "column", background: "#080808" }}>
+      <main className="flex flex-col bg-[#080808]">
         <Hero />
         <ScrollGallery />
         <MarqueeBrands />

@@ -669,8 +669,31 @@ export default function SchedulerPage() {
                 />
               ))}
               {!isLoading && listForTab.length === 0 ? (
-                <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-                  Nothing in this view yet.
+                <div className="rounded-lg border border-dashed border-border bg-muted/10 p-6 text-center">
+                  <p className="text-sm font-medium text-foreground">
+                    {mainTab === 'schedule'
+                      ? 'No posts ready to schedule'
+                      : mainTab === 'queue'
+                        ? 'Nothing in the publish queue'
+                        : 'No published posts yet'}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {mainTab === 'schedule'
+                      ? 'Generate and approve content first, then come back to schedule.'
+                      : mainTab === 'queue'
+                        ? 'Schedule a post from the "Schedule content" tab to see it here.'
+                        : 'Published posts will appear here after they go live.'}
+                  </p>
+                  {mainTab === 'schedule' ? (
+                    <div className="mt-4 flex flex-wrap justify-center gap-2">
+                      <Link href="/calendar/generate" className={cn(buttonVariants({ size: 'sm', variant: 'default' }))}>
+                        Generate plan
+                      </Link>
+                      <Link href="/outputs" className={cn(buttonVariants({ size: 'sm', variant: 'secondary' }))}>
+                        View outputs
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

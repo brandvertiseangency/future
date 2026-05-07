@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
+import { CalendarWorkflowStepper } from '@/components/app/calendar-workflow-stepper'
 import { apiCall } from '@/lib/api'
 import { getFirebaseAuth } from '@/lib/firebase'
 import { toast } from 'sonner'
@@ -86,6 +87,9 @@ export default function CalendarContentPage() {
 
   return (
     <PageContainer className="max-w-7xl space-y-6">
+      <div className="flex items-center justify-end">
+        <CalendarWorkflowStepper />
+      </div>
       <PageHeader
         variant="hero"
         title={<>Content <span className="text-pull text-primary">studio</span></>}

@@ -11,6 +11,7 @@ import { SectionCard, StatusBadge } from '@/components/ui/saas-primitives'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { CalendarWorkflowStepper } from '@/components/app/calendar-workflow-stepper'
 
 function getCurrentMonth() {
   const d = new Date()
@@ -158,13 +159,16 @@ function CalendarGenerateInner() {
         title="Plan your content with AI"
         description="Set your monthly content mix and generate a review-ready calendar."
       />
-      <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <Link
           href="/calendar"
           className="inline-flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" /> Back to calendar
         </Link>
+        <CalendarWorkflowStepper />
+      </div>
+      <div className="flex flex-col gap-4">
 
         <nav aria-label="Plan steps" className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {[

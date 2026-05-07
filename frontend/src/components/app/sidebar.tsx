@@ -81,11 +81,10 @@ const PUBLISH_ITEMS: NavLeaf[] = [
     href: '/calendar',
     label: 'Calendar',
     icon: CalendarDays,
+    // Active for all /calendar/* routes except /calendar/generate (which has its own item)
     match: (p) =>
       (p === '/calendar' || p.startsWith('/calendar/')) &&
-      !p.startsWith('/calendar/generate') &&
-      !p.startsWith('/calendar/content') &&
-      !p.startsWith('/calendar/review'),
+      !p.startsWith('/calendar/generate'),
   },
   { href: '/outputs', label: 'Outputs', icon: ImageIcon, match: (p) => p === '/outputs' || p.startsWith('/outputs/') },
   { href: '/scheduler', label: 'Queue', icon: Clock3, match: (p) => p === '/scheduler' || p.startsWith('/scheduler/') },
@@ -211,6 +210,14 @@ export function Sidebar() {
   )
   const notifications = notifData?.notifications ?? []
   const unreadCount = notifications.filter((n) => !n.read).length
+
+  const { data: statsData } = useSWR(
+    '/api/posts/stats',
+    (url: string) => apiCall<{ scheduled?: number; total?: number }>(url),
+    { revalidateOnFocus: false, refreshInterval: 120000 },
+  )
+  const scheduledCount = statsData?.scheduled ?? 0
+  const isLowCredits = credits > 0 && pct < 15
 
   const markAllRead = async () => {
     try {
@@ -387,20 +394,40 @@ export function Sidebar() {
           </button>
 
           <div className={cn(collapsed && 'hidden')}>
+            {scheduledCount > 0 ? (
+              <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-primary/8 px-2 py-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                <span className="text-[11px] font-medium text-primary">
+                  {scheduledCount} post{scheduledCount !== 1 ? 's' : ''} scheduled
+                </span>
+              </div>
+            ) : null}
             <div className="mb-1 flex items-center justify-between text-[11px]">
-              <span className="text-muted-foreground">
+              <span className={cn('text-muted-foreground', isLowCredits && 'text-amber-500 dark:text-amber-400')}>
                 {credits}
-                <span className="text-muted-foreground/75"> / {maxCredits}</span>
+                <span className="opacity-60"> / {maxCredits}</span>
               </span>
-              <span className="font-medium tabular-nums text-muted-foreground">{Math.round(pct)}%</span>
+              <span className={cn('font-medium tabular-nums', isLowCredits ? 'text-amber-500 dark:text-amber-400' : 'text-muted-foreground')}>
+                {Math.round(pct)}%
+              </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all duration-700" style={{ width: `${pct}%` }} />
+              <div
+                className={cn('h-full rounded-full transition-all duration-700', isLowCredits ? 'bg-amber-500' : 'bg-primary')}
+                style={{ width: `${pct}%` }}
+              />
             </div>
+            {isLowCredits ? (
+              <p className="mt-1 text-[10px] text-amber-500 dark:text-amber-400">Credits running low</p>
+            ) : null}
           </div>
 
-          <Button onClick={() => router.push('/pricing')} size="sm" className={cn('w-full', collapsed && 'px-0')}>
-            Upgrade
+          <Button
+            onClick={() => router.push('/pricing')}
+            size="sm"
+            className={cn('w-full', collapsed && 'px-0', isLowCredits && 'bg-amber-500 hover:bg-amber-600 text-white border-0')}
+          >
+            {isLowCredits ? 'Buy credits' : 'Upgrade'}
           </Button>
         </div>
       </SidebarFooter>

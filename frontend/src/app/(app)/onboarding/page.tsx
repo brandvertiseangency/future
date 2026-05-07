@@ -130,6 +130,15 @@ export default function OnboardingPage() {
     !validity.calendar ? 'Publishing plan' : '',
   ].filter(Boolean)
 
+  // Emotional milestone messages — shown once per step threshold
+  const milestone = step === 6
+    ? { icon: '✦', text: "Halfway there — your brand identity is taking shape." }
+    : step === 10
+      ? { icon: '◆', text: "Almost ready — just the final details before you go live." }
+      : step === 12
+        ? { icon: '★', text: "Your brand is built. Let's generate your first plan." }
+        : null
+
   const applyFastPathDefaults = () => {
     updateData({
       brandName: onboardingData.brandName || 'My Brand',
@@ -181,13 +190,15 @@ export default function OnboardingPage() {
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-5xl flex-col px-4 py-5 md:py-7">
         <header className="mb-5 flex items-center justify-between gap-4">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-md">
-            <span className="inline-flex h-1.5 w-1.5 rounded-full bg-white/80" aria-hidden />
-            Step {step} of {STEPS.length}
-            <span className="hidden text-white/55 sm:inline">·</span>
-            <span className="hidden font-medium normal-case tracking-normal text-white/80 sm:inline">
-              {activeSection.title}
-            </span>
+          <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-white backdrop-blur-md">
+              <span className="inline-flex h-1.5 w-1.5 rounded-full bg-white/80" aria-hidden />
+              {step} / {STEPS.length}
+            </div>
+            <div className="hidden sm:block">
+              <p className="text-sm font-semibold text-white leading-tight">{activeSection.title}</p>
+              <p className="text-[11px] text-white/65 leading-tight">{activeSection.subtitle}</p>
+            </div>
           </div>
           <Button
             variant="secondary"
@@ -206,13 +217,23 @@ export default function OnboardingPage() {
               style={{ width: `${progressPct}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[10px] font-medium uppercase tracking-[0.16em] text-white/70">
-            <span>{progressPct >= 75 ? 'Ready to generate' : 'Profile quality'}</span>
-            <span className="tabular-nums text-white/85">{Math.round(progressPct)}%</span>
+          <div className="mt-2 flex items-center justify-between text-[10px] font-medium text-white/70">
+            <span className="uppercase tracking-[0.14em]">
+              {progressPct >= 90 ? 'Ready to generate' : progressPct >= 50 ? 'Building brand DNA' : 'Brand setup'}
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="sm:hidden text-white/65">{activeSection.title}</span>
+              <span className="tabular-nums text-white/85">{Math.round(progressPct)}%</span>
+            </div>
           </div>
         </div>
 
-        {missingCritical.length > 0 && !isWelcome ? (
+        {milestone ? (
+          <div className="mb-5 flex items-center gap-3 rounded-xl border border-white/30 bg-white/10 px-4 py-3 text-sm font-medium text-white backdrop-blur-md">
+            <span className="shrink-0 text-base leading-none opacity-90">{milestone.icon}</span>
+            <p>{milestone.text}</p>
+          </div>
+        ) : missingCritical.length > 0 && !isWelcome ? (
           <div className="mb-5 flex flex-col gap-2 rounded-xl border border-white/25 bg-white/10 px-4 py-2.5 text-xs text-white/85 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
             <p>Fast path — fill the essentials and jump to your publishing plan.</p>
             <Button

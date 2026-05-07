@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
 import useSWR from 'swr'
+import { useTheme } from 'next-themes'
 import { Sidebar } from '@/components/app/sidebar'
 import { BottomTabBar } from '@/components/app/bottom-tab-bar'
 import { Toaster } from 'sonner'
@@ -21,6 +22,7 @@ function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const isOnboardingRoute = pathname.startsWith('/onboarding')
   const isDashboardRoute = pathname === '/dashboard'
+  const { resolvedTheme } = useTheme()
   const { setBrand } = useBrandStore()
   const { data: brandData } = useSWR(
     '/api/brands/current',
@@ -104,7 +106,7 @@ function AppShell({ children }: { children: ReactNode }) {
           <BottomTabBar />
         </div>
       ) : null}
-      <Toaster theme="light" position="bottom-right" />
+      <Toaster theme={(resolvedTheme as 'light' | 'dark' | 'system') ?? 'system'} position="bottom-right" />
       <CommandPalette />
       <ContentPolicyModal />
       </div>

@@ -14,6 +14,7 @@ import {
   LayoutGrid,
   List,
   Wand2,
+  ArrowRight,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -97,8 +98,13 @@ function GeneratePageInner() {
   const [completedCount, setCompletedCount] = useState(0)
   const [failedPlatforms, setFailedPlatforms] = useState<string[]>([])
 
-  const { data: creditsData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number }>(url), { revalidateOnFocus: false })
+  const { data: creditsData } = useSWR('/api/credits/balance', (url: string) => apiCall<{ balance: number; plan?: string }>(url), { revalidateOnFocus: false })
   const credits = creditsData?.balance ?? 0
+  const creditPlan = creditsData?.plan ?? 'trial'
+  const maxCredits = creditPlan === 'pro' ? 5000 : creditPlan === 'agency' ? 15000 : 500
+  const creditPct = Math.min((credits / Math.max(maxCredits, 1)) * 100, 100)
+  const isLowCredits = credits > 0 && creditPct < 15
+  const isOutOfCredits = credits === 0
 
   const { data: productsData } = useSWR('/api/brand-products', (url: string) => apiCall<{ products: ProductRow[] }>(url), {
     revalidateOnFocus: false,
@@ -547,9 +553,34 @@ function GeneratePageInner() {
                   </div>
                 ) : null}
 
-                <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-                  Credits left: <span className="font-medium text-foreground">{credits}</span>
-                </div>
+                {isOutOfCredits ? (
+                  <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2.5">
+                    <p className="text-xs font-semibold text-destructive">No credits remaining</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">You need credits to generate content.</p>
+                    <Link href="/pricing" className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-destructive hover:underline">
+                      Upgrade plan <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                ) : isLowCredits ? (
+                  <div className="rounded-lg border border-amber-300/60 bg-amber-50/50 px-3 py-2.5 dark:border-amber-700/40 dark:bg-amber-950/20">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Credits running low</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{credits} credits left ({Math.round(creditPct)}%)</p>
+                      </div>
+                      <Link href="/pricing" className="shrink-0 text-[11px] font-semibold text-amber-600 hover:underline dark:text-amber-400">
+                        Buy more
+                      </Link>
+                    </div>
+                    <div className="mt-2 h-1 overflow-hidden rounded-full bg-amber-200 dark:bg-amber-900/50">
+                      <div className="h-full rounded-full bg-amber-500" style={{ width: `${creditPct}%` }} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+                    Credits left: <span className="font-medium text-foreground">{credits}</span>
+                  </div>
+                )}
               </div>
             </SectionCard>
           )}
@@ -577,9 +608,16 @@ function GeneratePageInner() {
                 >
                   Save as template
                 </Button>
-                <Button type="button" size="sm" className="h-9 gap-1.5" onClick={() => void generate()} disabled={loading || studioTab !== 'configure'}>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-9 gap-1.5"
+                  onClick={() => void generate()}
+                  disabled={loading || studioTab !== 'configure' || isOutOfCredits}
+                  title={isOutOfCredits ? 'No credits remaining — upgrade to generate' : undefined}
+                >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                  Generate
+                  {isOutOfCredits ? 'No credits' : 'Generate'}
                 </Button>
               </div>
             </div>
@@ -621,12 +659,25 @@ function GeneratePageInner() {
 
           <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 pt-2 md:px-5">
             {loading ? (
-              <div className="flex flex-1 flex-col items-center justify-center gap-3 py-12 text-muted-foreground">
-                <Loader2 className="h-8 w-8 animate-spin" />
-                <p className="text-sm">{stage}</p>
-                <p className="text-xs">
-                  Progress: <span className="font-medium text-foreground">{completedCount}</span> / {platforms.length}
-                </p>
+              <div className="flex flex-1 flex-col items-center justify-center gap-4 py-12">
+                <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+                  <Sparkles className="h-7 w-7 text-primary" />
+                  <div className="absolute inset-0 rounded-2xl border-2 border-primary/30 animate-pulse" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">{stage}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {completedCount} of {platforms.length} platform{platforms.length !== 1 ? 's' : ''} complete
+                  </p>
+                </div>
+                <div className="w-full max-w-[200px]">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-500"
+                      style={{ width: `${platforms.length > 0 ? (completedCount / platforms.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
               </div>
             ) : sortedPreview.length === 0 ? (
               <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 py-12 text-center">

@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { SkeletonCard } from '@/components/ui/skeleton-card'
 import { PageIntroModal } from '@/components/app/page-intro-modal'
+import { CalendarWorkflowStepper } from '@/components/app/calendar-workflow-stepper'
 import { toast } from 'sonner'
 import { getEffectivePostStatus, getPostStatusHint, getPostStatusTone } from '@/lib/post-status'
 import { displayCaption } from '@/lib/caption'
@@ -234,6 +235,10 @@ export default function CalendarPage() {
         title="Review and approve your content"
         description="Review each planned post, edit captions, and approve items before creative generation."
       />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div />
+        <CalendarWorkflowStepper />
+      </div>
       <PageHeader
         variant="hero"
         title={<>Review content <span className="text-pull text-primary">calendar</span></>}

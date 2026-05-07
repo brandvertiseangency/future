@@ -57,7 +57,7 @@ export function CommandPalette() {
         <>
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-foreground/60 backdrop-blur-sm z-[60]"
             onClick={() => setOpen(false)}
           />
           <motion.div
@@ -65,45 +65,65 @@ export function CommandPalette() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: -20 }}
             transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-[520px] z-[61]"
+            className="fixed top-[20%] left-1/2 -translate-x-1/2 w-full max-w-[520px] z-[61] px-4 sm:px-0"
           >
             <Command
-              className="overflow-hidden rounded-xl border border-[#E5E7EB] bg-white shadow-2xl"
+              className="overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
               label="Command menu"
             >
-              <div className="flex items-center gap-2 border-b border-[#E5E7EB] px-4">
-                <Search size={15} className="text-[#6B7280]" />
+              <div className="flex items-center gap-2 border-b border-border px-4">
+                <Search size={15} className="text-muted-foreground shrink-0" />
                 <Command.Input
                   placeholder="Type a command or search..."
-                  className="flex-1 bg-transparent py-3.5 text-sm text-[#111111] placeholder:text-[#9CA3AF] outline-none"
+                  className="flex-1 bg-transparent py-3.5 text-sm text-foreground placeholder:text-muted-foreground outline-none"
                 />
-                <kbd className="hidden rounded border border-[#E5E7EB] bg-[#F3F4F6] px-1.5 py-0.5 text-[10px] text-[#6B7280] sm:inline-flex">ESC</kbd>
+                <kbd className="hidden rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground font-medium sm:inline-flex">ESC</kbd>
               </div>
               <Command.List className="max-h-[320px] overflow-y-auto p-2">
-                <Command.Empty className="py-6 text-center text-sm text-[#6B7280]">No results found.</Command.Empty>
-                <Command.Group heading="Navigate" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                <Command.Empty className="py-6 text-center text-sm text-muted-foreground">No results found.</Command.Empty>
+                <Command.Group
+                  heading="Navigate"
+                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
+                >
                   {NAVIGATE.map(item => (
-                    <Command.Item key={item.href} value={item.label} onSelect={() => go(item.href)}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#6B7280] transition-colors data-[selected=true]:bg-[#F3F4F6] data-[selected=true]:text-[#111111]">
+                    <Command.Item
+                      key={item.href}
+                      value={item.label}
+                      onSelect={() => go(item.href)}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                    >
                       <item.icon size={15} className="flex-shrink-0" />
                       {item.label}
                     </Command.Item>
                   ))}
                 </Command.Group>
-                <Command.Separator className="my-1 h-px bg-[#E5E7EB]" />
-                <Command.Group heading="Actions" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
+                <Command.Separator className="my-1 h-px bg-border" />
+                <Command.Group
+                  heading="Actions"
+                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
+                >
                   {ACTIONS.map(item => (
-                    <Command.Item key={item.label} value={item.label} onSelect={() => go(item.href)}
-                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#6B7280] transition-colors data-[selected=true]:bg-[#F3F4F6] data-[selected=true]:text-[#111111]">
+                    <Command.Item
+                      key={item.label}
+                      value={item.label}
+                      onSelect={() => go(item.href)}
+                      className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-muted-foreground transition-colors data-[selected=true]:bg-muted data-[selected=true]:text-foreground"
+                    >
                       <item.icon size={15} className="flex-shrink-0" />
                       {item.label}
                     </Command.Item>
                   ))}
                 </Command.Group>
-                <Command.Separator className="my-1 h-px bg-[#E5E7EB]" />
-                <Command.Group heading="Account" className="px-2 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-[#6B7280]">
-                  <Command.Item value="Sign out" onSelect={() => { setOpen(false); signOut() }}
-                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-rose-400 cursor-pointer data-[selected=true]:bg-rose-500/10 transition-colors">
+                <Command.Separator className="my-1 h-px bg-border" />
+                <Command.Group
+                  heading="Account"
+                  className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground"
+                >
+                  <Command.Item
+                    value="Sign out"
+                    onSelect={() => { setOpen(false); signOut() }}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-rose-500 cursor-pointer data-[selected=true]:bg-rose-500/10 transition-colors"
+                  >
                     <LogOut size={15} className="flex-shrink-0" />
                     Sign out
                   </Command.Item>

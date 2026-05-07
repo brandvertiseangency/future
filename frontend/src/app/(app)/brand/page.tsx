@@ -63,11 +63,13 @@ export default function BrandOverviewPage() {
               <span className="text-pull text-primary">Brand</span> overview
             </>
           }
-          description="Read-only summary of your default brand. Changes apply across generation, calendar, and agents."
+          description="This drives every AI generation — keep it accurate for the best results."
         />
-        <Link href="/brand/edit" className={cn(buttonVariants(), 'shrink-0 sm:mt-1')}>
-          Edit brand setup
-        </Link>
+        <div className="flex items-center gap-2 shrink-0 sm:mt-1">
+          <Link href="/brand/edit" className={cn(buttonVariants())}>
+            Edit brand setup
+          </Link>
+        </div>
       </div>
 
       <SectionCard className="app-card-elevated" title="Identity" subtitle="Name, positioning, and audience signals.">

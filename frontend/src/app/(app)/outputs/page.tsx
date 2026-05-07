@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { useRouter } from 'next/navigation'
 import { apiCall } from '@/lib/api'
-import { ChevronDown, Download, ImageIcon, MoreHorizontal, RefreshCcw, Search, X } from 'lucide-react'
+import { ChevronDown, Download, ImageIcon, MoreHorizontal, RefreshCcw, Search, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader, EmptyState, NextStepCard } from '@/components/ui/page-primitives'
 import { StatusBadge } from '@/components/ui/saas-primitives'
@@ -316,11 +316,29 @@ export default function OutputsPage() {
         ) : null}
 
         {posts.length === 0 && !isLoading ? (
-          <EmptyState
-            title="No outputs match"
-            subtitle="Try another media filter or generate new creatives in the studio."
-            action={<Button onClick={() => window.location.assign('/generate')}>Open Generate studio</Button>}
-          />
+          activeFilterCount > 0 ? (
+            <EmptyState
+              title="No outputs match these filters"
+              subtitle="Try clearing one or more filters to see your creatives."
+              action={<Button variant="secondary" onClick={resetFilters}>Clear filters</Button>}
+            />
+          ) : (
+            <EmptyState
+              title="No outputs yet"
+              subtitle="Generate your first piece of content from a brief and it will appear here, ready to schedule."
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button onClick={() => window.location.assign('/generate')}>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate content
+                  </Button>
+                  <Button variant="secondary" onClick={() => window.location.assign('/calendar/generate')}>
+                    Plan a calendar
+                  </Button>
+                </div>
+              }
+            />
+          )
         ) : null}
 
         {posts.length > 0 ? (

@@ -30,10 +30,21 @@
   --color-brand-ink: var(--brand-ink);
   --color-brand-blue: var(--brand-blue);
   --color-brand-blue-deep: var(--brand-blue-deep);
+  --color-surface-page: var(--surface-page);
+  --color-surface-hero: var(--surface-hero);
+  --color-surface-elevated: var(--surface-elevated);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-card: var(--radius-card);
+  --radius-card-lg: var(--radius-card-lg);
+  --spacing-2: var(--space-2);
+  --spacing-3: var(--space-3);
+  --spacing-4: var(--space-4);
+  --spacing-5: var(--space-5);
+  --spacing-6: var(--space-6);
+  --spacing-8: var(--space-8);
 }
 
 :root,

@@ -272,34 +272,50 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="billing" className="space-y-4">
-          <div id="billing" className="scroll-mt-20">
-            <SectionCard title="Billing" subtitle="Plans and credits (₹ pricing shown as reference — gateway integration pending).">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div className="rounded-lg border border-border/65 bg-card/72 p-3 backdrop-blur-sm">
-                  <p className="text-xs text-muted-foreground">Current Plan</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground capitalize">{plan}</p>
+          <div id="billing" className="scroll-mt-20 space-y-4">
+            <SectionCard title="Current plan" subtitle="Your active subscription and remaining credits.">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Plan</p>
+                  <p className="mt-2 text-xl font-bold capitalize text-foreground">{plan}</p>
                   {plan === 'trial' && trialDays != null ? (
-                    <p className="mt-1 text-xs text-muted-foreground">Trial days remaining: {trialDays}</p>
-                  ) : null}
+                    <p className="mt-1 text-xs text-muted-foreground">{trialDays} trial days remaining</p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground capitalize">{plan} features active</p>
+                  )}
                 </div>
-                <div className="rounded-lg border border-border/65 bg-card/72 p-3 backdrop-blur-sm">
-                  <p className="text-xs text-muted-foreground">Credits</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">{credits}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Approx. value: ₹{Math.round(credits * 12).toLocaleString('en-IN')} equivalent (indicative)</p>
+                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Credits</p>
+                  <p className="mt-2 text-xl font-bold tabular-nums text-foreground">{credits.toLocaleString()}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Available to generate content</p>
+                </div>
+                <div className="rounded-xl border border-border/65 bg-card/72 p-4 backdrop-blur-sm">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Value</p>
+                  <p className="mt-2 text-xl font-bold text-foreground">₹{Math.round(credits * 12).toLocaleString('en-IN')}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Indicative equivalent</p>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Button onClick={() => window.location.assign('/pricing')}>
+            </SectionCard>
+
+            <SectionCard title="Upgrade" subtitle="Unlock higher credit limits, more agents, and priority generation.">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-foreground">Move to a paid plan for full access to the Brandvertise platform.</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Pro: 5,000 credits/mo &nbsp;·&nbsp; Agency: 15,000 credits/mo + team seats</p>
+                </div>
+                <Button onClick={() => window.location.assign('/pricing')} className="shrink-0">
                   <CreditCard className="mr-2 h-4 w-4" />
-                  Upgrade plan
+                  View pricing
                 </Button>
-                <Button
-                  variant="secondary"
-                  type="button"
-                  onClick={() => toast.message('Razorpay checkout will be wired here.', { description: 'TODO: integrate Razorpay per billing spec.' })}
-                >
-                  Pay with Razorpay (soon)
-                </Button>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Payment" subtitle="Secure checkout via Razorpay (India). Payments coming soon.">
+              <div className="flex flex-wrap items-start gap-4">
+                <div className="rounded-xl border border-dashed border-border bg-muted/20 p-4 text-center flex-1 min-w-[200px]">
+                  <p className="text-sm font-medium text-foreground">Razorpay checkout</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Direct payment integration launching soon. Use the pricing page to express interest.</p>
+                </div>
               </div>
             </SectionCard>
           </div>

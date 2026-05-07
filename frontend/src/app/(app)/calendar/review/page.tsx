@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils'
 import { PageContainer, PageHeader } from '@/components/ui/page-primitives'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { CalendarWorkflowStepper } from '@/components/app/calendar-workflow-stepper'
 import { toast } from 'sonner'
 
 const API_BASE =
@@ -199,14 +200,17 @@ function CalendarReviewInner() {
 
   return (
     <PageContainer className="max-w-[1200px] space-y-5">
-      {/* Back */}
-      <button
-        type="button"
-        onClick={() => router.back()}
-        className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ChevronLeft size={14} /> Back to calendar
-      </button>
+      {/* Back + workflow stepper */}
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft size={14} /> Back to calendar
+        </button>
+        <CalendarWorkflowStepper />
+      </div>
 
       <PageHeader
         variant="hero"
